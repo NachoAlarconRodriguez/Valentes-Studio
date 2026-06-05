@@ -1,0 +1,746 @@
+'use client';
+
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, ChevronRight, Star } from 'lucide-react';
+import { servicesData, crossSellingMap } from '@/data/mockData';
+import { useUIStore } from '@/store/useUIStore';
+import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the 3D Canvas to disable SSR
+const BarberPoleCanvas = dynamic(() => import('@/components/BarberPoleCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center min-h-[400px]">
+      <span className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+});
+
+// Photo mapping for barbers to make it look high-fidelity and professional
+const barberPhotos: Record<string, string> = {
+  sb1: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', // Carlos Mendoza
+  sb2: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80', // Enrique Soto
+  sb3: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80', // Marcos Delgado
+  sb4: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=200&q=80', // Javier Ortega
+};
+
+export default function BarberiaLayout() {
+  const data = servicesData.barberia;
+  const crossSell = crossSellingMap.barberia;
+  const { openBooking } = useUIStore();
+
+  // Splitscreen panel state management
+  const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
+  const [activePanel, setActivePanel] = useState<number | null>(null);
+  const [showIntro, setShowIntro] = useState(true);
+
+  // Selected sub-services
+  const [selectedHair, setSelectedHair] = useState('b_corte_general');
+  const [selectedBarba, setSelectedBarba] = useState('b_barba_perfilado_navaja');
+  const [selectedCombo, setSelectedCombo] = useState('b_combo_corte_barba');
+  const [addCejas, setAddCejas] = useState(false);
+
+  if (!data) return null;
+
+  // Custom data arrays for the 3 rituals
+  const hairServices = [
+    { id: 'b_corte_general', name: 'Adulto', label: 'Corte de Cabello', price: '$15.000', duration: '45 min' },
+    { id: 'b_corte_nino', name: 'Niño', label: 'Corte Niño ( 10años)', price: '$13.000', duration: '45 min', notice: 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' },
+    { id: 'b_corte_3era', name: 'Tercera Edad', label: 'Corte 3era Edad', price: '$12.000', duration: '45 min', notice: 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' },
+  ];
+
+  const barbaServices = [
+    { id: 'b_barba_retoque', name: 'Retoque', label: 'Retoque Barba', price: '$12.000', duration: '30 min' },
+    { id: 'b_barba_perfilado_navaja', name: 'Perfilado Navaja', label: 'Perfilado navaja', price: '$15.000', duration: '45 min' },
+    { id: 'b_barba_rasurado_ras', name: 'Rasurado al Ras', label: 'Rasurado al ras', price: '$15.000', duration: '45 min' },
+    { id: 'b_barba_perfilado_retoque', name: 'Perfilado + Retoque', label: 'Perfilado + Retoque', price: '$17.000', duration: '45 min' },
+  ];
+
+  const comboServices = [
+    { id: 'b_combo_corte_retoque', name: 'Corte + Retoque Barba', label: 'Corte de cabello + retoque de barba', price: '$20.000', duration: '1 hrs' },
+    { id: 'b_combo_corte_barba', name: 'Servicio Corte & Barba', label: 'servicio corte y barba', price: '$23.000', duration: '1 hrs 20 min' },
+    { id: 'b_combo_corte_rasurado', name: 'Corte + Rasurado al Ras', label: 'Corte de cabello+ Rasurado', price: '$25.000', duration: '1 hrs' },
+    { id: 'b_combo_corte_perfilado', name: 'Corte + Perfilado de Barba', label: 'Corte de cabello + Perfilado de barba', price: '$25.000', duration: '1 hrs' },
+  ];
+
+  // Helper to parse duration strings to minutes
+  const parseDuration = (d: string) => {
+    if (d.includes('hrs')) {
+      const parts = d.split(' ');
+      const hrs = parseInt(parts[0], 10);
+      const mins = parts.length > 2 ? parseInt(parts[2], 10) : 0;
+      return hrs * 60 + mins;
+    }
+    return parseInt(d, 10);
+  };
+
+  // Helper to format combined prices with cejas add-on
+  const getCombinedPrice = (basePriceStr: string) => {
+    const base = parseInt(basePriceStr.replace(/[^0-9]/g, ''), 10);
+    const total = addCejas ? base + 3500 : base;
+    return `$${total.toLocaleString('es-CL')}`;
+  };
+
+  // Helper to format combined durations with cejas add-on
+  const getCombinedDuration = (baseDurationStr: string) => {
+    const baseMins = parseDuration(baseDurationStr);
+    const total = addCejas ? baseMins + 15 : baseMins;
+    if (total >= 60) {
+      const hrs = Math.floor(total / 60);
+      const mins = total % 60;
+      return mins > 0 ? `${hrs} hrs ${mins} min` : `${hrs} hrs`;
+    }
+    return `${total} min`;
+  };
+
+  return (
+    <div className="bg-[#000000] text-[#F0F0F0] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
+      <AnimatePresence mode="wait">
+        {showIntro ? (
+          <motion.div
+            key="intro-screen"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+          >
+            {/* 1. HERO SECTION (PORTADA / CUBIERTA) */}
+            <section className="relative h-screen flex items-center justify-center overflow-hidden bg-black px-6 md:px-16">
+              {/* Subtle background radial glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gold/[0.015] rounded-full blur-[120px] pointer-events-none" />
+
+              <div className="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-center justify-between z-10 gap-6 md:gap-10">
+                {/* Left Side: Minimalist branding & Action button */}
+                <div className="text-center md:text-left space-y-4 select-none order-2 md:order-1 flex-1 md:self-end md:pb-28">
+                  <div className="space-y-2">
+                    <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-[0.25em] text-white leading-none">
+                      VALENTE
+                    </h1>
+                    <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium animate-text-gold-flow leading-none pl-1">
+                      Barbería
+                    </h2>
+                  </div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.6 }}
+                    className="pt-6"
+                  >
+                    <button
+                      onClick={() => setShowIntro(false)}
+                      className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
+                    >
+                      <span>Descubrir Rituales</span>
+                      <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
+                    </button>
+                  </motion.div>
+                </div>
+
+                {/* Right Side: Floating 3D Barber Pole */}
+                <div className="w-[300px] h-[350px] md:w-[320px] md:h-[450px] relative flex items-center justify-center order-1 md:order-2 flex-1">
+                  <BarberPoleCanvas />
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="catalog-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="w-full relative z-10"
+          >
+            {/* Back to Home Button (floating below navbar) */}
+            <button
+              onClick={() => {
+                setShowIntro(true);
+                setActivePanel(null);
+              }}
+              className="absolute left-6 top-28 z-30 text-[9px] uppercase tracking-widest text-white/50 hover:text-gold hover:border-gold/30 transition-all border border-white/10 rounded-full px-4.5 py-2 bg-black/40 backdrop-blur-sm flex items-center space-x-1.5 cursor-pointer shadow-lg"
+            >
+              <span>← Inicio</span>
+            </button>
+
+            {/* Tríptico Container: Occupies full screen height and integrates with navbar */}
+            <div className="flex flex-col lg:flex-row w-full min-h-screen lg:h-screen overflow-hidden bg-black relative z-10">
+                
+                {/* Panel 1: Cabello */}
+                <div
+                  onClick={() => setActivePanel(activePanel === 1 ? null : 1)}
+                  onMouseEnter={() => setHoveredPanel(1)}
+                  onMouseLeave={() => setHoveredPanel(null)}
+                  className={`group relative overflow-hidden cursor-pointer transition-all duration-700 ease-out flex flex-col justify-end p-8 border-b lg:border-b-0 lg:border-r border-white/5 ${
+                    activePanel === null
+                      ? hoveredPanel === 1
+                        ? 'flex-[1.5] min-h-[300px] lg:min-h-0'
+                        : hoveredPanel !== null
+                          ? 'flex-[0.75] min-h-[200px] lg:min-h-0'
+                          : 'flex-1 min-h-[250px] lg:min-h-0'
+                      : activePanel === 1
+                        ? 'flex-[3] min-h-[450px] lg:min-h-0'
+                        : 'flex-[0.5] min-h-[120px] lg:min-h-0'
+                  }`}
+                >
+                  {/* Background image */}
+                  <div className="absolute inset-0 z-0 select-none pointer-events-none">
+                    <Image
+                      src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80"
+                      alt="Ritual de Cabello"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      className={`object-cover transition-all duration-1000 ${
+                        activePanel === 1 || hoveredPanel === 1
+                          ? 'grayscale-0 scale-105 brightness-75'
+                          : 'grayscale opacity-60 brightness-[0.55]'
+                      }`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
+                  </div>
+
+                  {/* Label and titles */}
+                  <div className="relative z-10 text-left transition-all duration-500">
+                    <span className="text-[10px] uppercase tracking-[0.25em] text-gold font-semibold block mb-1">
+                      Ritual 01
+                    </span>
+                    <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
+                      Ritual de Cabello
+                    </h3>
+                    
+                    {activePanel !== 1 && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-2 text-xs text-text-secondary font-light"
+                      >
+                        Desde $12.000 • 45 min
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Panel 1 Drawer (Cabello Options) */}
+                  <AnimatePresence>
+                    {activePanel === 1 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{ duration: 0.4 }}
+                        className="relative z-25 mt-6 bg-[#070707]/95 backdrop-blur-md border border-gold/15 rounded-2xl p-5 space-y-4 text-left shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="space-y-2">
+                          <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">
+                            Selecciona tu Perfil:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {hairServices.map((service) => (
+                              <button
+                                key={service.id}
+                                onClick={() => setSelectedHair(service.id)}
+                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                  selectedHair === service.id
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Cejas Add-on */}
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <div className="text-left space-y-0.5">
+                            <div className="text-[11px] font-semibold text-white">Perfilado de Cejas</div>
+                            <div className="text-[9px] text-text-secondary leading-tight">Agrega perfilado de cejas y/o líneas por solo +$3.500 (+15 min)</div>
+                          </div>
+                          <button
+                            onClick={() => setAddCejas(!addCejas)}
+                            className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-bold transition-all duration-300 flex items-center space-x-1 ${
+                              addCejas
+                                ? 'bg-gold text-black shadow-md'
+                                : 'border border-white/10 text-white hover:border-gold/30 hover:text-gold'
+                            }`}
+                          >
+                            {addCejas ? 'Añadido' : 'Añadir'}
+                          </button>
+                        </div>
+
+                        {/* Notice for child/senior */}
+                        {hairServices.find(s => s.id === selectedHair)?.notice && (
+                          <div className="text-[9px] text-gold/80 bg-gold/5 border border-gold/10 px-3 py-2 rounded-lg font-light leading-relaxed">
+                            * {hairServices.find(s => s.id === selectedHair)?.notice}
+                          </div>
+                        )}
+
+                        {/* Booking Trigger */}
+                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                          <div className="text-left">
+                            <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
+                            <div className="flex items-baseline space-x-1.5 mt-0.5">
+                              <span className="text-lg font-serif font-bold text-gold">
+                                {getCombinedPrice(hairServices.find(s => s.id === selectedHair)!.price)}
+                              </span>
+                              <span className="text-[9px] text-text-secondary uppercase">
+                                {getCombinedDuration(hairServices.find(s => s.id === selectedHair)!.duration)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                const s = hairServices.find(serv => serv.id === selectedHair)!;
+                                openBooking({
+                                  id: s.id,
+                                  name: s.label + (addCejas ? ' + Cejas' : ''),
+                                  price: getCombinedPrice(s.price)
+                                });
+                              }}
+                              className="px-5 py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase tracking-widest font-bold transition-all hover:scale-105 active:scale-95 shimmer-button"
+                            >
+                              Reservar
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Panel 2: Barba */}
+                <div
+                  onClick={() => setActivePanel(activePanel === 2 ? null : 2)}
+                  onMouseEnter={() => setHoveredPanel(2)}
+                  onMouseLeave={() => setHoveredPanel(null)}
+                  className={`group relative overflow-hidden cursor-pointer transition-all duration-700 ease-out flex flex-col justify-end p-8 border-b lg:border-b-0 lg:border-r border-white/5 ${
+                    activePanel === null
+                      ? hoveredPanel === 2
+                        ? 'flex-[1.5] min-h-[300px] lg:min-h-0'
+                        : hoveredPanel !== null
+                          ? 'flex-[0.75] min-h-[200px] lg:min-h-0'
+                          : 'flex-1 min-h-[250px] lg:min-h-0'
+                      : activePanel === 2
+                        ? 'flex-[3] min-h-[450px] lg:min-h-0'
+                        : 'flex-[0.5] min-h-[120px] lg:min-h-0'
+                  }`}
+                >
+                  {/* Background image */}
+                  <div className="absolute inset-0 z-0 select-none pointer-events-none">
+                    <Image
+                      src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80"
+                      alt="Ritual de Barba"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      className={`object-cover transition-all duration-1000 ${
+                        activePanel === 2 || hoveredPanel === 2
+                          ? 'grayscale-0 scale-105 brightness-75'
+                          : 'grayscale opacity-60 brightness-[0.55]'
+                      }`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
+                  </div>
+
+                  {/* Label and titles */}
+                  <div className="relative z-10 text-left transition-all duration-500">
+                    <span className="text-[10px] uppercase tracking-[0.25em] text-gold font-semibold block mb-1">
+                      Ritual 02
+                    </span>
+                    <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
+                      Ritual de Barba
+                    </h3>
+                    
+                    {activePanel !== 2 && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-2 text-xs text-text-secondary font-light"
+                      >
+                        Desde $12.000 • 30-45 min
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Panel 2 Drawer (Barba Options) */}
+                  <AnimatePresence>
+                    {activePanel === 2 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{ duration: 0.4 }}
+                        className="relative z-25 mt-6 bg-[#070707]/95 backdrop-blur-md border border-gold/15 rounded-2xl p-5 space-y-4 text-left shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="space-y-2">
+                          <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">
+                            Selecciona el Estilo:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {barbaServices.map((service) => (
+                              <button
+                                key={service.id}
+                                onClick={() => setSelectedBarba(service.id)}
+                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                  selectedBarba === service.id
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Cejas Add-on */}
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <div className="text-left space-y-0.5">
+                            <div className="text-[11px] font-semibold text-white">Perfilado de Cejas</div>
+                            <div className="text-[9px] text-text-secondary leading-tight">Agrega perfilado de cejas y/o líneas por solo +$3.500 (+15 min)</div>
+                          </div>
+                          <button
+                            onClick={() => setAddCejas(!addCejas)}
+                            className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-bold transition-all duration-300 flex items-center space-x-1 ${
+                              addCejas
+                                ? 'bg-gold text-black shadow-md'
+                                : 'border border-white/10 text-white hover:border-gold/30 hover:text-gold'
+                            }`}
+                          >
+                            {addCejas ? 'Añadido' : 'Añadir'}
+                          </button>
+                        </div>
+
+                        {/* Booking Trigger */}
+                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                          <div className="text-left">
+                            <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
+                            <div className="flex items-baseline space-x-1.5 mt-0.5">
+                              <span className="text-lg font-serif font-bold text-gold">
+                                {getCombinedPrice(barbaServices.find(s => s.id === selectedBarba)!.price)}
+                              </span>
+                              <span className="text-[9px] text-text-secondary uppercase">
+                                {getCombinedDuration(barbaServices.find(s => s.id === selectedBarba)!.duration)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                const s = barbaServices.find(serv => serv.id === selectedBarba)!;
+                                openBooking({
+                                  id: s.id,
+                                  name: s.label + (addCejas ? ' + Cejas' : ''),
+                                  price: getCombinedPrice(s.price)
+                                });
+                              }}
+                              className="px-5 py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase tracking-widest font-bold transition-all hover:scale-105 active:scale-95 shimmer-button"
+                            >
+                              Reservar
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Panel 3: Completo */}
+                <div
+                  onClick={() => setActivePanel(activePanel === 3 ? null : 3)}
+                  onMouseEnter={() => setHoveredPanel(3)}
+                  onMouseLeave={() => setHoveredPanel(null)}
+                  className={`group relative overflow-hidden cursor-pointer transition-all duration-700 ease-out flex flex-col justify-end p-8 ${
+                    activePanel === null
+                      ? hoveredPanel === 3
+                        ? 'flex-[1.5] min-h-[300px] lg:min-h-0'
+                        : hoveredPanel !== null
+                          ? 'flex-[0.75] min-h-[200px] lg:min-h-0'
+                          : 'flex-1 min-h-[250px] lg:min-h-0'
+                      : activePanel === 3
+                        ? 'flex-[3] min-h-[450px] lg:min-h-0'
+                        : 'flex-[0.5] min-h-[120px] lg:min-h-0'
+                  }`}
+                >
+                  {/* Background image */}
+                  <div className="absolute inset-0 z-0 select-none pointer-events-none">
+                    <Image
+                      src="https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=800&q=80"
+                      alt="Ritual Completo"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      className={`object-cover transition-all duration-1000 ${
+                        activePanel === 3 || hoveredPanel === 3
+                          ? 'grayscale-0 scale-105 brightness-75'
+                          : 'grayscale opacity-60 brightness-[0.55]'
+                      }`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
+                  </div>
+
+                  {/* Label and titles */}
+                  <div className="relative z-10 text-left transition-all duration-500">
+                    <span className="text-[10px] uppercase tracking-[0.25em] text-gold font-semibold block mb-1">
+                      Ritual 03
+                    </span>
+                    <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
+                      Ritual Completo
+                    </h3>
+                    
+                    {activePanel !== 3 && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-2 text-xs text-text-secondary font-light"
+                      >
+                        Desde $20.000 • 60-80 min
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Panel 3 Drawer (Completo Options) */}
+                  <AnimatePresence>
+                    {activePanel === 3 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{ duration: 0.4 }}
+                        className="relative z-25 mt-6 bg-[#070707]/95 backdrop-blur-md border border-gold/15 rounded-2xl p-5 space-y-4 text-left shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="space-y-2">
+                          <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">
+                            Selecciona tu Combo:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {comboServices.map((service) => (
+                              <button
+                                key={service.id}
+                                onClick={() => setSelectedCombo(service.id)}
+                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                  selectedCombo === service.id
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Cejas Add-on */}
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <div className="text-left space-y-0.5">
+                            <div className="text-[11px] font-semibold text-white">Perfilado de Cejas</div>
+                            <div className="text-[9px] text-text-secondary leading-tight">Agrega perfilado de cejas y/o líneas por solo +$3.500 (+15 min)</div>
+                          </div>
+                          <button
+                            onClick={() => setAddCejas(!addCejas)}
+                            className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-bold transition-all duration-300 flex items-center space-x-1 ${
+                              addCejas
+                                ? 'bg-gold text-black shadow-md'
+                                : 'border border-white/10 text-white hover:border-gold/30 hover:text-gold'
+                            }`}
+                          >
+                            {addCejas ? 'Añadido' : 'Añadir'}
+                          </button>
+                        </div>
+
+                        {/* Booking Trigger */}
+                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                          <div className="text-left">
+                            <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
+                            <div className="flex items-baseline space-x-1.5 mt-0.5">
+                              <span className="text-lg font-serif font-bold text-gold">
+                                {getCombinedPrice(comboServices.find(s => s.id === selectedCombo)!.price)}
+                              </span>
+                              <span className="text-[9px] text-text-secondary uppercase">
+                                {getCombinedDuration(comboServices.find(s => s.id === selectedCombo)!.duration)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                const s = comboServices.find(serv => serv.id === selectedCombo)!;
+                                openBooking({
+                                  id: s.id,
+                                  name: s.label + (addCejas ? ' + Cejas' : ''),
+                                  price: getCombinedPrice(s.price)
+                                });
+                              }}
+                              className="px-5 py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase tracking-widest font-bold transition-all hover:scale-105 active:scale-95 shimmer-button"
+                            >
+                              Reservar
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+              </div>
+
+            {/* 3. SPECIALISTS GRID (EEAT) */}
+            <section className="max-w-7xl mx-auto px-6 py-24 md:py-36 border-t border-white/5 bg-[#000000] space-y-12">
+              <div className="text-center lg:text-left space-y-3 max-w-2xl">
+                <span className="text-xs uppercase tracking-widest font-semibold text-gold">
+                  Maestros del Bienestar
+                </span>
+                <h2 className="font-serif text-3xl md:text-4xl text-white tracking-wide">Nuestros Especialistas</h2>
+                <p className="text-sm text-text-secondary leading-relaxed font-light">
+                  Profesionales altamente experimentados y dedicados a la excelencia. Cada sesión combina su maestría técnica con un profundo respeto por tu bienestar individual.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap md:flex-nowrap justify-center gap-x-6 gap-y-12 md:gap-x-4 lg:gap-x-6 xl:gap-x-8 py-12 md:pb-24">
+                {data.specialists.map((specialist, index) => {
+                  return (
+                    <div 
+                      key={specialist.id}
+                      className={`relative w-[280px] h-[340px] md:w-[220px] md:h-[265px] lg:w-[250px] lg:h-[305px] xl:w-[280px] xl:h-[340px] group transition-all duration-500 ease-out select-none
+                        ${index > 0 ? '-mt-8 md:mt-0' : ''}
+                      `}
+                      style={{
+                        filter: 'drop-shadow(0 0 10px rgba(212, 175, 55, 0.05))',
+                      }}
+                    >
+                      {/* Outer Hexagon (Clipping mask) */}
+                      <div 
+                        className="absolute inset-0 bg-[#0c0c0c] hover:bg-[#0f0f0f] transition-colors duration-500 overflow-hidden"
+                        style={{
+                          clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+                        }}
+                      >
+                        {/* Photo Container */}
+                        <div className="absolute top-0 left-0 right-0 h-[52%] overflow-hidden">
+                          {barberPhotos[specialist.id] ? (
+                            <Image
+                              src={barberPhotos[specialist.id]}
+                              alt={specialist.name}
+                              fill
+                              sizes="(max-width: 768px) 280px, 290px"
+                              className="object-cover grayscale group-hover:grayscale-0 scale-100 group-hover:scale-110 transition-all duration-700 ease-out"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-900 font-serif text-4xl font-bold text-gold/80">
+                              {specialist.avatar}
+                            </div>
+                          )}
+                          {/* Subtle gradient to mask photo into the black card bg */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0c0c0c]/40 to-[#0c0c0c] z-10" />
+                          
+                          {/* Star Badge */}
+                          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-15 w-6 h-6 rounded-full bg-black/60 border border-gold/30 text-gold flex items-center justify-center backdrop-blur-xs scale-90 group-hover:scale-100 transition-transform duration-300">
+                            <Star size={10} className="fill-gold" />
+                          </div>
+                        </div>
+
+                        {/* Info details */}
+                        <div className="absolute inset-x-0 bottom-0 top-[48%] flex flex-col justify-start items-center text-center px-7 pb-8 pt-2 z-10">
+                          <h3 className="font-serif text-base md:text-xs lg:text-sm xl:text-base text-white tracking-wide font-semibold mb-0.5 group-hover:text-gold transition-colors duration-300">
+                            {specialist.name}
+                          </h3>
+                          <span className="text-[9px] md:text-[8px] lg:text-[9px] uppercase tracking-[0.2em] font-bold text-gold mb-1">
+                            {specialist.role}
+                          </span>
+                          <div className="text-[10px] md:text-[8px] lg:text-[9px] text-white/50 italic mb-2 px-1 leading-tight border-b border-white/5 pb-1 max-w-[90%] truncate">
+                            {specialist.specialty}
+                          </div>
+                          <p className="text-[11px] md:text-[9px] lg:text-[10px] xl:text-[11px] text-text-secondary leading-relaxed font-light max-w-[90%] line-clamp-3 group-hover:text-white/80 transition-colors duration-300">
+                            {specialist.bio}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* SVG Glowing Border Overlay */}
+                      <svg
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                        className="absolute inset-0 w-full h-full pointer-events-none z-25"
+                      >
+                        <defs>
+                          <filter id={`gold-glow-${specialist.id}`} x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feMerge>
+                              <feMergeNode in="blur" />
+                              <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                          </filter>
+                        </defs>
+                        {/* Base golden line */}
+                        <polygon
+                          points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
+                          fill="none"
+                          stroke="#D4AF37"
+                          strokeWidth="0.8"
+                          strokeOpacity="0.25"
+                          className="group-hover:stroke-opacity-60 transition-all duration-500"
+                        />
+                        {/* Active circulating light segment */}
+                        <polygon
+                          points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
+                          fill="none"
+                          stroke="#FFDF00"
+                          strokeWidth="1.5"
+                          strokeDasharray="80 241"
+                          className="animate-circulate-gold opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          style={{
+                            filter: `url(#gold-glow-${specialist.id})`,
+                          }}
+                        />
+                      </svg>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* 4. CROSS-SELLING MODULE */}
+            {crossSell && (
+              <section className="max-w-7xl mx-auto px-6 pb-32 pt-12 relative z-20 bg-[#000000]">
+                <div className="relative rounded-3xl overflow-hidden apple-gold-glass p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-10 border border-gold/15 bg-white/[0.01]">
+                  <div className="absolute -top-12 -left-12 w-80 h-80 bg-gold/5 rounded-full blur-[80px] pointer-events-none" />
+                  
+                  <div className="space-y-5 relative z-10 max-w-3xl text-left">
+                    <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-gold/10 border border-gold/10 text-[9px] text-gold uppercase tracking-[0.2em] font-semibold">
+                      <Sparkles size={11} className="text-gold" />
+                      <span>{crossSell.title}</span>
+                    </div>
+                    <h3 className="font-serif text-3xl md:text-4xl text-white tracking-wide leading-snug">
+                      {crossSell.subtitle}
+                    </h3>
+                    <p className="text-sm text-text-secondary leading-relaxed font-light">
+                      {crossSell.recommendation}
+                    </p>
+                  </div>
+
+                  <div className="flex-shrink-0 relative z-10 w-full lg:w-auto">
+                    <Link
+                      href={crossSell.path}
+                      className="w-full lg:w-auto inline-flex items-center justify-center space-x-2 px-8 py-4 rounded-full border border-gold text-gold text-xs uppercase tracking-widest font-bold hover:bg-gold hover:text-black transition-all duration-300 cursor-pointer shadow-lg shadow-gold/5 font-semibold shimmer-button"
+                    >
+                      <span>Descubrir Más</span>
+                      <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

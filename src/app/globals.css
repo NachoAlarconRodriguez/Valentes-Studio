@@ -1,26 +1,300 @@
 @import "tailwindcss";
 
+@theme {
+  --color-gold: #D4AF37;
+  --color-bronze: #CD7F32;
+  --color-platinum: #E2E0D8;
+  --color-bg-base: #111111;
+  --color-bg-card: #1E1E1E;
+  --color-text-primary: #F0F0F0;
+  --color-text-secondary: #A0A0A0;
+  
+  --font-serif: var(--font-cinzel), serif;
+  --font-sans: var(--font-montserrat), sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #111111;
+  --foreground: #F0F0F0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background-color: #111111;
 }
 
 body {
-  background: var(--background);
+  background-color: transparent;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
+
+/* Custom Utilities for Glassmorphism & Visual Polish */
+.glass-panel {
+  background: rgba(30, 30, 30, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-hover {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(30, 30, 30, 0.8);
+  border-color: rgba(212, 175, 55, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(212, 175, 55, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Gold Text Gradient */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #F0F0F0 0%, #D4AF37 50%, #CD7F32 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Bronze/Copper Text Gradient */
+.text-bronze-gradient {
+  background: linear-gradient(135deg, #F0F0F0 0%, #CD7F32 50%, #8C4F1A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom Scrollbar for Luxury Vibe */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.4);
+}
+
+/* Hide canvas focus outline */
+canvas {
+  outline: none;
+}
+
+/* Animated White to Gold Text Gradient Flow */
+@keyframes textGoldFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@utility animate-text-gold-flow {
+  background: linear-gradient(120deg, #FFFFFF 0%, #D4AF37 50%, #FFFFFF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textGoldFlow 8s ease infinite;
+}
+
+/* Golden Shimmer effect for premium buttons */
+.shimmer-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 35%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  transition: all 0.75s ease;
+  pointer-events: none;
+}
+
+.shimmer-button:hover::after {
+  left: 140%;
+  transition: all 0.75s ease;
+}
+
+/* Horizontal Barber Pole animation for Barbería divider */
+.barber-pole-line {
+  display: block;
+  width: 100%;
+  height: 12px;
+  background: repeating-linear-gradient(
+    -45deg,
+    #0a0a0a,
+    #0a0a0a 10px,
+    #D4AF37 10px,
+    #D4AF37 20px
+  );
+  background-size: 28.3px 28.3px; /* sqrt(2) * 20px for seamless tiling */
+  animation: barberPoleScroll 1.2s linear infinite;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+}
+
+@keyframes barberPoleScroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 28.3px 0;
+  }
+}
+
+/* Apple-style premium glassmorphisms */
+@utility apple-gold-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.06) 0%,
+    rgba(25, 25, 25, 0.25) 50%,
+    rgba(212, 175, 55, 0.02) 100%
+  );
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 25px 0 rgba(212, 175, 55, 0.04);
+  transition: all 0.4s ease;
+
+  &:hover {
+    border-color: rgba(212, 175, 55, 0.35);
+    box-shadow: 
+      0 16px 48px 0 rgba(0, 0, 0, 0.75),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 35px 0 rgba(212, 175, 55, 0.08);
+  }
+}
+
+@utility apple-bronze-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(205, 127, 50, 0.06) 0%,
+    rgba(25, 25, 25, 0.25) 50%,
+    rgba(205, 127, 50, 0.02) 100%
+  );
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(205, 127, 50, 0.25);
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 25px 0 rgba(205, 127, 50, 0.04);
+  transition: all 0.4s ease;
+
+  &:hover {
+    border-color: rgba(205, 127, 50, 0.35);
+    box-shadow: 
+      0 16px 48px 0 rgba(0, 0, 0, 0.75),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 35px 0 rgba(205, 127, 50, 0.08);
+  }
+}
+
+@utility apple-platinum-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(226, 224, 216, 0.06) 0%,
+    rgba(25, 25, 25, 0.25) 50%,
+    rgba(226, 224, 216, 0.02) 100%
+  );
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(226, 224, 216, 0.25);
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 25px 0 rgba(226, 224, 216, 0.04);
+  transition: all 0.4s ease;
+
+  &:hover {
+    border-color: rgba(226, 224, 216, 0.35);
+    box-shadow: 
+      0 16px 48px 0 rgba(0, 0, 0, 0.75),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 35px 0 rgba(226, 224, 216, 0.08);
+  }
+}
+
+/* Animated White to Copper Text Gradient Flow */
+@keyframes textCopperFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@utility animate-text-copper-flow {
+  background: linear-gradient(120deg, #FFFFFF 0%, #CD7F32 50%, #FFFFFF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textCopperFlow 8s ease infinite;
+}
+
+/* Animated White to Platinum Text Gradient Flow */
+@keyframes textPlatinumFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@utility animate-text-platinum-flow {
+  background: linear-gradient(120deg, #FFFFFF 0%, #9CA3AF 50%, #FFFFFF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textPlatinumFlow 8s ease infinite;
+}
+
+@keyframes circulate {
+  0% {
+    stroke-dashoffset: 321;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@utility animate-circulate-gold {
+  animation: circulate 5s linear infinite;
+}
+
