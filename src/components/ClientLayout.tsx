@@ -57,7 +57,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       {pathname !== '/' && <Navbar />}
 
       {/* Main UI Layer */}
-      <main className={`flex-grow relative z-10 w-full ${pathname === '/' || pathname.startsWith('/barberia') ? '' : 'pt-24'}`}>
+      <main className={`flex-grow relative z-10 w-full ${pathname === '/' || pathname.startsWith('/barberia') || pathname.startsWith('/terapias') ? '' : 'pt-24'}`}>
         {children}
       </main>
 

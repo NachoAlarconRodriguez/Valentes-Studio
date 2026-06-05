@@ -122,10 +122,16 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
   const s = getStyles();
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-0 pb-8 space-y-24 md:space-y-36">
+    <div className={`w-full pb-8 ${
+      category === 'terapias' ? 'space-y-24 md:space-y-36' : 'max-w-7xl mx-auto px-6 pt-0 space-y-24 md:space-y-36'
+    }`}>
       
       {/* 1. HEADER SECTION */}
-      <section className="relative min-h-[500px] pt-4 pb-16 md:pt-6 md:pb-24 w-full flex items-center">
+      <section className={`relative w-full flex items-center overflow-hidden ${
+        category === 'terapias'
+          ? 'min-h-[550px] md:min-h-[75vh] pt-32 pb-16 md:pt-40 md:pb-24'
+          : 'min-h-[500px] pt-4 pb-16 md:pt-6 md:pb-24'
+      }`}>
         {category === 'barberia' && (
           <div className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
             <HandsCanvas />
@@ -154,11 +160,13 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
             
             {/* Top and bottom edge fades for seamless blending */}
             <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg-base to-transparent z-10" />
-            <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-bg-base to-transparent z-10" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-bg-base/80 to-transparent z-10" />
           </div>
         )}
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center h-full w-full">
+        <div className={`relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center h-full w-full ${
+          category === 'terapias' ? 'max-w-7xl mx-auto px-6' : ''
+        }`}>
           <div className="md:col-span-7 space-y-6 text-left">
             <span 
               className="text-xs uppercase tracking-[0.35em] font-bold"
@@ -179,7 +187,9 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
       </section>
 
       {/* 2. SERVICE ACCORDION MENU */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <section className={`grid grid-cols-1 lg:grid-cols-12 gap-12 ${
+        category === 'terapias' ? 'max-w-7xl mx-auto px-6' : ''
+      }`}>
         <div className="lg:col-span-4 space-y-4">
           <span 
             className="text-xs uppercase tracking-widest font-semibold"
@@ -346,7 +356,9 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
       </section>
 
       {/* 3. SPECIALISTS GRID (EEAT) */}
-      <section className="space-y-10">
+      <section className={`space-y-10 ${
+        category === 'terapias' ? 'max-w-7xl mx-auto px-6' : ''
+      }`}>
         <div className="text-center md:text-left space-y-3 max-w-2xl">
           <span 
             className="text-xs uppercase tracking-widest font-semibold"
@@ -476,7 +488,9 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
 
       {/* 4. CROSS-SELLING MODULE */}
       {crossSell && (
-        <section className="pt-6">
+        <section className={`pt-6 ${
+          category === 'terapias' ? 'max-w-7xl mx-auto px-6' : ''
+        }`}>
           <div className={`relative rounded-3xl overflow-hidden ${s.glass} p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8`}>
             <div className={`absolute -top-12 -left-12 w-80 h-80 ${s.glowBg} rounded-full blur-[80px] pointer-events-none`} />
             
