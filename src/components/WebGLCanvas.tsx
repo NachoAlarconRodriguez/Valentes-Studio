@@ -111,11 +111,9 @@ const bgFragmentShader = `
     return mix(baseBg, bronzeColor * 0.25, silkPattern * 0.35);
   }
 
-  // Section 3: Terapias - Clean charcoal background with extremely subtle silver glow
+  // Section 3: Terapias - Flat black background
   vec3 getTerapiasBg(vec2 uv, float time) {
-    vec3 leftColor = vec3(0.067, 0.067, 0.067); // #111111 (deep charcoal)
-    vec3 rightColor = vec3(0.09, 0.09, 0.09); // Extremely soft silver-grey glow (#171717)
-    return mix(leftColor, rightColor, uv.x);
+    return vec3(0.0, 0.0, 0.0);
   }
 
   vec3 getBgColor(float section, vec2 uv, float time, vec2 mouse) {
@@ -239,11 +237,16 @@ const particleVertexShader = `
     // Fade out particles that are far or when close to camera
     vAlpha = smoothstep(-8.0, -1.0, mvPosition.z) * smoothstep(0.0, -4.5, mvPosition.z);
     
-    // Smoothly fade out particles when transitioning to Barberia
+    // Smoothly fade out particles when transitioning to Barberia or Terapias
     float targetIsBarberia = step(0.5, uTargetSection) * step(uTargetSection, 1.5);
     float currentIsBarberia = step(0.5, uCurrentSection) * step(uCurrentSection, 1.5);
     float isBarberia = mix(currentIsBarberia, targetIsBarberia, uTransition);
-    vAlpha *= (1.0 - isBarberia);
+    
+    float targetIsTerapia = step(2.5, uTargetSection);
+    float currentIsTerapia = step(2.5, uCurrentSection);
+    float isTerapia = mix(currentIsTerapia, targetIsTerapia, uTransition);
+
+    vAlpha *= (1.0 - isBarberia) * (1.0 - isTerapia);
     
     // Brighten particles during card hover to look like concentrated energy
     if (uHoveredCardFactor > 0.01) {
