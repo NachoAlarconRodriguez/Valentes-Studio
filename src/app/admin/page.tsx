@@ -327,7 +327,7 @@ export default function AdminPage() {
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   
   // VSM Selected Page State
-  const [vsmPage, setVsmPage] = useState<'home' | 'barberia' | 'peluqueria' | 'terapias'>('home');
+  const [vsmPage, setVsmPage] = useState<'home' | 'barberia' | 'peluqueria' | 'terapias' | 'peluqueria-gallery'>('home');
   const [notification, setNotification] = useState<string | null>(null);
 
   // Manual Booking Modal State
@@ -379,7 +379,7 @@ export default function AdminPage() {
   const [vsmForm, setVsmForm] = useState(content);
   const [vsmPeluEntered, setVsmPeluEntered] = useState(false);
   const [vsmViewMode, setVsmViewMode] = useState<'desktop' | 'mobile'>('desktop');
-  const [editingAsset, setEditingAsset] = useState<{ page: string; key: string; label: string; currentValue: string } | null>(null);
+  const [editingAsset, setEditingAsset] = useState<{ page: string; key: string; label: string; currentValue: string; itemId?: string } | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -478,11 +478,68 @@ export default function AdminPage() {
   };
 
   const handleVsmSave = () => {
-    updateContent(vsmPage, vsmForm[vsmPage]);
-    triggerNotification(`¡Página de ${vsmPage.toUpperCase()} actualizada con éxito en el sitio público!`);
+    if (vsmPage === 'peluqueria-gallery') {
+      updateContent('peluqueria', { galleryItems: vsmForm.peluqueria.galleryItems });
+      triggerNotification('¡Galería de Peluquería actualizada con éxito en el sitio público!');
+    } else {
+      updateContent(vsmPage as any, (vsmForm as any)[vsmPage]);
+      triggerNotification(`¡Página de ${vsmPage.toUpperCase()} actualizada con éxito en el sitio público!`);
+    }
+  };
+
+  const handleGalleryItemChange = (id: string, field: string, value: string) => {
+    setVsmForm(prev => {
+      const items = prev.peluqueria.galleryItems || [];
+      const updatedItems = items.map(item => item.id === id ? { ...item, [field]: value } : item);
+      return {
+        ...prev,
+        peluqueria: {
+          ...prev.peluqueria,
+          galleryItems: updatedItems
+        }
+      };
+    });
+  };
+
+  const handleGalleryItemDelete = (id: string) => {
+    setVsmForm(prev => {
+      const items = prev.peluqueria.galleryItems || [];
+      const updatedItems = items.filter(item => item.id !== id);
+      return {
+        ...prev,
+        peluqueria: {
+          ...prev.peluqueria,
+          galleryItems: updatedItems
+        }
+      };
+    });
+  };
+
+  const handleGalleryItemAdd = () => {
+    const newId = `g_new_${Date.now()}`;
+    const newWork = {
+      id: newId,
+      title: 'Nuevo Trabajo',
+      technique: 'Descripción del servicio realizado.',
+      stylist: 'Sofia Valente',
+      duration: '60 min',
+      price: '$30.000',
+      imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=300&q=80'
+    };
+    setVsmForm(prev => {
+      const items = prev.peluqueria.galleryItems || [];
+      return {
+        ...prev,
+        peluqueria: {
+          ...prev.peluqueria,
+          galleryItems: [...items, newWork]
+        }
+      };
+    });
   };
 
   const handleVsmInputChange = (field: string, value: string) => {
+    if (vsmPage === 'peluqueria-gallery') return;
     setVsmForm(prev => ({
       ...prev,
       [vsmPage]: {
@@ -2763,6 +2820,7 @@ export default function AdminPage() {
                     { id: 'home', label: 'Inicio' },
                     { id: 'barberia', label: 'Barbería' },
                     { id: 'peluqueria', label: 'Peluquería' },
+                    { id: 'peluqueria-gallery', label: 'Galería Peluquería' },
                     { id: 'terapias', label: 'Terapias' }
                   ].map((p) => (
                     <button
@@ -2861,9 +2919,118 @@ export default function AdminPage() {
               </div>
 
               {/* Browser Canvas Content Area */}
-              <div className="p-6 bg-black/60 min-h-[500px] flex items-center justify-center overflow-auto max-h-[550px]">
+              <div className="p-6 bg-black/60 min-h-[500px] flex items-center justify-center overflow-auto max-h-[550px] w-full">
                 
-                {vsmViewMode === 'desktop' ? (
+                {vsmPage === 'peluqueria-gallery' ? (
+                  /* Render the custom Gallery Editor */
+                  <div className="w-full max-w-4xl mx-auto space-y-6 text-left py-2">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                      <div>
+                        <h3 className="font-serif text-lg text-white font-medium">Gestión de Galería de Trabajos</h3>
+                        <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">Agrega, edita o elimina los trabajos destacados en la sección de Peluquería</p>
+                      </div>
+                      <button
+                        onClick={handleGalleryItemAdd}
+                        className="py-2.5 px-5 rounded-full bg-gold hover:bg-gold/90 text-black text-[10px] uppercase font-bold tracking-widest flex items-center space-x-1.5 cursor-pointer transition-all shadow-md shadow-gold/10"
+                      >
+                        <Plus size={12} />
+                        <span>Añadir Trabajo</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {(vsmForm.peluqueria.galleryItems || []).map((item) => (
+                        <div key={item.id} className="bg-[#121212] border border-white/5 rounded-2xl p-5 space-y-4 hover:border-white/10 transition-all relative group flex flex-col justify-between">
+                          
+                          {/* Card Header: Image Preview & Remove button */}
+                          <div className="flex gap-4 items-start">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden relative border border-white/10 bg-zinc-900 flex-shrink-0 group">
+                              <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full" />
+                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button
+                                  onClick={() => setEditingAsset({ page: 'peluqueria-gallery', key: 'imageUrl', label: 'Imagen de Portafolio', currentValue: item.imageUrl, itemId: item.id })}
+                                  className="p-1.5 rounded-full bg-gold text-black hover:scale-110 transition-all cursor-pointer"
+                                  title="Cambiar Imagen"
+                                >
+                                  <Camera size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex-1 space-y-3 text-left">
+                              {/* Title */}
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Título del Trabajo</label>
+                                <input
+                                  type="text"
+                                  value={item.title}
+                                  onChange={(e) => handleGalleryItemChange(item.id, 'title', e.target.value)}
+                                  className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30"
+                                  placeholder="Ej. Balayage Premium Vainilla"
+                                />
+                                <span className="text-[7px] text-text-secondary">Se usa para inferir el servicio de reserva (ej: "Coloración")</span>
+                              </div>
+
+                              {/* Style/Technique */}
+                              <div className="space-y-1">
+                                <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Técnica / Detalles</label>
+                                <textarea
+                                  rows={2}
+                                  value={item.technique}
+                                  onChange={(e) => handleGalleryItemChange(item.id, 'technique', e.target.value)}
+                                  className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 resize-none leading-relaxed"
+                                  placeholder="Ej. Balayage tridimensional..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Details: Stylist, Duration, Price */}
+                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Estilista</label>
+                              <input
+                                type="text"
+                                value={item.stylist}
+                                onChange={(e) => handleGalleryItemChange(item.id, 'stylist', e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30"
+                              />
+                            </div>
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Duración</label>
+                              <input
+                                type="text"
+                                value={item.duration}
+                                onChange={(e) => handleGalleryItemChange(item.id, 'duration', e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30"
+                              />
+                            </div>
+                            <div className="space-y-1 text-left">
+                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Precio</label>
+                              <input
+                                type="text"
+                                value={item.price}
+                                onChange={(e) => handleGalleryItemChange(item.id, 'price', e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30 font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Card Footer: Remove Button */}
+                          <div className="flex justify-end pt-2 border-t border-white/5">
+                            <button
+                              onClick={() => handleGalleryItemDelete(item.id)}
+                              className="py-1 px-3.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center space-x-1"
+                            >
+                              <Trash2 size={10} />
+                              <span>Eliminar</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : vsmViewMode === 'desktop' ? (
                   /* DESKTOP PREVIEW WRAPPER */
                   <div className="w-full max-w-4xl mx-auto h-[450px] overflow-y-auto scrollbar-none relative border border-white/5 rounded-2xl bg-black">
                     
@@ -4576,7 +4743,11 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => {
-                  handleVsmInputChange(editingAsset.key, editingAsset.currentValue);
+                  if (editingAsset.itemId) {
+                    handleGalleryItemChange(editingAsset.itemId, editingAsset.key, editingAsset.currentValue);
+                  } else {
+                    handleVsmInputChange(editingAsset.key, editingAsset.currentValue);
+                  }
                   setEditingAsset(null);
                   triggerNotification('Recurso de la vista previa actualizado.');
                 }}

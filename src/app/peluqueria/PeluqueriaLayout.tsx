@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Sparkles, ChevronRight, X, Star } from 'lucide-react';
+import { Clock, Sparkles, ChevronRight, ChevronLeft, X, Star } from 'lucide-react';
 import { crossSellingMap } from '@/data/mockData';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -24,63 +24,6 @@ interface CardItem {
   gridClass: string;
 }
 
-const galleryItems = [
-  {
-    id: 'g1',
-    title: 'Balayage Premium Vainilla',
-    technique: 'Balayage tridimensional con difuminado de raíz y matices dorados fríos.',
-    stylist: 'Sofia Valente',
-    duration: '3.5 hrs',
-    price: '$65.000',
-    imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'g2',
-    title: 'Ondas Editorial Surf',
-    technique: 'Peinado texturizado con ondas desestructuradas y protector térmico orgánico.',
-    stylist: 'Valentina Paz',
-    duration: '45 min',
-    price: '$30.000',
-    imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'g3',
-    title: 'Corte Shag Moderno',
-    technique: 'Corte texturizado en capas desconectadas con flequillo y volumen natural.',
-    stylist: 'Andrés Silva',
-    duration: '60 min',
-    price: '$38.000',
-    imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'g4',
-    title: 'Tratamiento Seda Celular',
-    technique: 'Nutrición molecular profunda con ácido hialurónico y cauterización fría.',
-    stylist: 'Lucía Rivas',
-    duration: '60 min',
-    price: '$48.000',
-    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'g5',
-    title: 'Corte Bob Simétrico',
-    technique: 'Corte seco de precisión milimétrica adaptado a la forma del mentón.',
-    stylist: 'Andrés Silva',
-    duration: '60 min',
-    price: '$38.000',
-    imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'g6',
-    title: 'Iluminación Babylights Platinada',
-    technique: 'Micro-reflejos de alta costura para un efecto aclarado natural ultra fino.',
-    stylist: 'Valentina Paz',
-    duration: '3 hrs',
-    price: '$65.000',
-    imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80'
-  }
-];
-
 const specialistPhotos: Record<string, string> = {
   sp1: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=250&q=80', // Sofia Valente
   sp2: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80', // Lucía Rivas
@@ -95,6 +38,26 @@ export default function PeluqueriaLayout() {
   const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(0);
   const { content } = useContentStore();
   const { servicesData } = useServicesStore();
+
+  const galleryItems = content.peluqueria.galleryItems || [];
+  const currentItem = galleryItems[selectedGalleryIdx] || galleryItems[0] || {
+    id: '',
+    title: '',
+    technique: '',
+    stylist: '',
+    duration: '',
+    price: '',
+    imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80'
+  };
+
+  // Auto-play gallery items when modal is open
+  React.useEffect(() => {
+    if (!isGalleryOpen || galleryItems.length <= 1) return;
+    const interval = setInterval(() => {
+      setSelectedGalleryIdx((prev) => (prev + 1) % galleryItems.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isGalleryOpen, galleryItems.length, selectedGalleryIdx]);
 
   const data = React.useMemo(() => {
     const original = servicesData.peluqueria;
@@ -465,10 +428,10 @@ export default function PeluqueriaLayout() {
               </button>
 
               {/* Left Panel: Featured Image & Technique Details */}
-              <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5">
+              <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group/gallery-nav">
                 <Image
-                  src={galleryItems[selectedGalleryIdx].imageUrl}
-                  alt={galleryItems[selectedGalleryIdx].title}
+                  src={currentItem.imageUrl}
+                  alt={currentItem.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover transition-all duration-700"
@@ -476,24 +439,50 @@ export default function PeluqueriaLayout() {
                 {/* Dark shading mask */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10" />
 
+                {/* Left/Right Navigation Arrows */}
+                {galleryItems.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedGalleryIdx((prev) => (prev - 1 + galleryItems.length) % galleryItems.length);
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/55 backdrop-blur-md border border-white/10 text-white/80 hover:text-black hover:bg-gold hover:border-gold hover:scale-110 transition-all cursor-pointer z-20 focus:outline-none"
+                      aria-label="Anterior"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedGalleryIdx((prev) => (prev + 1) % galleryItems.length);
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/55 backdrop-blur-md border border-white/10 text-white/80 hover:text-black hover:bg-gold hover:border-gold hover:scale-110 transition-all cursor-pointer z-20 focus:outline-none"
+                      aria-label="Siguiente"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </>
+                )}
+
                 {/* Details overlay at the bottom */}
                 <div className="absolute bottom-0 left-0 right-0 p-8 z-20 space-y-3">
                   <span className="text-[9px] uppercase tracking-widest text-gold bg-gold/10 border border-gold/25 px-2.5 py-1 rounded-full font-semibold inline-block">
-                    {galleryItems[selectedGalleryIdx].stylist}
+                    {currentItem.stylist}
                   </span>
                   <h4 className="font-serif text-2xl text-white font-medium tracking-wide">
-                    {galleryItems[selectedGalleryIdx].title}
+                    {currentItem.title}
                   </h4>
                   <p className="text-xs text-white/70 leading-relaxed font-light max-w-xl">
-                    {galleryItems[selectedGalleryIdx].technique}
+                    {currentItem.technique}
                   </p>
                   <div className="flex items-center space-x-4 pt-1.5 text-xs text-gold font-light">
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {galleryItems[selectedGalleryIdx].duration}
+                      {currentItem.duration}
                     </span>
                     <span>•</span>
-                    <span>Valor Estimado: {galleryItems[selectedGalleryIdx].price}</span>
+                    <span>Valor Estimado: {currentItem.price}</span>
                   </div>
                 </div>
               </div>
@@ -539,7 +528,7 @@ export default function PeluqueriaLayout() {
                   <button
                     onClick={() => {
                       setIsGalleryOpen(false);
-                      const selectedItem = galleryItems[selectedGalleryIdx];
+                      const selectedItem = currentItem;
                       // Match styling service id based on stylist/type
                       let sId = 'p1'; // default
                       if (selectedItem.title.includes('Coloración')) sId = 'p2';
