@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Sparkles, ChevronRight, X, Star } from 'lucide-react';
-import { servicesData, crossSellingMap } from '@/data/mockData';
+import { crossSellingMap } from '@/data/mockData';
+import { useServicesStore } from '@/store/useServicesStore';
 import { useUIStore } from '@/store/useUIStore';
 import Link from 'next/link';
 import Image from 'next/image';
+import useContentStore from '@/store/useContentStore';
 
 interface CardItem {
   id: string;
@@ -91,93 +93,144 @@ export default function PeluqueriaLayout() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSpecialistsOpen, setIsSpecialistsOpen] = useState(false);
   const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(0);
+  const { content } = useContentStore();
+  const { servicesData } = useServicesStore();
 
-  const data = servicesData.peluqueria;
+  const data = React.useMemo(() => {
+    const original = servicesData.peluqueria;
+    if (!original) return null;
+    return {
+      ...original,
+      title: content.peluqueria.pageTitle,
+      description: content.peluqueria.pageDescription
+    };
+  }, [content, servicesData]);
   const crossSell = crossSellingMap.peluqueria;
   const { openBooking } = useUIStore();
 
   if (!data) return null;
 
-  // Asymmetrical image grid matching FLOEMA aesthetics
-  const cards: CardItem[] = [
-    {
-      id: 'c1',
-      type: 'service',
-      service: { id: 'p1', name: 'Corte de Diseño & Movimiento', price: '$38.000', duration: '60 min' },
-      imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-2'
-    },
-    {
-      id: 'c2',
-      type: 'gallery-trigger',
-      imageUrl: 'https://images.unsplash.com/photo-1492159249018-c5158d4afbae?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    },
-    {
-      id: 'c3',
-      type: 'service',
-      service: { id: 'p2', name: 'Coloración Orgánica Integral', price: '$65.000', duration: '90 min' },
-      imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-2'
-    },
-    {
-      id: 'c4',
-      type: 'deco-vertical-text',
-      text: 'ALMA BELA',
-      imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-3'
-    },
-    {
-      id: 'c5',
-      type: 'service',
-      service: { id: 'p3', name: 'Tratamiento Seda Capilar', price: '$48.000', duration: '60 min' },
-      imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-2'
-    },
-    {
-      id: 'c6',
-      type: 'specialists-trigger',
-      imageUrl: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    },
-    {
-      id: 'c7',
-      type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    },
-    {
-      id: 'c8',
-      type: 'service',
-      service: { id: 'p4', name: 'Peinado Editorial & Ondas', price: '$30.000', duration: '45 min' },
-      imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    },
-    {
-      id: 'c9',
-      type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-2'
-    },
-    {
-      id: 'c10',
-      type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-2'
-    },
-    {
-      id: 'c11',
-      type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    },
-    {
-      id: 'c12',
-      type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
-      gridClass: 'md:col-span-1 md:row-span-1'
-    }
-  ];
+  // Asymmetrical image grid matching FLOEMA aesthetics resolved dynamically from the store
+  const cards = React.useMemo(() => {
+    const services = data.services || [];
+    
+    // Default static card templates
+    const staticTemplates = [
+      {
+        id: 'c1',
+        type: 'service' as const,
+        serviceId: 'p1',
+        imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-2'
+      },
+      {
+        id: 'c2',
+        type: 'gallery-trigger' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1492159249018-c5158d4afbae?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      },
+      {
+        id: 'c3',
+        type: 'service' as const,
+        serviceId: 'p2',
+        imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-2'
+      },
+      {
+        id: 'c4',
+        type: 'deco-vertical-text' as const,
+        text: 'ALMA BELA',
+        imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-3'
+      },
+      {
+        id: 'c5',
+        type: 'service' as const,
+        serviceId: 'p3',
+        imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-2'
+      },
+      {
+        id: 'c6',
+        type: 'specialists-trigger' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      },
+      {
+        id: 'c7',
+        type: 'deco' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      },
+      {
+        id: 'c8',
+        type: 'service' as const,
+        serviceId: 'p4',
+        imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      },
+      {
+        id: 'c9',
+        type: 'deco' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-2'
+      },
+      {
+        id: 'c10',
+        type: 'deco' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-2'
+      },
+      {
+        id: 'c11',
+        type: 'deco' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      },
+      {
+        id: 'c12',
+        type: 'deco' as const,
+        imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
+        gridClass: 'md:col-span-1 md:row-span-1'
+      }
+    ];
+
+    const result: CardItem[] = [];
+    const usedServiceIds = new Set<string>();
+
+    staticTemplates.forEach(t => {
+      if (t.type === 'service') {
+        const sObj = services.find(s => s.id === t.serviceId);
+        if (sObj && sObj.isActive !== false) {
+          usedServiceIds.add(sObj.id);
+          result.push({
+            id: t.id,
+            type: 'service',
+            service: { id: sObj.id, name: sObj.name, price: sObj.price, duration: sObj.duration },
+            imageUrl: t.imageUrl,
+            gridClass: t.gridClass
+          });
+        }
+      } else {
+        result.push(t as any);
+      }
+    });
+
+    // Append any extra/new services added by the admin dynamically
+    services.forEach((sObj) => {
+      if (sObj.isActive !== false && !usedServiceIds.has(sObj.id)) {
+        result.push({
+          id: `c_new_${sObj.id}`,
+          type: 'service',
+          service: { id: sObj.id, name: sObj.name, price: sObj.price, duration: sObj.duration },
+          imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+          gridClass: 'md:col-span-1 md:row-span-1'
+        });
+      }
+    });
+
+    return result;
+  }, [data.services]);
 
   return (
     <div className="bg-[#0A0A0A] text-[#fdfbf7] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
@@ -207,11 +260,11 @@ export default function PeluqueriaLayout() {
               >
                 {/* Normal Stacked Text (Horizontal) */}
                 <div className="flex flex-col items-center justify-center space-y-2 select-none text-center">
-                  <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none select-none">
-                    ALMA
+                  <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
+                    {content.peluqueria.overlayLine1}
                   </h2>
-                  <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none select-none mt-2">
-                    BELA
+                  <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none mt-2">
+                    {content.peluqueria.overlayLine2}
                   </h2>
                 </div>
 
@@ -219,7 +272,7 @@ export default function PeluqueriaLayout() {
                 <div className="flex flex-col items-center space-y-4 w-full">
                   <div className="w-20 h-[1px] bg-gold/50" />
                   <span className="text-xs uppercase tracking-[0.7em] text-gold/90 font-semibold filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">
-                    STUDIO
+                    {content.peluqueria.overlaySubtitle}
                   </span>
                 </div>
 
@@ -462,7 +515,7 @@ export default function PeluqueriaLayout() {
                           key={item.id}
                           onClick={() => setSelectedGalleryIdx(index)}
                           className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-300 focus:outline-none ${
-                            isSelected ? 'border-gold scale-105 shadow-[0_0_12px_rgba(212,175,55,0.3)]' : 'border-white/10 hover:border-white/30'
+                            isSelected ? 'border-gold scale-105 shadow-[0_0_12px_rgba(198,155,60,0.3)]' : 'border-white/10 hover:border-white/30'
                           }`}
                         >
                           <Image

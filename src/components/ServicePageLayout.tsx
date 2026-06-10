@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
-import { servicesData, crossSellingMap } from '@/data/mockData';
+import { crossSellingMap } from '@/data/mockData';
+import { useServicesStore } from '@/store/useServicesStore';
 import { useUIStore } from '@/store/useUIStore';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import useContentStore from '@/store/useContentStore';
 import ScissorsDivider from './ScissorsDivider';
 import LotusDivider from './LotusDivider';
 
@@ -35,7 +37,18 @@ interface ServicePageLayoutProps {
 }
 
 export function ServicePageLayout({ category }: ServicePageLayoutProps) {
-  const data = servicesData[category];
+  const { content } = useContentStore();
+  const { servicesData } = useServicesStore();
+  const data = React.useMemo(() => {
+    const original = servicesData[category];
+    if (!original) return null;
+    return {
+      ...original,
+      title: content[category].pageTitle,
+      description: content[category].pageDescription,
+      services: original.services.filter(s => s.isActive !== false)
+    };
+  }, [category, content, servicesData]);
   const crossSell = crossSellingMap[category];
   const { openBooking } = useUIStore();
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null);
@@ -101,7 +114,7 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
           bg: 'bg-gold',
           border: 'border-gold',
           borderActive: 'border-gold/40',
-          shadow: 'shadow-[0_0_22px_rgba(212,175,55,0.08)]',
+          shadow: 'shadow-[0_0_22px_rgba(198,155,60,0.08)]',
           bgHover: 'hover:bg-gold/90',
           shadowBtn: 'shadow-gold/5',
           hoverBorderLight: 'hover:border-gold/20',
@@ -145,7 +158,7 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
         {category === 'terapias' && (
           <div className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
             <video
-              src="/videos/massage.mp4"
+              src={content.terapias.videoUrl}
               loop
               muted
               playsInline

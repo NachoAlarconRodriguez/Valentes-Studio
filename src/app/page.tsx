@@ -4,36 +4,38 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
-
-const panels = [
-  {
-    id: 1,
-    title: 'Barbería Tradicional',
-    subtitle: 'Cortes de autor, afeitados con navaja libre y rituales de toallas calientes.',
-    path: '/barberia',
-    imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80',
-    number: '01'
-  },
-  {
-    id: 2,
-    title: 'Peluquería de Autor',
-    subtitle: 'Coloración botánica orgánica, cortes de diseño y nutrición molecular profunda.',
-    path: '/peluqueria',
-    imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80',
-    number: '02'
-  },
-  {
-    id: 3,
-    title: 'Terapias Holísticas',
-    subtitle: 'Masajes con piedras calientes volcánicas, reiki y sonoterapia vibracional.',
-    path: '/terapias',
-    imageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
-    number: '03'
-  }
-];
+import useContentStore from '@/store/useContentStore';
 
 export default function HomePage() {
   const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
+  const { content } = useContentStore();
+
+  const panels = [
+    {
+      id: 1,
+      title: content.home.panel1Title,
+      subtitle: content.home.panel1Subtitle,
+      path: '/barberia',
+      imageUrl: content.home.panel1Image,
+      number: '01'
+    },
+    {
+      id: 2,
+      title: content.home.panel2Title,
+      subtitle: content.home.panel2Subtitle,
+      path: '/peluqueria',
+      imageUrl: content.home.panel2Image,
+      number: '02'
+    },
+    {
+      id: 3,
+      title: content.home.panel3Title,
+      subtitle: content.home.panel3Subtitle,
+      path: '/terapias',
+      imageUrl: content.home.panel3Image,
+      number: '03'
+    }
+  ];
 
   return (
     <div className="flex flex-col lg:flex-row w-full min-h-screen lg:h-screen overflow-hidden bg-black relative z-10">

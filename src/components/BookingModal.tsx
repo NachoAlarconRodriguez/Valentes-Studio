@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
-import { servicesData } from '@/data/mockData';
+import { useServicesStore } from '@/store/useServicesStore';
+import { useBookingStore } from '@/store/useBookingStore';
+import { useGiftCardStore } from '@/store/useGiftCardStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import Image from 'next/image';
 
 const specialistPhotos: Record<string, string> = {
@@ -27,14 +30,68 @@ export function BookingModal() {
   
   // Form states
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+56 9 ');
   const [email, setEmail] = useState('');
-  const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    
+    if (!val.startsWith('+56 9')) {
+      const cleanDigits = val.replace(/\D/g, '');
+      let suffix = '';
+      if (cleanDigits.length > 3) {
+        if (cleanDigits.startsWith('569')) {
+          suffix = cleanDigits.substring(3);
+        } else if (cleanDigits.startsWith('9') && cleanDigits.length === 9) {
+          suffix = cleanDigits.substring(1);
+        } else {
+          suffix = cleanDigits;
+        }
+      }
+      val = '+56 9 ' + suffix;
+    }
+
+    const suffix = val.substring(5).replace(/\D/g, '').substring(0, 8);
+    
+    let formatted = '+56 9 ';
+    if (suffix.length > 0) {
+      if (suffix.length <= 4) {
+        formatted += suffix;
+      } else {
+        formatted += `${suffix.substring(0, 4)} ${suffix.substring(4)}`;
+      }
+    }
+    
+    setPhone(formatted);
+
+    if (suffix.length > 0 && suffix.length < 8) {
+      setPhoneError('Faltan dígitos (deben ser 8 números)');
+    } else if (suffix.length === 8) {
+      setPhoneError(null);
+    } else {
+      setPhoneError(null);
+    }
+  };
+  const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('barberia');
   const [serviceId, setServiceId] = useState('');
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [dateType, setDateType] = useState<'hoy' | 'manana' | 'semana' | 'mes' | null>(null);
   const [time, setTime] = useState('');
+  
+  // Gift Card states
+  const [giftCardCode, setGiftCardCode] = useState('');
+  const [appliedGiftCard, setAppliedGiftCard] = useState<any | null>(null);
+  const [giftCardError, setGiftCardError] = useState('');
+  const [giftCardSuccess, setGiftCardSuccess] = useState('');
+
+  // Helper to parse price string to number
+  const parsePrice = (priceStr?: string): number => {
+    if (!priceStr) return 0;
+    const clean = priceStr.replace(/[^0-9]/g, '');
+    return parseInt(clean, 10) || 0;
+  };
   
   // Dropdown UI states
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -93,13 +150,36 @@ export function BookingModal() {
     setDateType(null);
   };
 
+  const { servicesData } = useServicesStore();
   // Get current options based on category
-  const servicesList = servicesData[category]?.services || [];
+  const servicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
   const specialistsList = servicesData[category]?.specialists || [];
+
+  const isSpecialistAvailable = useScheduleStore(state => state.isSpecialistAvailable);
+
+  const checkTimeSlotAvailability = (slotTime: string): { available: boolean; reason?: string } => {
+    if (!date) return { available: true };
+    if (specialistId) {
+      return isSpecialistAvailable(specialistId, date, slotTime);
+    }
+    if (specialistsList.length === 0) return { available: true };
+    const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime).available);
+    if (availableSpecs.length > 0) {
+      return { available: true };
+    }
+    return { available: false, reason: 'No hay profesionales disponibles' };
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone || !serviceId || !date || !time) return;
+
+    const digitsOnly = phone.substring(5).replace(/\D/g, '');
+    if (digitsOnly.length !== 8) {
+      setPhoneError('El número de teléfono debe tener exactamente 8 dígitos.');
+      return;
+    }
+    setPhoneError(null);
 
     setIsSubmitting(true);
     
@@ -107,15 +187,33 @@ export function BookingModal() {
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSuccess(true);
-      // Generate a luxury booking code
-      const randomCode = 'RIT-' + Math.floor(100000 + Math.random() * 900000);
-      setBookingCode(randomCode);
+      
+      const newBookingId = useBookingStore.getState().addBooking({
+        clientName: name,
+        clientPhone: phone,
+        clientEmail: email,
+        category: category as 'barberia' | 'peluqueria' | 'terapias',
+        serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
+        price: finalPriceStr,
+        specialistName: selectedSpecialistObj?.name || 'Cualquiera',
+        date: date,
+        time: time,
+        giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined
+      });
+
+      // Deduct balance from Gift Card if applied
+      if (appliedGiftCard && discountAmount > 0) {
+        useGiftCardStore.getState().redeemGiftCard(appliedGiftCard.code, discountAmount);
+      }
+      
+      setBookingCode(newBookingId);
     }, 1500);
   };
 
   const resetForm = () => {
     setName('');
-    setPhone('');
+    setPhone('+56 9 ');
+    setPhoneError(null);
     setEmail('');
     setCategory('barberia');
     setServiceId('');
@@ -127,6 +225,10 @@ export function BookingModal() {
     setBookingCode('');
     setIsCategoryDropdownOpen(false);
     setIsServiceDropdownOpen(false);
+    setGiftCardCode('');
+    setAppliedGiftCard(null);
+    setGiftCardError('');
+    setGiftCardSuccess('');
   };
 
   const handleClose = () => {
@@ -134,8 +236,43 @@ export function BookingModal() {
     setTimeout(resetForm, 300); // Wait for exit animation to clear states
   };
 
-  const selectedServiceObj = servicesList.find(s => s.id === serviceId);
+  const selectedServiceObj = (servicesData[category]?.services || []).find(s => s.id === serviceId);
   const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
+
+  const originalPriceNumber = parsePrice(selectedServiceObj?.price);
+  
+  // Calculate discount & remaining balance
+  const discountAmount = appliedGiftCard 
+    ? Math.min(originalPriceNumber, appliedGiftCard.remainingBalance)
+    : 0;
+  
+  const finalPriceNumber = originalPriceNumber - discountAmount;
+  const finalPriceStr = `$${finalPriceNumber.toLocaleString('es-CL')}`;
+
+  const handleApplyGiftCard = () => {
+    if (!giftCardCode.trim()) {
+      setGiftCardError('Por favor ingresa un código.');
+      return;
+    }
+    const result = useGiftCardStore.getState().validateGiftCard(giftCardCode);
+    if (result.status === 'inexistente') {
+      setGiftCardError('El código no existe.');
+      setGiftCardSuccess('');
+      setAppliedGiftCard(null);
+    } else if (result.status === 'expirada') {
+      setGiftCardError('Esta Gift Card ha expirado.');
+      setGiftCardSuccess('');
+      setAppliedGiftCard(null);
+    } else if (result.status === 'sin_saldo') {
+      setGiftCardError('Esta Gift Card no tiene saldo restante.');
+      setGiftCardSuccess('');
+      setAppliedGiftCard(null);
+    } else if (result.status === 'valida' && result.card) {
+      setAppliedGiftCard(result.card);
+      setGiftCardError('');
+      setGiftCardSuccess('¡Gift Card aplicada con éxito!');
+    }
+  };
 
   // Dynamic Theme definitions based on category
   const isTerapias = category === 'terapias';
@@ -212,26 +349,63 @@ export function BookingModal() {
 
               {/* Logo de la marca */}
               <div className="relative z-10 select-none">
-                <span className={`text-[10px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                  {isTerapias ? 'Essencia Pura Studio' : 'Valentes Studio'}
-                </span>
                 {category === 'barberia' ? (
-                  <>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">VALENTE</h2>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none mt-1">BARBERÍA</h2>
-                  </>
+                  <div className="flex flex-col space-y-3">
+                    <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
+                      <Image
+                        src="/hands-logo-transparent.png"
+                        alt="Valentes Studio Logo"
+                        fill
+                        sizes="64px"
+                        className="object-contain"
+                      />
+                    </div>
+                    <div>
+                      <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
+                        Valentes Studio
+                      </span>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">VALENTES</h2>
+                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">BARBER STUDIO</h2>
+                    </div>
+                  </div>
                 ) : category === 'peluqueria' ? (
-                  <>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">ALMA</h2>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none mt-1">BELA</h2>
-                    <span className="text-[9px] uppercase tracking-[0.6em] text-gold/80 font-bold block mt-3">STUDIO</span>
-                  </>
+                  <div className="flex flex-col space-y-3">
+                    <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
+                      <Image
+                        src="/peluqueria-logo.png"
+                        alt="Alma Bela Studio Logo"
+                        fill
+                        sizes="64px"
+                        className="object-contain"
+                      />
+                    </div>
+                    <div>
+                      <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
+                        Alma Bela Studio
+                      </span>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">ALMA BELA</h2>
+                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">STUDIO</h2>
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">ESSENCIA</h2>
-                    <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none mt-1">PURA</h2>
-                    <span className="text-[9px] uppercase tracking-[0.6em] text-platinum/80 font-bold block mt-3">STUDIO</span>
-                  </>
+                  <div className="flex flex-col space-y-3">
+                    <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
+                      <Image
+                        src="/terapias-logo.png"
+                        alt="Essencia Pura Studio Logo"
+                        fill
+                        sizes="64px"
+                        className="object-contain"
+                      />
+                    </div>
+                    <div>
+                      <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
+                        Essencia Pura Studio
+                      </span>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">ESSENCIA PURA</h2>
+                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-platinum/80 uppercase font-bold mt-1">STUDIO</h2>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -459,7 +633,7 @@ export function BookingModal() {
                             specialistId === ''
                               ? isTerapias
                                 ? 'border-platinum shadow-[0_0_12px_rgba(226,224,216,0.4)]'
-                                : 'border-gold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                                : 'border-gold shadow-[0_0_12px_rgba(198,155,60,0.4)]'
                               : 'border-white/10'
                           }`}>
                             <Sparkles className={`w-5 h-5 animate-pulse ${themeText}`} />
@@ -484,7 +658,7 @@ export function BookingModal() {
                                 isSelected
                                   ? isTerapias
                                     ? 'border-platinum shadow-[0_0_12px_rgba(226,224,216,0.4)]'
-                                    : 'border-gold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                                    : 'border-gold shadow-[0_0_12px_rgba(198,155,60,0.4)]'
                                   : 'border-white/10'
                               }`}>
                                 {photo ? (
@@ -536,7 +710,7 @@ export function BookingModal() {
                                   isSelected 
                                     ? isTerapias
                                       ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
-                                      : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.25)]' 
+                                      : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
                                     : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
                                 }`}
                               >
@@ -589,17 +763,22 @@ export function BookingModal() {
                             { value: '19:30', label: '07:30 PM' }
                           ].map((slot) => {
                             const isSelected = time === slot.value;
+                            const availability = checkTimeSlotAvailability(slot.value);
                             return (
                               <button
                                 key={slot.value}
                                 type="button"
+                                disabled={!availability.available}
+                                title={availability.reason}
                                 onClick={() => setTime(slot.value)}
-                                className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none ${
-                                  isSelected
-                                    ? isTerapias
-                                      ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]'
-                                      : 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]'
-                                    : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
+                                className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none cursor-pointer ${
+                                  !availability.available
+                                    ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
+                                    : isSelected
+                                      ? isTerapias
+                                        ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]'
+                                        : 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                      : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
                                 }`}
                               >
                                 {slot.label}
@@ -631,12 +810,15 @@ export function BookingModal() {
                           <label className={labelClass}>Teléfono/WhatsApp *</label>
                           <input
                             type="tel"
-                            placeholder="+56 9..."
+                            placeholder="+56 9 1111 2222"
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            onChange={handlePhoneChange}
                             required
-                            className={inputClass}
+                            className={`${inputClass} ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
                           />
+                          {phoneError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
+                          )}
                         </div>
                         <div>
                           <label className={labelClass}>Correo Electrónico</label>
@@ -650,6 +832,84 @@ export function BookingModal() {
                         </div>
                       </div>
                     </div>
+                                  {/* Gift Card validation section */}
+                    {selectedServiceObj && (
+                      <div className={`p-4 rounded-2xl bg-white/[0.02] border ${themeBorder15} space-y-3 mt-4`}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-semibold text-white">¿Tienes una Gift Card?</span>
+                          {appliedGiftCard && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAppliedGiftCard(null);
+                                setGiftCardCode('');
+                                setGiftCardSuccess('');
+                              }}
+                              className={`text-[10px] ${themeText} hover:underline`}
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                        
+                        {!appliedGiftCard ? (
+                          <div className="flex space-x-2">
+                            <input
+                              type="text"
+                              placeholder="Ej: SAN-GIFT-30K"
+                              value={giftCardCode}
+                              onChange={(e) => {
+                                setGiftCardCode(e.target.value);
+                                setGiftCardError('');
+                              }}
+                              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 uppercase font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyGiftCard}
+                              className={`px-4 py-2 rounded-xl ${themeBg} text-black text-xs font-semibold hover:opacity-90 transition-all cursor-pointer`}
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-emerald-400">
+                            <div className="flex flex-col text-left">
+                              <span className="font-semibold font-mono">{appliedGiftCard.code}</span>
+                              <span className="text-[10px] opacity-80">Saldo disponible: ${appliedGiftCard.remainingBalance.toLocaleString('es-CL')} CLP</span>
+                            </div>
+                            <span className="font-bold">Aplicada</span>
+                          </div>
+                        )}
+                        
+                        {giftCardError && (
+                          <p className="text-[10px] text-rose-500 text-left">{giftCardError}</p>
+                        )}
+                        {giftCardSuccess && (
+                          <p className="text-[10px] text-emerald-400 text-left">{giftCardSuccess}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Price Breakdown */}
+                    {selectedServiceObj && (
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
+                        <div className="flex justify-between">
+                          <span>Valor de Servicio</span>
+                          <span className="text-white font-medium">{selectedServiceObj.price}</span>
+                        </div>
+                        {appliedGiftCard && (
+                          <div className="flex justify-between text-emerald-400">
+                            <span>Descuento Gift Card</span>
+                            <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-sm font-semibold">
+                          <span className="text-white">Total a Pagar</span>
+                          <span className={`${themeText} font-serif text-base`}>{finalPriceStr} CLP</span>
+                        </div>
+                      </div>
+                    )}
 
                     <button
                       type="submit"
@@ -661,7 +921,7 @@ export function BookingModal() {
                       ) : (
                         <>
                           <Sparkles size={14} />
-                          <span>Confirmar Experiencia</span>
+                          <span>Confirmar Experiencia ({selectedServiceObj ? finalPriceStr : '$0'})</span>
                         </>
                       )}
                     </button>
@@ -704,12 +964,28 @@ export function BookingModal() {
                           {date}
                         </span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className={summaryBorderClass}>
                         <span className={summaryLabelClass}>Hora</span>
                         <span className={summaryValClass + " flex items-center"}>
                           <Clock size={14} className={summaryIconClass} />
                           {time}
                         </span>
+                      </div>
+                      {appliedGiftCard && (
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Gift Card Usada</span>
+                          <span className="font-mono text-emerald-400 font-semibold">{appliedGiftCard.code}</span>
+                        </div>
+                      )}
+                      {appliedGiftCard && (
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Descuento</span>
+                          <span className="text-emerald-400 font-semibold">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-1 border-t border-white/5">
+                        <span className={summaryLabelClass}>Total Pagado</span>
+                        <span className="text-white font-bold">{finalPriceStr} CLP</span>
                       </div>
                     </div>
 

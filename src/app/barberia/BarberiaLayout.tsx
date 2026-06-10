@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ChevronRight, Star } from 'lucide-react';
-import { servicesData, crossSellingMap } from '@/data/mockData';
+import { crossSellingMap } from '@/data/mockData';
+import { useServicesStore } from '@/store/useServicesStore';
 import { useUIStore } from '@/store/useUIStore';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import useContentStore from '@/store/useContentStore';
 
 // Dynamically import the 3D Canvas to disable SSR
 const BarberPoleCanvas = dynamic(() => import('@/components/BarberPoleCanvas'), {
@@ -28,7 +30,17 @@ const barberPhotos: Record<string, string> = {
 };
 
 export default function BarberiaLayout() {
-  const data = servicesData.barberia;
+  const { content } = useContentStore();
+  const { servicesData } = useServicesStore();
+  const data = React.useMemo(() => {
+    const original = servicesData.barberia;
+    if (!original) return null;
+    return {
+      ...original,
+      title: content.barberia.pageTitle,
+      description: content.barberia.pageDescription
+    };
+  }, [content, servicesData]);
   const crossSell = crossSellingMap.barberia;
   const { openBooking } = useUIStore();
 
@@ -45,26 +57,43 @@ export default function BarberiaLayout() {
 
   if (!data) return null;
 
-  // Custom data arrays for the 3 rituals
-  const hairServices = [
-    { id: 'b_corte_general', name: 'Adulto', label: 'Corte de Cabello', price: '$15.000', duration: '45 min' },
-    { id: 'b_corte_nino', name: 'Niño', label: 'Corte Niño ( 10años)', price: '$13.000', duration: '45 min', notice: 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' },
-    { id: 'b_corte_3era', name: 'Tercera Edad', label: 'Corte 3era Edad', price: '$12.000', duration: '45 min', notice: 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' },
-  ];
+  // Custom data arrays for the 3 rituals resolved dynamically from the store
+  const hairServices: any[] = [];
+  const barbaServices: any[] = [];
+  const comboServices: any[] = [];
 
-  const barbaServices = [
-    { id: 'b_barba_retoque', name: 'Retoque', label: 'Retoque Barba', price: '$12.000', duration: '30 min' },
-    { id: 'b_barba_perfilado_navaja', name: 'Perfilado Navaja', label: 'Perfilado navaja', price: '$15.000', duration: '45 min' },
-    { id: 'b_barba_rasurado_ras', name: 'Rasurado al Ras', label: 'Rasurado al ras', price: '$15.000', duration: '45 min' },
-    { id: 'b_barba_perfilado_retoque', name: 'Perfilado + Retoque', label: 'Perfilado + Retoque', price: '$17.000', duration: '45 min' },
-  ];
-
-  const comboServices = [
-    { id: 'b_combo_corte_retoque', name: 'Corte + Retoque Barba', label: 'Corte de cabello + retoque de barba', price: '$20.000', duration: '1 hrs' },
-    { id: 'b_combo_corte_barba', name: 'Servicio Corte & Barba', label: 'servicio corte y barba', price: '$23.000', duration: '1 hrs 20 min' },
-    { id: 'b_combo_corte_rasurado', name: 'Corte + Rasurado al Ras', label: 'Corte de cabello+ Rasurado', price: '$25.000', duration: '1 hrs' },
-    { id: 'b_combo_corte_perfilado', name: 'Corte + Perfilado de Barba', label: 'Corte de cabello + Perfilado de barba', price: '$25.000', duration: '1 hrs' },
-  ];
+  const barberiaServices = data.services || [];
+  barberiaServices.forEach(s => {
+    if (s.isActive === false) return;
+    
+    // Determine short display name
+    let shortName = s.name;
+    if (s.id === 'b_corte_general') shortName = 'Adulto';
+    else if (s.id === 'b_corte_nino') shortName = 'Niño';
+    else if (s.id === 'b_corte_3era') shortName = 'Tercera Edad';
+    else if (s.id === 'b_barba_retoque') shortName = 'Retoque';
+    else if (s.id === 'b_barba_perfilado_navaja') shortName = 'Perfilado Navaja';
+    else if (s.id === 'b_barba_rasurado_ras') shortName = 'Rasurado al Ras';
+    else if (s.id === 'b_barba_perfilado_retoque') shortName = 'Perfilado + Retoque';
+    
+    const item = {
+      id: s.id,
+      name: shortName,
+      label: s.name,
+      price: s.price,
+      duration: s.duration,
+      notice: (s.description || '').includes('VÁLIDO') ? 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' : undefined
+    };
+    
+    // Categorize
+    if (s.id.includes('combo') || s.name.toLowerCase().includes('+') || s.name.toLowerCase().includes('y barba') || s.name.toLowerCase().includes('& barba')) {
+      comboServices.push(item);
+    } else if (s.id.includes('barba') || s.id.includes('rasurado') || s.id.includes('perfilado') || s.name.toLowerCase().includes('barba') || s.name.toLowerCase().includes('afeitado') || s.name.toLowerCase().includes('perfilado')) {
+      barbaServices.push(item);
+    } else {
+      hairServices.push(item);
+    }
+  });
 
   // Helper to parse duration strings to minutes
   const parseDuration = (d: string) => {
@@ -113,14 +142,27 @@ export default function BarberiaLayout() {
 
               <div className="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-center justify-between z-10 gap-6 md:gap-10">
                 {/* Left Side: Minimalist branding & Action button */}
-                <div className="text-center md:text-left space-y-4 select-none order-2 md:order-1 flex-1 md:self-end md:pb-28">
-                  <div className="space-y-2">
-                    <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-[0.25em] text-white leading-none">
-                      VALENTE
-                    </h1>
-                    <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium animate-text-gold-flow leading-none pl-1">
-                      Barbería
-                    </h2>
+                <div className="text-center md:text-left space-y-5 select-none order-2 md:order-1 flex-1 md:self-end md:pb-20">
+                  <div className="space-y-4">
+                    {/* Premium Client Logo */}
+                    <div className="relative w-28 h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
+                      <Image
+                        src="/hands-logo-transparent.png"
+                        alt="Valentes Studio Logo"
+                        fill
+                        sizes="112px"
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
+                        {content.barberia.heroTitle}
+                      </h1>
+                      <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium leading-none pl-1 select-none">
+                        {content.barberia.heroSubtitle}
+                      </h2>
+                    </div>
                   </div>
                   
                   <motion.div
@@ -133,14 +175,14 @@ export default function BarberiaLayout() {
                       onClick={() => setShowIntro(false)}
                       className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
                     >
-                      <span>Descubrir Rituales</span>
+                      <span>{content.barberia.discoverBtn}</span>
                       <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
                     </button>
                   </motion.div>
                 </div>
 
                 {/* Right Side: Floating 3D Barber Pole */}
-                <div className="w-[300px] h-[350px] md:w-[320px] md:h-[450px] relative flex items-center justify-center order-1 md:order-2 flex-1">
+                <div className="w-[240px] h-[300px] md:w-[260px] md:h-[360px] relative flex items-center justify-center order-1 md:order-2 md:mt-12">
                   <BarberPoleCanvas />
                 </div>
               </div>
@@ -189,7 +231,7 @@ export default function BarberiaLayout() {
                   {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
                     <Image
-                      src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80"
+                      src={content.barberia.imageCabello}
                       alt="Ritual de Cabello"
                       fill
                       sizes="(max-width: 1024px) 100vw, 33vw"
@@ -244,7 +286,7 @@ export default function BarberiaLayout() {
                                 onClick={() => setSelectedHair(service.id)}
                                 className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
                                   selectedHair === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
                                     : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
                                 }`}
                               >
@@ -334,7 +376,7 @@ export default function BarberiaLayout() {
                   {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
                     <Image
-                      src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80"
+                      src={content.barberia.imageBarba}
                       alt="Ritual de Barba"
                       fill
                       sizes="(max-width: 1024px) 100vw, 33vw"
@@ -389,7 +431,7 @@ export default function BarberiaLayout() {
                                 onClick={() => setSelectedBarba(service.id)}
                                 className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
                                   selectedBarba === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
                                     : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
                                 }`}
                               >
@@ -472,7 +514,7 @@ export default function BarberiaLayout() {
                   {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
                     <Image
-                      src="https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=800&q=80"
+                      src={content.barberia.imageCompleto}
                       alt="Ritual Completo"
                       fill
                       sizes="(max-width: 1024px) 100vw, 33vw"
@@ -527,7 +569,7 @@ export default function BarberiaLayout() {
                                 onClick={() => setSelectedCombo(service.id)}
                                 className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
                                   selectedCombo === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
                                     : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
                                 }`}
                               >
@@ -613,7 +655,7 @@ export default function BarberiaLayout() {
                         ${index > 0 ? '-mt-8 md:mt-0' : ''}
                       `}
                       style={{
-                        filter: 'drop-shadow(0 0 10px rgba(212, 175, 55, 0.05))',
+                        filter: 'drop-shadow(0 0 10px rgba(198, 155, 60, 0.05))',
                       }}
                     >
                       {/* Outer Hexagon (Clipping mask) */}
@@ -683,7 +725,7 @@ export default function BarberiaLayout() {
                         <polygon
                           points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
                           fill="none"
-                          stroke="#D4AF37"
+                          stroke="#C69B3C"
                           strokeWidth="0.8"
                           strokeOpacity="0.25"
                           className="group-hover:stroke-opacity-60 transition-all duration-500"
@@ -692,7 +734,7 @@ export default function BarberiaLayout() {
                         <polygon
                           points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
                           fill="none"
-                          stroke="#FFDF00"
+                          stroke="#F3D078"
                           strokeWidth="1.5"
                           strokeDasharray="80 241"
                           className="animate-circulate-gold opacity-0 group-hover:opacity-100 transition-opacity duration-300"

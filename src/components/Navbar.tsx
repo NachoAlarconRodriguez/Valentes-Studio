@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Calendar } from 'lucide-react';
+import { Menu, X, Calendar, User, Gift } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
+import Image from 'next/image';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -52,6 +53,7 @@ export function Navbar() {
   const isPeluqueria = pathname.startsWith('/peluqueria');
   const isBarberia = pathname.startsWith('/barberia');
   const isTerapias = pathname.startsWith('/terapias');
+  const isAdmin = pathname.startsWith('/admin');
 
   const menuVariants = {
     closed: {
@@ -95,19 +97,92 @@ export function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group flex flex-col">
-            <span className={`font-serif text-2xl font-semibold tracking-widest transition-all duration-300 ${
-              isTerapias
-                ? 'text-platinum bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent'
-                : 'text-gold text-gold-gradient'
-            }`}>
-              {isPeluqueria ? 'ALMA BELA' : isTerapias ? 'ESSENCIA PURA' : 'VALENTES'}
-            </span>
-            <span className={`text-[9px] uppercase tracking-[0.4em] transition-colors duration-300 ${
-              isTerapias ? 'text-text-secondary group-hover:text-platinum' : 'text-text-secondary group-hover:text-gold'
-            }`}>
-              {isPeluqueria || isTerapias ? 'STUDIO' : 'Santuario de Bienestar'}
-            </span>
+          <Link href="/" className="group flex items-center space-x-3">
+            {isAdmin ? (
+              <>
+                <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
+                  <Image
+                    src="/lotus-transparent.png"
+                    alt="Santuario de Bienestar Logo"
+                    fill
+                    sizes="44px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                    SANTUARIO
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                    DE BIENESTAR
+                  </span>
+                </div>
+              </>
+            ) : !isPeluqueria && !isTerapias ? (
+              <>
+                <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
+                  <Image
+                    src="/hands-logo-transparent.png"
+                    alt="Valentes Barber Studio Logo"
+                    fill
+                    sizes="44px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                    VALENTES
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                    BARBER STUDIO
+                  </span>
+                </div>
+              </>
+            ) : isPeluqueria ? (
+              <>
+                <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
+                  <Image
+                    src="/peluqueria-logo.png"
+                    alt="Alma Bela Studio Logo"
+                    fill
+                    sizes="44px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                    ALMA BELA
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                    STUDIO
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
+                  <Image
+                    src="/terapias-logo.png"
+                    alt="Essencia Pura Studio Logo"
+                    fill
+                    sizes="44px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-platinum bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent transition-all duration-300">
+                    ESSENCIA PURA
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-platinum transition-colors duration-300 leading-none mt-0.5">
+                    STUDIO
+                  </span>
+                </div>
+              </>
+            )}
           </Link>
 
           {/* Desktop Navigation */}
@@ -139,8 +214,30 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Action CTA Button */}
-          <div className="hidden md:flex items-center">
+          {/* Action CTA Button & Admin Panel Access */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link
+              href="/giftcards"
+              className={`p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center ${
+                isTerapias
+                  ? 'border-platinum/20 text-platinum/75 hover:text-platinum hover:border-platinum/40 hover:bg-white/5'
+                  : 'border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5'
+              }`}
+              title="Comprar Tarjeta de Regalo"
+            >
+              <Gift size={16} />
+            </Link>
+            <Link
+              href="/admin"
+              className={`p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center ${
+                isTerapias
+                  ? 'border-platinum/20 text-platinum/75 hover:text-platinum hover:border-platinum/40 hover:bg-white/5'
+                  : 'border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5'
+              }`}
+              title="Panel de Administración"
+            >
+              <User size={16} />
+            </Link>
             <button
               onClick={() => openBooking()}
               className={`px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 ${
@@ -220,7 +317,7 @@ export function Navbar() {
                 })}
               </nav>
 
-              <motion.div variants={linkVariants} className="pt-8 border-t border-white/5">
+              <motion.div variants={linkVariants} className="pt-8 border-t border-white/5 space-y-3">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
@@ -237,6 +334,28 @@ export function Navbar() {
                   <Calendar size={18} />
                   <span>Agendar Ritual</span>
                 </button>
+                <Link
+                  href="/giftcards"
+                  onClick={() => setMenuOpen(false)}
+                  className={`w-full flex items-center justify-center space-x-2 py-3.5 rounded-full border text-xs uppercase tracking-widest font-semibold transition-all duration-300 ${
+                    isPeluqueria
+                      ? 'border-bronze/40 text-bronze hover:bg-bronze/10'
+                      : isTerapias
+                      ? 'border-platinum/40 text-platinum hover:bg-platinum/10'
+                      : 'border-gold/40 text-gold hover:bg-gold/10'
+                  }`}
+                >
+                  <Gift size={14} />
+                  <span>Comprar Gift Card</span>
+                </Link>
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-full border border-white/10 text-white/70 hover:text-white hover:border-white/30 text-xs uppercase tracking-widest font-semibold transition-all duration-300 bg-white/[0.01]"
+                >
+                  <User size={14} />
+                  <span>Panel Administrativo</span>
+                </Link>
               </motion.div>
             </div>
           </motion.div>
