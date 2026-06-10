@@ -3704,108 +3704,178 @@ export default function AdminPage() {
                 }
 
                 return (
-                  <motion.div
-                    layout
-                    key={service.id}
-                    className={`bg-[#0c0c0c] border rounded-3xl p-6 flex flex-col justify-between space-y-6 transition-all duration-300 relative group ${
-                      isInactive 
-                        ? 'border-white/5 opacity-50 shadow-none' 
-                        : `border-white/5 shadow-xl ${activeBorder}`
-                    }`}
-                  >
-                    {/* Top Row: Title, Price & Active status */}
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <h3 className={`font-serif text-lg font-medium leading-snug ${isInactive ? 'text-text-secondary line-through' : 'text-white group-hover:text-white transition-colors'}`}>
-                          {service.name}
-                        </h3>
-                        {/* Toggle switch */}
-                        <button
-                          onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
-                          className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-300 relative ${
-                            isInactive ? 'bg-white/10' :
-                            activeServiceCategory === 'barberia' ? 'bg-gold' :
-                            activeServiceCategory === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-white'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full bg-black shadow-md transform duration-300 ${
-                              isInactive ? 'translate-x-0' : 'translate-x-4'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      
-                      {/* Price & Duration tags */}
-                      <div className="flex items-center space-x-3 text-xs">
-                        <span className={`font-serif font-bold text-base ${isInactive ? 'text-text-secondary' : activeColorClass}`}>
-                          {service.price}
-                        </span>
-                        <span className="text-white/20">•</span>
-                        <span className="text-text-secondary flex items-center space-x-1 font-medium">
-                          <Clock size={11} className="text-text-secondary" />
-                          <span>{service.duration}</span>
-                        </span>
-                      </div>
+                  <div key={service.id} className="w-full h-[215px]" style={{ perspective: '1000px' }}>
+                    <motion.div
+                      layout
+                      animate={{ rotateY: isInactive ? 180 : 0 }}
+                      transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+                      style={{ transformStyle: 'preserve-3d' }}
+                      className="w-full h-full relative"
+                    >
+                      {/* FRONT FACE (ACTIVE) */}
+                      <div
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          WebkitBackfaceVisibility: 'hidden',
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                        className={`bg-[#0c0c0c] border rounded-3xl p-6 transition-all duration-300 ${
+                          activeServiceCategory === 'barberia' ? 'hover:border-gold/30' :
+                          activeServiceCategory === 'peluqueria' ? 'hover:border-[#CD7F32]/30' : 'hover:border-white/30'
+                        } border-white/5 shadow-xl`}
+                      >
+                        {/* Top Row: Title, Price & Active status */}
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <h3 className="font-serif text-lg font-medium leading-snug text-white">
+                              {service.name}
+                            </h3>
+                            {/* Toggle switch */}
+                            <button
+                              onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
+                              className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-300 relative cursor-pointer ${
+                                activeServiceCategory === 'barberia' ? 'bg-gold' :
+                                activeServiceCategory === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-white'
+                              }`}
+                            >
+                              <div
+                                className="w-4 h-4 rounded-full bg-black shadow-md transform duration-300 translate-x-4"
+                              />
+                            </button>
+                          </div>
+                          
+                          {/* Price & Duration tags */}
+                          <div className="flex items-center space-x-3 text-xs">
+                            <span className={`font-serif font-bold text-base ${activeColorClass}`}>
+                              {service.price}
+                            </span>
+                            <span className="text-white/20">•</span>
+                            <span className="text-text-secondary flex items-center space-x-1 font-medium">
+                              <Clock size={11} className="text-text-secondary" />
+                              <span>{service.duration}</span>
+                            </span>
+                          </div>
 
-                      {/* Description */}
-                      <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-3">
-                        {service.description || 'Sin descripción.'}
-                      </p>
-                    </div>
+                          {/* Description */}
+                          <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-3">
+                            {service.description || 'Sin descripción.'}
+                          </p>
+                        </div>
 
-                    {/* Bottom Row: Specialists and Action buttons */}
-                    <div className="pt-4 border-t border-white/5 flex items-center justify-between gap-4">
-                      {/* Specialists assigned */}
-                      <div className="flex items-center space-x-1.5">
-                        {assignedSpecialists.length > 0 ? (
-                          <>
-                            <div className="flex -space-x-2">
-                              {assignedSpecialists.slice(0, 3).map((sp) => (
-                                <div
-                                  key={sp.id}
-                                  title={sp.name}
-                                  className="w-6 h-6 rounded-full border border-black bg-[#121212] flex items-center justify-center text-[8px] font-bold text-white uppercase select-none"
-                                >
-                                  {sp.name.split(' ').map(n => n[0]).join('')}
+                        {/* Bottom Row: Specialists and Action buttons */}
+                        <div className="pt-4 border-t border-white/5 flex items-center justify-between gap-4">
+                          {/* Specialists assigned */}
+                          <div className="flex items-center space-x-1.5">
+                            {assignedSpecialists.length > 0 ? (
+                              <>
+                                <div className="flex -space-x-2">
+                                  {assignedSpecialists.slice(0, 3).map((sp) => (
+                                    <div
+                                      key={sp.id}
+                                      title={sp.name}
+                                      className="w-6 h-6 rounded-full border border-black bg-[#121212] flex items-center justify-center text-[8px] font-bold text-white uppercase select-none"
+                                    >
+                                      {sp.name.split(' ').map(n => n[0]).join('')}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                            {assignedSpecialists.length > 3 && (
-                              <span className="text-[9px] text-text-secondary font-mono">
-                                +{assignedSpecialists.length - 3}
-                              </span>
+                                {assignedSpecialists.length > 3 && (
+                                  <span className="text-[9px] text-text-secondary font-mono">
+                                    +{assignedSpecialists.length - 3}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-[9px] text-text-secondary italic">Sin personal</span>
                             )}
-                          </>
-                        ) : (
-                          <span className="text-[9px] text-text-secondary italic">Sin personal</span>
-                        )}
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => populateServiceForm(service)}
+                              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
+                              title="Editar"
+                            >
+                              <Edit3 size={12} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`¿Estás seguro de eliminar el servicio "${service.name}"?`)) {
+                                  deleteService(activeServiceCategory, service.id);
+                                  triggerNotification(`Servicio "${service.name}" eliminado.`);
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => populateServiceForm(service)}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
-                          title="Editar"
-                        >
-                          <Edit3 size={12} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`¿Estás seguro de eliminar el servicio "${service.name}"?`)) {
-                              deleteService(activeServiceCategory, service.id);
-                              triggerNotification(`Servicio "${service.name}" eliminado.`);
-                            }
-                          }}
-                          className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                      {/* BACK FACE (INACTIVE) */}
+                      <div
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          WebkitBackfaceVisibility: 'hidden',
+                          transform: 'rotateY(180deg)',
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                        className="bg-[#050505] border border-dashed border-white/10 rounded-3xl p-6 shadow-inner select-none"
+                      >
+                        {/* Top: Switch Off */}
+                        <div className="flex justify-between items-center w-full">
+                          <span className="text-[8px] uppercase tracking-widest text-white/20 font-bold font-sans">
+                            Servicio Inactivo
+                          </span>
+                          <button
+                            onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
+                            className="w-9 h-5 rounded-full p-0.5 bg-white/10 transition-colors duration-300 relative cursor-pointer"
+                          >
+                            <div
+                              className="w-4 h-4 rounded-full bg-black shadow-md transform duration-300 translate-x-0"
+                            />
+                          </button>
+                        </div>
+
+                        {/* Center: Title & Dimmed status */}
+                        <div className="flex flex-col items-center justify-center flex-grow py-4 text-center">
+                          <h3 className="font-serif text-base text-white/30 text-center tracking-wide font-medium max-w-[200px] line-through leading-snug">
+                            {service.name}
+                          </h3>
+                          <span className="text-[8px] text-white/30 bg-white/[0.02] border border-white/5 px-2.5 py-0.5 rounded-full uppercase tracking-widest font-semibold mt-2.5">
+                            Desactivado
+                          </span>
+                        </div>
+
+                        {/* Bottom: Action buttons (only delete) */}
+                        <div className="pt-2 flex justify-end border-t border-white/5 border-dashed">
+                          <button
+                            onClick={() => {
+                              if (confirm(`¿Estás seguro de eliminar el servicio "${service.name}"?`)) {
+                                deleteService(activeServiceCategory, service.id);
+                                triggerNotification(`Servicio "${service.name}" eliminado.`);
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-400/40 hover:text-red-400 transition-colors cursor-pointer"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  </div>
                 );
               })}
             </div>
