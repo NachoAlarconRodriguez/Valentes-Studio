@@ -643,7 +643,7 @@ export function BookingModal() {
 
                         {/* Real specialists */}
                         {specialistsList.map((specialist) => {
-                          const photo = specialistPhotos[specialist.id];
+                          const photo = specialist.imageUrl || specialistPhotos[specialist.id];
                           const isSelected = specialistId === specialist.id;
                           return (
                             <button

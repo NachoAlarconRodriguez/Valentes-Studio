@@ -17,7 +17,9 @@ export default function HomePage() {
       subtitle: content.home.panel1Subtitle,
       path: '/barberia',
       imageUrl: content.home.panel1Image,
-      number: '01'
+      number: '01',
+      logoUrl: '/hands-logo-transparent.png',
+      businessName: 'Valentes Studio'
     },
     {
       id: 2,
@@ -25,7 +27,9 @@ export default function HomePage() {
       subtitle: content.home.panel2Subtitle,
       path: '/peluqueria',
       imageUrl: content.home.panel2Image,
-      number: '02'
+      number: '02',
+      logoUrl: '/peluqueria-logo.png',
+      businessName: 'Alma Bela Studio'
     },
     {
       id: 3,
@@ -33,7 +37,9 @@ export default function HomePage() {
       subtitle: content.home.panel3Subtitle,
       path: '/terapias',
       imageUrl: content.home.panel3Image,
-      number: '03'
+      number: '03',
+      logoUrl: '/terapias-logo.png',
+      businessName: 'Essencia Pura Studio'
     }
   ];
 
@@ -56,6 +62,27 @@ export default function HomePage() {
                 : 'flex-1 min-h-[250px] lg:min-h-0'
             }`}
           >
+            {/* Top Brand Logo and Name */}
+            <div className="absolute top-8 left-8 sm:top-12 sm:left-12 z-10 flex items-center space-x-3 group-hover:scale-105 transition-transform duration-500 select-none">
+              <div className="relative w-10 h-10 overflow-hidden select-none pointer-events-none flex-shrink-0">
+                <Image
+                  src={panel.logoUrl}
+                  alt={panel.businessName}
+                  fill
+                  sizes="40px"
+                  className="object-contain filter brightness-100 group-hover:brightness-110 transition-all duration-500"
+                />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[8px] uppercase tracking-[0.3em] text-gold font-bold leading-none mb-1 shadow-sm">
+                  Santuario
+                </span>
+                <span className="font-serif text-xs font-semibold text-white tracking-wider leading-none shadow-sm group-hover:text-gold transition-colors duration-500">
+                  {panel.businessName}
+                </span>
+              </div>
+            </div>
+
             {/* Background image */}
             <div className="absolute inset-0 z-0 select-none pointer-events-none">
               <Image

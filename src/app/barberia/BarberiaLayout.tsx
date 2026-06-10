@@ -667,9 +667,9 @@ export default function BarberiaLayout() {
                       >
                         {/* Photo Container */}
                         <div className="absolute top-0 left-0 right-0 h-[52%] overflow-hidden">
-                          {barberPhotos[specialist.id] ? (
+                          {specialist.imageUrl || barberPhotos[specialist.id] ? (
                             <Image
-                              src={barberPhotos[specialist.id]}
+                              src={specialist.imageUrl || barberPhotos[specialist.id]}
                               alt={specialist.name}
                               fill
                               sizes="(max-width: 768px) 280px, 290px"

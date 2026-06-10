@@ -510,9 +510,9 @@ export function ManualBookingModal({
                   {selectedSpecialistObj ? (
                     <div className="flex items-center space-x-3">
                       <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10">
-                        {specialistPhotos[selectedSpecialistObj.id] ? (
+                        {selectedSpecialistObj.imageUrl || specialistPhotos[selectedSpecialistObj.id] ? (
                           <Image
-                            src={specialistPhotos[selectedSpecialistObj.id]}
+                            src={selectedSpecialistObj.imageUrl || specialistPhotos[selectedSpecialistObj.id]}
                             alt={selectedSpecialistObj.name}
                             fill
                             sizes="40px"
@@ -836,9 +836,9 @@ export function ManualBookingModal({
                               }`}
                             >
                               <div className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-all duration-300 relative`} style={{ borderColor: isSel ? themeGold : 'rgba(255,255,255,0.1)' }}>
-                                {specialistPhotos[sp.id] ? (
+                                {sp.imageUrl || specialistPhotos[sp.id] ? (
                                   <Image
-                                    src={specialistPhotos[sp.id]}
+                                    src={sp.imageUrl || specialistPhotos[sp.id]}
                                     alt={sp.name}
                                     fill
                                     sizes="48px"

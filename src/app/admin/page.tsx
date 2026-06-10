@@ -163,6 +163,8 @@ export default function AdminPage() {
   const [staffFormProfileType, setStaffFormProfileType] = useState<'barber' | 'estilista' | 'terapeuta' | 'mixto' | 'admin'>('barber');
   const [staffFormAgendas, setStaffFormAgendas] = useState<('barberia' | 'peluqueria' | 'terapias')[]>(['barberia']);
   const [staffFormAvatar, setStaffFormAvatar] = useState('');
+  const [staffFormImageUrl, setStaffFormImageUrl] = useState('');
+  const [flippedStaff, setFlippedStaff] = useState<Record<string, boolean>>({});
 
   const resetServiceForm = () => {
     setServiceFormName('');
@@ -225,6 +227,7 @@ export default function AdminPage() {
     setStaffFormProfileType('barber');
     setStaffFormAgendas(['barberia']);
     setStaffFormAvatar('');
+    setStaffFormImageUrl('');
     setEditingStaff(null);
   };
 
@@ -238,6 +241,7 @@ export default function AdminPage() {
     setStaffFormProfileType(staff.profileType || 'barber');
     setStaffFormAgendas(staff.assignedAgendas || ['barberia']);
     setStaffFormAvatar(staff.avatar || '');
+    setStaffFormImageUrl(staff.imageUrl || '');
     setIsStaffDrawerOpen(true);
   };
 
@@ -265,7 +269,8 @@ export default function AdminPage() {
       bio: staffFormBio.trim(),
       profileType: staffFormProfileType,
       assignedAgendas: staffFormAgendas,
-      avatar: staffFormAvatar.trim() || initials
+      avatar: staffFormAvatar.trim() || initials,
+      imageUrl: staffFormImageUrl.trim()
     };
 
     if (editingStaff) {
@@ -299,6 +304,25 @@ export default function AdminPage() {
 
   // Schedule and Time Block States
   const [selectedScheduleStaffId, setSelectedScheduleStaffId] = useState<string>('sb1');
+  const [activeScheduleBusinessFilter, setActiveScheduleBusinessFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
+  const [isScheduleStaffDropdownOpen, setIsScheduleStaffDropdownOpen] = useState(false);
+
+  const selectedStaffObj = specialistsList.find(spec => spec.id === selectedScheduleStaffId);
+  const filteredScheduleStaffList = specialistsList.filter(spec => {
+    if (activeScheduleBusinessFilter === 'todos') return true;
+    return spec.assignedAgendas?.includes(activeScheduleBusinessFilter as any);
+  });
+  const handleScheduleFilterChange = (filter: 'todos' | 'barberia' | 'peluqueria' | 'terapias') => {
+    setActiveScheduleBusinessFilter(filter);
+    const filtered = specialistsList.filter(spec => {
+      if (filter === 'todos') return true;
+      return spec.assignedAgendas?.includes(filter as any);
+    });
+    if (filtered.length > 0 && !filtered.some(spec => spec.id === selectedScheduleStaffId)) {
+      setSelectedScheduleStaffId(filtered[0].id);
+    }
+  };
+
   const [blockFormDate, setBlockFormDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [blockFormStart, setBlockFormStart] = useState('10:00');
   const [blockFormEnd, setBlockFormEnd] = useState('11:00');
@@ -1559,7 +1583,7 @@ export default function AdminPage() {
                   {/* Individual Specialists */}
                   {servicesData[activeBusinessTab]?.specialists.map((sp) => {
                     const isSelected = activeSpecialistFilter === sp.id;
-                    const photo = specialistPhotos[sp.id];
+                    const photo = sp.imageUrl || specialistPhotos[sp.id];
                     return (
                       <button
                         key={sp.id}
@@ -4116,101 +4140,191 @@ export default function AdminPage() {
 
                 return filteredStaff.map((staff) => {
                   const agendas = staff.assignedAgendas || [staff.primaryCategory];
+                  const isFlipped = !!flippedStaff[staff.id];
+                  const toggleFlip = () => {
+                    setFlippedStaff(prev => ({
+                      ...prev,
+                      [staff.id]: !prev[staff.id]
+                    }));
+                  };
+
                   return (
-                    <motion.div
-                      layout
-                      key={staff.id}
-                      className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 flex flex-col justify-between space-y-6 transition-all duration-300 hover:border-gold/30 shadow-xl group"
-                    >
-                      <div className="space-y-4">
-                        {/* Header: Name and profileType tag */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-11 h-11 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-base font-bold text-gold shadow-[inset_0_2px_8px_rgba(198,155,60,0.1)]">
-                              {staff.avatar || staff.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            <div className="text-left">
-                              <h3 className="font-serif text-sm font-medium text-white group-hover:text-gold transition-colors">
-                                {staff.name}
-                              </h3>
-                              <span className="text-[10px] text-text-secondary">{staff.role}</span>
-                            </div>
-                          </div>
-
-                          {/* Profile type badge */}
-                          <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                            staff.profileType === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-                            staff.profileType === 'barber' ? 'bg-gold/10 border-gold/30 text-gold' :
-                            staff.profileType === 'estilista' ? 'bg-[#CD7F32]/10 border-[#CD7F32]/30 text-[#CD7F32]' :
-                            staff.profileType === 'terapeuta' ? 'bg-[#E2E0D8]/10 border-white/20 text-[#E2E0D8]' :
-                            'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
-                          }`}>
-                            {staff.profileType || 'Staff'}
-                          </span>
-                        </div>
-
-                        {/* Credentials Info */}
-                        <div className="space-y-1 text-[10px] text-text-secondary leading-relaxed font-light text-left">
-                          <div className="flex items-center space-x-1.5 font-mono">
-                            <Mail size={10} className="text-text-secondary" />
-                            <span>{staff.email}</span>
-                          </div>
-                          {staff.specialty && (
-                            <div className="text-[11px] text-text-secondary mt-1">
-                              <span className="font-semibold text-white/50">Especialidad:</span> {staff.specialty}
+                    <div key={staff.id} className="w-full h-[350px]" style={{ perspective: '1000px' }}>
+                      <motion.div
+                        layout
+                        animate={{ rotateY: isFlipped ? 180 : 0 }}
+                        transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+                        style={{ transformStyle: 'preserve-3d' }}
+                        className="w-full h-full relative cursor-pointer"
+                        onClick={toggleFlip}
+                      >
+                        {/* FRONT FACE (IMAGE - DEFAULT STATE) */}
+                        <div
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'flex-end',
+                          }}
+                          className="bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden group shadow-xl hover:border-gold/30 transition-colors duration-300"
+                        >
+                          {staff.imageUrl ? (
+                            <Image
+                              src={staff.imageUrl}
+                              alt={staff.name}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 30vw"
+                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black flex flex-col items-center justify-center space-y-4">
+                              <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-2xl font-bold text-gold shadow-[0_4px_12px_rgba(198,155,60,0.15)]">
+                                {staff.avatar || staff.name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                              <span className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-light">Sin Imagen</span>
                             </div>
                           )}
+
+                          {/* Gradient shadow for text readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+
+                          {/* Text overlay */}
+                          <div className="relative z-20 p-6 text-left space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-serif text-base font-semibold text-white group-hover:text-gold transition-colors truncate max-w-[70%]">
+                                {staff.name}
+                              </h3>
+                              <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                                staff.profileType === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                                staff.profileType === 'barber' ? 'bg-gold/10 border-gold/30 text-gold' :
+                                staff.profileType === 'estilista' ? 'bg-[#CD7F32]/10 border-[#CD7F32]/30 text-[#CD7F32]' :
+                                staff.profileType === 'terapeuta' ? 'bg-[#E2E0D8]/10 border-white/20 text-[#E2E0D8]' :
+                                'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                              }`}>
+                                {staff.profileType || 'Staff'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-gold/80 font-medium truncate max-w-[75%]">{staff.role}</span>
+                              <span className="text-[8px] text-white/40 group-hover:text-gold/60 transition-colors uppercase tracking-widest font-semibold flex items-center space-x-0.5">
+                                <span>Detalles</span>
+                                <span className="text-[9px]">↻</span>
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Bio preview */}
-                        <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-3 text-left">
-                          {staff.bio || 'Sin biografía ingresada.'}
-                        </p>
-                      </div>
+                        {/* BACK FACE (OPERATIONAL DETAILS) */}
+                        <div
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                          }}
+                          className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl text-left"
+                        >
+                          <div className="space-y-4">
+                            {/* Header: Avatar, Name & role */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-11 h-11 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-base font-bold text-gold shadow-[inset_0_2px_8px_rgba(198,155,60,0.1)] flex-shrink-0">
+                                  {staff.avatar || staff.name.split(' ').map(n => n[0]).join('')}
+                                </div>
+                                <div className="text-left truncate max-w-[140px]">
+                                  <h3 className="font-serif text-sm font-medium text-white group-hover:text-gold transition-colors truncate">
+                                    {staff.name}
+                                  </h3>
+                                  <span className="text-[10px] text-text-secondary truncate block">{staff.role}</span>
+                                </div>
+                              </div>
 
-                      {/* Footer: Agendas badges & Actions */}
-                      <div className="pt-4 border-t border-white/5 flex items-center justify-between gap-4">
-                        {/* Agendas list */}
-                        <div className="flex items-center space-x-1">
-                          {agendas.map((ag) => (
-                            <span
-                              key={ag}
-                              title={`Agenda: ${ag}`}
-                              className={`text-[8px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-md ${
-                                ag === 'barberia' ? 'bg-gold/5 text-gold border border-gold/10' :
-                                ag === 'peluqueria' ? 'bg-[#CD7F32]/5 text-[#CD7F32] border border-[#CD7F32]/10' :
-                                'bg-white/5 text-white border border-white/10'
-                              }`}
-                            >
-                              {ag.substring(0, 3)}
-                            </span>
-                          ))}
-                        </div>
+                              <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                                staff.profileType === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                                staff.profileType === 'barber' ? 'bg-gold/10 border-gold/30 text-gold' :
+                                staff.profileType === 'estilista' ? 'bg-[#CD7F32]/10 border-[#CD7F32]/30 text-[#CD7F32]' :
+                                staff.profileType === 'terapeuta' ? 'bg-[#E2E0D8]/10 border-white/20 text-[#E2E0D8]' :
+                                'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                              }`}>
+                                {staff.profileType || 'Staff'}
+                              </span>
+                            </div>
 
-                        {/* Action buttons */}
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => populateStaffForm(staff)}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
-                            title="Editar profesional"
-                          >
-                            <Edit3 size={12} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`¿Estás seguro de eliminar al profesional "${staff.name}"?`)) {
-                                deleteSpecialist(staff.primaryCategory, staff.id);
-                                triggerNotification(`Profesional "${staff.name}" eliminado.`);
-                              }
-                            }}
-                            className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
-                            title="Eliminar profesional"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                            {/* Credentials Info */}
+                            <div className="space-y-1 text-[10px] text-text-secondary leading-relaxed font-light text-left">
+                              <div className="flex items-center space-x-1.5 font-mono">
+                                <Mail size={10} className="text-text-secondary flex-shrink-0" />
+                                <span className="truncate max-w-[180px]">{staff.email}</span>
+                              </div>
+                              {staff.specialty && (
+                                <div className="text-[11px] text-text-secondary mt-1">
+                                  <span className="font-semibold text-white/50">Especialidad:</span> {staff.specialty}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Bio preview */}
+                            <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-4 text-left">
+                              {staff.bio || 'Sin biografía ingresada.'}
+                            </p>
+                          </div>
+
+                          {/* Footer: Agendas badges & Actions */}
+                          <div className="pt-4 border-t border-white/5 flex items-center justify-between gap-4">
+                            {/* Agendas list */}
+                            <div className="flex items-center space-x-1">
+                              {agendas.map((ag) => (
+                                <span
+                                  key={ag}
+                                  title={`Agenda: ${ag}`}
+                                  className={`text-[8px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-md ${
+                                    ag === 'barberia' ? 'bg-gold/5 text-gold border border-gold/10' :
+                                    ag === 'peluqueria' ? 'bg-[#CD7F32]/5 text-[#CD7F32] border border-[#CD7F32]/10' :
+                                    'bg-white/5 text-white border border-white/10'
+                                  }`}
+                                >
+                                  {ag.substring(0, 3)}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  populateStaffForm(staff);
+                                }}
+                                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
+                                title="Editar profesional"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`¿Estás seguro de eliminar al profesional "${staff.name}"?`)) {
+                                    deleteSpecialist(staff.primaryCategory, staff.id);
+                                    triggerNotification(`Profesional "${staff.name}" eliminado.`);
+                                  }
+                                }}
+                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
+                                title="Eliminar profesional"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    </div>
                   );
                 });
               })()}
@@ -4411,6 +4525,67 @@ export default function AdminPage() {
                             className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono"
                           />
                         </div>
+
+                        {/* Imagen del Profesional */}
+                        <div className="space-y-3">
+                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                            Imagen del Profesional
+                          </label>
+                          <div className="flex items-center space-x-4">
+                            {/* Preview */}
+                            <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center flex-shrink-0 relative">
+                              {staffFormImageUrl ? (
+                                <Image
+                                  src={staffFormImageUrl}
+                                  alt="Preview"
+                                  fill
+                                  sizes="64px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <span className="text-[10px] text-white/30 text-center font-light leading-none">Sin foto</span>
+                              )}
+                            </div>
+                            
+                            {/* File Upload Trigger */}
+                            <div className="flex-1">
+                              <label className="inline-block py-2.5 px-4 rounded-xl border border-white/10 text-white hover:border-gold/30 hover:text-gold transition-colors text-[10px] uppercase tracking-widest font-bold bg-white/5 cursor-pointer text-center w-full">
+                                <span>Subir Imagen</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = (event) => {
+                                        if (event.target?.result) {
+                                          setStaffFormImageUrl(event.target.result as string);
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* URL input fallback */}
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              placeholder="O pega una URL de imagen (ej. Unsplash)"
+                              value={staffFormImageUrl.startsWith('data:') ? '' : staffFormImageUrl}
+                              onChange={(e) => setStaffFormImageUrl(e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
+                            />
+                            {staffFormImageUrl.startsWith('data:') && (
+                              <p className="text-[9px] text-gold/80 italic font-light">Imagen cargada desde archivo local.</p>
+                            )}
+                          </div>
+                        </div>
                       </form>
                     </div>
 
@@ -4439,24 +4614,122 @@ export default function AdminPage() {
         {/* HORARIOS Y BLOQUEOS TAB */}
         {activeTab === 'horarios' && (
           <div className="space-y-8 text-left">
-            {/* Top selector for active professional */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-5 shadow-xl">
-              <div>
-                <label className="block text-[8px] uppercase tracking-[0.25em] text-text-secondary font-bold mb-1.5">
-                  Seleccionar Profesional
-                </label>
+            {/* Top selector and filters */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[#0c0c0c] border border-white/5 rounded-3xl p-5 shadow-xl">
+              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center w-full lg:w-auto">
+                {/* Selector */}
                 <div className="relative">
-                  <select
-                    value={selectedScheduleStaffId}
-                    onChange={(e) => setSelectedScheduleStaffId(e.target.value)}
-                    className="bg-[#050505] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-gold/30 min-w-[220px] cursor-pointer"
+                  <label className="block text-[8px] uppercase tracking-[0.25em] text-text-secondary font-bold mb-1.5">
+                    Seleccionar Profesional
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduleStaffDropdownOpen(!isScheduleStaffDropdownOpen)}
+                    className="bg-black/60 border border-white/10 text-white text-xs px-4 py-2.5 rounded-xl flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/15 transition-colors text-left min-w-[240px]"
                   >
-                    {specialistsList.map((spec) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.name} ({spec.role})
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex items-center space-x-2.5">
+                      {selectedStaffObj?.imageUrl ? (
+                        <div className="w-5 h-5 rounded-full overflow-hidden relative border border-white/10 flex-shrink-0">
+                          <Image
+                            src={selectedStaffObj.imageUrl}
+                            alt={selectedStaffObj.name}
+                            fill
+                            sizes="20px"
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-[8px] font-bold text-gold flex-shrink-0">
+                          {selectedStaffObj?.avatar || selectedStaffObj?.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                      )}
+                      <span className="truncate font-medium">{selectedStaffObj ? selectedStaffObj.name : 'Seleccionar...'}</span>
+                      {selectedStaffObj && (
+                        <span className="text-[9px] text-white/40 font-light truncate max-w-[90px]">({selectedStaffObj.role})</span>
+                      )}
+                    </div>
+                    <ChevronDown size={12} className="text-gold ml-2" />
+                  </button>
+
+                  {isScheduleStaffDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsScheduleStaffDropdownOpen(false)} />
+                      <div className="absolute top-full left-0 mt-2 z-50 bg-[#0d0d0d]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 max-h-60 overflow-y-auto min-w-[280px] text-left">
+                        {filteredScheduleStaffList.map((spec) => {
+                          const isSelected = spec.id === selectedScheduleStaffId;
+                          return (
+                            <button
+                              key={spec.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedScheduleStaffId(spec.id);
+                                setIsScheduleStaffDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                                isSelected 
+                                  ? 'bg-gold/15 text-gold font-bold' 
+                                  : 'text-white/80 hover:text-gold hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                {spec.imageUrl ? (
+                                  <div className="w-5 h-5 rounded-full overflow-hidden relative border border-white/10 flex-shrink-0">
+                                    <Image
+                                      src={spec.imageUrl}
+                                      alt={spec.name}
+                                      fill
+                                      sizes="20px"
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-[8px] font-bold text-gold flex-shrink-0">
+                                    {spec.avatar}
+                                  </div>
+                                )}
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{spec.name}</span>
+                                  <span className="text-[9px] text-white/45">{spec.role}</span>
+                                </div>
+                              </div>
+                              {isSelected && <Check size={12} className="text-gold" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Filters */}
+                <div>
+                  <label className="block text-[8px] uppercase tracking-[0.25em] text-text-secondary font-bold mb-1.5">
+                    Filtrar por Negocio
+                  </label>
+                  <div className="flex bg-black rounded-xl border border-white/5 p-1 max-w-sm">
+                    {[
+                      { id: 'todos', label: 'Todos' },
+                      { id: 'barberia', label: 'Barbería' },
+                      { id: 'peluqueria', label: 'Peluquería' },
+                      { id: 'terapias', label: 'Terapias' }
+                    ].map((filter) => {
+                      const isActive = activeScheduleBusinessFilter === filter.id;
+                      return (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          onClick={() => handleScheduleFilterChange(filter.id as any)}
+                          className={`py-1.5 px-3 rounded-lg text-[9px] uppercase tracking-wider font-semibold transition-all ${
+                            isActive
+                              ? 'bg-gold/15 text-gold border border-gold/25 shadow-md shadow-gold/5'
+                              : 'border-transparent text-text-secondary hover:text-white'
+                          }`}
+                        >
+                          {filter.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

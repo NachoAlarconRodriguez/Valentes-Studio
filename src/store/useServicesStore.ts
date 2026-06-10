@@ -5,7 +5,23 @@ export interface Specialist extends RawSpecialist {
   email: string;
   profileType: 'barber' | 'estilista' | 'terapeuta' | 'mixto' | 'admin';
   assignedAgendas: ('barberia' | 'peluqueria' | 'terapias')[];
+  imageUrl?: string;
 }
+
+const initialPhotos: Record<string, string> = {
+  sp1: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80', // Sofia Valente
+  sp2: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80', // Lucía Rivas
+  sp3: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', // Andrés Silva
+  sp4: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80', // Valentina Paz
+  sb1: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', // Carlos Mendoza
+  sb2: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80', // Enrique Soto
+  sb3: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80', // Marcos Delgado
+  sb4: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=200&q=80', // Javier Ortega
+  st1: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80', // Mateo Silva
+  st2: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80', // Elena Rostova
+  st3: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80', // Camila Fuentes
+  st4: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', // Nicolás Prat
+};
 
 interface ServicesStore {
   servicesData: Record<string, Omit<ServiceSection, 'specialists'> & { specialists: Specialist[] }>;
@@ -95,7 +111,8 @@ const getInitialSpecialists = (): Specialist[] => {
       avatar: sp.avatar,
       email,
       profileType,
-      assignedAgendas
+      assignedAgendas,
+      imageUrl: initialPhotos[sp.id] || ''
     };
   });
 };

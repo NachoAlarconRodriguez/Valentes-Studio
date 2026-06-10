@@ -589,7 +589,7 @@ export default function PeluqueriaLayout() {
                 {/* Grid of Specialists */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {data.specialists.map((specialist) => {
-                    const photo = specialistPhotos[specialist.id];
+                    const photo = specialist.imageUrl || specialistPhotos[specialist.id];
                     return (
                       <div
                         key={specialist.id}
