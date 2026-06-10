@@ -89,7 +89,7 @@ export default function PeluqueriaLayout() {
       {
         id: 'c2',
         type: 'gallery-trigger' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1492159249018-c5158d4afbae?auto=format&fit=crop&w=800&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
         gridClass: 'md:col-span-1 md:row-span-1'
       },
       {
