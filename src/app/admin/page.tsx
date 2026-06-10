@@ -1102,39 +1102,72 @@ export default function AdminPage() {
           </Link>
 
           {/* Nav menu links */}
-          <nav className="flex flex-col space-y-2">
+          <nav className="flex flex-col space-y-6">
             {[
-              { id: 'dashboard', label: 'Panel de administración', icon: LayoutDashboard, allowed: ['admin'] },
-              { id: 'agenda', label: 'Agenda', icon: Calendar, allowed: ['admin', 'barber', 'estilista', 'terapeuta', 'mixto'] },
-              { id: 'crm', label: 'CRM', icon: Users, allowed: ['admin'] },
-              { id: 'servicios', label: 'Servicios', icon: Sparkles, allowed: ['admin'] },
-              { id: 'profesionales', label: 'Profesionales', icon: UserCheck, allowed: ['admin'] },
-              { id: 'horarios', label: 'Horarios', icon: Clock, allowed: ['admin'] },
-              { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] },
-              { id: 'vsm', label: 'Visual CMS', icon: Edit3, allowed: ['admin'] },
-              { id: 'perfil', label: 'Perfil', icon: User, allowed: ['admin', 'barber', 'estilista', 'terapeuta', 'mixto'] }
-            ].filter(item => {
+              {
+                title: 'Operaciones',
+                items: [
+                  { id: 'dashboard', label: 'Panel Control', icon: LayoutDashboard, allowed: ['admin'] },
+                  { id: 'agenda', label: 'Agenda', icon: Calendar, allowed: ['admin', 'barber', 'estilista', 'terapeuta', 'mixto'] },
+                  { id: 'crm', label: 'Clientes (CRM)', icon: Users, allowed: ['admin'] }
+                ]
+              },
+              {
+                title: 'Gestión y Equipo',
+                items: [
+                  { id: 'servicios', label: 'Servicios', icon: Sparkles, allowed: ['admin'] },
+                  { id: 'profesionales', label: 'Profesionales', icon: UserCheck, allowed: ['admin'] },
+                  { id: 'horarios', label: 'Horarios', icon: Clock, allowed: ['admin'] }
+                ]
+              },
+              {
+                title: 'Marketing y CMS',
+                items: [
+                  { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] },
+                  { id: 'vsm', label: 'Visual CMS', icon: Edit3, allowed: ['admin'] }
+                ]
+              },
+              {
+                title: 'Ajustes',
+                items: [
+                  { id: 'perfil', label: 'Mi Perfil', icon: User, allowed: ['admin', 'barber', 'estilista', 'terapeuta', 'mixto'] }
+                ]
+              }
+            ].map((section) => {
               const role = currentUser ? currentUser.profileType : 'admin';
-              return item.allowed.includes(role);
-            }).map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const visibleItems = section.items.filter(item => item.allowed.includes(role));
+              
+              if (visibleItems.length === 0) return null;
+
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id as any);
-                    setSelectedClient(null); // Clear details drawer
-                  }}
-                  className={`flex items-center space-x-3.5 px-4 py-3 rounded-xl text-xs uppercase tracking-widest font-semibold transition-all duration-300 text-left focus:outline-none ${
-                    isActive 
-                      ? 'bg-gold/10 border border-gold/25 text-gold shadow-[0_0_15px_rgba(198,155,60,0.08)]' 
-                      : 'text-text-secondary hover:text-white hover:bg-white/[0.02] border border-transparent'
-                  }`}
-                >
-                  <Icon size={14} className={isActive ? 'text-gold' : 'text-text-secondary'} />
-                  <span>{item.label}</span>
-                </button>
+                <div key={section.title} className="space-y-2 text-left">
+                  <span className="text-[9px] uppercase tracking-[0.25em] text-white/30 font-bold px-4 block">
+                    {section.title}
+                  </span>
+                  <div className="flex flex-col space-y-1">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id as any);
+                            setSelectedClient(null); // Clear details drawer
+                          }}
+                          className={`flex items-center space-x-3.5 px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest font-semibold transition-all duration-300 text-left focus:outline-none ${
+                            isActive 
+                              ? 'bg-gold/10 border border-gold/25 text-gold shadow-[0_0_15px_rgba(198,155,60,0.08)]' 
+                              : 'text-text-secondary hover:text-white hover:bg-white/[0.02] border border-transparent'
+                          }`}
+                        >
+                          <Icon size={14} className={isActive ? 'text-gold' : 'text-text-secondary'} />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </nav>
