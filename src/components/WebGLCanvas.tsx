@@ -241,10 +241,6 @@ const particleVertexShader = `
     float targetIsBarberia = step(0.5, uTargetSection) * step(uTargetSection, 1.5);
     float currentIsBarberia = step(0.5, uCurrentSection) * step(uCurrentSection, 1.5);
     float isBarberia = mix(currentIsBarberia, targetIsBarberia, uTransition);
-    
-    float targetIsTerapia = step(2.5, uTargetSection);
-    float currentIsTerapia = step(2.5, uCurrentSection);
-    float isTerapia = mix(currentIsTerapia, targetIsTerapia, uTransition);
 
     vAlpha *= (1.0 - isBarberia) * (1.0 - isTerapia);
     

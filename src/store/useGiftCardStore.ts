@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createClient } from '@/utils/supabase/client';
 
 export interface GiftCard {
   code: string;
@@ -16,78 +17,53 @@ export interface GiftCard {
 
 interface GiftCardStore {
   giftCards: GiftCard[];
-  buyGiftCard: (cardData: Omit<GiftCard, 'code' | 'remainingBalance' | 'createdAt' | 'expiresAt'>) => string;
+  loading: boolean;
+  
+  // Actions
+  fetchGiftCards: () => Promise<void>;
+  buyGiftCard: (cardData: Omit<GiftCard, 'code' | 'remainingBalance' | 'createdAt' | 'expiresAt'>) => Promise<string>;
   validateGiftCard: (code: string) => { status: 'valida' | 'inexistente' | 'expirada' | 'sin_saldo'; card?: GiftCard };
-  redeemGiftCard: (code: string, amount: number) => boolean;
+  redeemGiftCard: (code: string, amount: number) => Promise<boolean>;
 }
 
-// Generate pre-loaded mock cards for testing and administration views
-const getFormattedDateWithOffset = (daysOffset: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  return d.toISOString();
-};
-
-const initialGiftCards: GiftCard[] = [
-  {
-    code: 'SAN-GIFT-30K',
-    originalAmount: 30000,
-    remainingBalance: 30000,
-    senderName: 'Tomas Perez',
-    senderEmail: 'tomas.perez@gmail.com',
-    recipientName: 'Camila Silva',
-    recipientEmail: 'cami.silva@uai.cl',
-    theme: 'santuario',
-    message: '¡Feliz cumpleaños! Disfruta de un momento de relajo.',
-    createdAt: getFormattedDateWithOffset(-5),
-    expiresAt: getFormattedDateWithOffset(25) // Active, expires in 25 days
-  },
-  {
-    code: 'VAL-GIFT-50K',
-    originalAmount: 50000,
-    remainingBalance: 15000, // Partially used
-    senderName: 'Felipe Castro',
-    senderEmail: 'felipe.castro@outlook.com',
-    recipientName: 'Andres Vicuña',
-    recipientEmail: 'andres.vic@live.cl',
-    theme: 'barberia',
-    message: 'Para que te consientas con el mejor afeitado tradicional.',
-    createdAt: getFormattedDateWithOffset(-10),
-    expiresAt: getFormattedDateWithOffset(20) // Active, expires in 20 days
-  },
-  {
-    code: 'ALM-GIFT-80K',
-    originalAmount: 80000,
-    remainingBalance: 80000,
-    senderName: 'Maria Jose Plaza',
-    senderEmail: 'mj.plaza@gmail.com',
-    recipientName: 'Lucia Rivas',
-    recipientEmail: 'lucia.rivas@valentes.cl',
-    theme: 'peluqueria',
-    message: 'Cambio de look de regalo, ¡te lo mereces!',
-    createdAt: getFormattedDateWithOffset(-40),
-    expiresAt: getFormattedDateWithOffset(-10) // Expired 10 days ago
-  },
-  {
-    code: 'ESS-GIFT-45K',
-    originalAmount: 45000,
-    remainingBalance: 0, // Fully redeemed
-    senderName: 'Javiera Montes',
-    senderEmail: 'javiera.montes@gmail.com',
-    recipientName: 'Mateo Silva',
-    recipientEmail: 'mateo@santuario.cl',
-    theme: 'terapias',
-    message: 'Un respiro para tu bienestar corporal.',
-    createdAt: getFormattedDateWithOffset(-15),
-    expiresAt: getFormattedDateWithOffset(15) // Active but no balance left
-  }
-];
+const supabase = createClient();
 
 export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
-  giftCards: initialGiftCards,
+  giftCards: [],
+  loading: false,
 
-  buyGiftCard: (cardData) => {
-    // Generate code structure like: SAN-[theme_letter][random_3_letters]-[amount]
+  fetchGiftCards: async () => {
+    set({ loading: true });
+    try {
+      const { data: dbCards, error } = await supabase
+        .from('gift_cards')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const giftCards: GiftCard[] = (dbCards || []).map((c) => ({
+        code: c.code,
+        originalAmount: c.original_amount,
+        remainingBalance: c.remaining_balance,
+        senderName: c.sender_name,
+        senderEmail: c.sender_email,
+        recipientName: c.recipient_name,
+        recipientEmail: c.recipient_email,
+        theme: c.theme,
+        message: c.message || '',
+        createdAt: c.created_at,
+        expiresAt: c.expires_at
+      }));
+
+      set({ giftCards, loading: false });
+    } catch (error) {
+      console.error('Error fetching gift cards:', error);
+      set({ loading: false });
+    }
+  },
+
+  buyGiftCard: async (cardData) => {
     const randomPart = Math.random().toString(36).substring(2, 5).toUpperCase();
     const amountSuffix = Math.round(cardData.originalAmount / 1000) + 'K';
     const themeLetter = cardData.theme.substring(0, 3).toUpperCase();
@@ -95,7 +71,7 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
 
     const now = new Date();
     const expires = new Date();
-    expires.setMonth(now.getMonth() + 1); // Exact 1-month validity
+    expires.setMonth(now.getMonth() + 1); // 1 month validity
 
     const newCard: GiftCard = {
       ...cardData,
@@ -105,9 +81,29 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
       expiresAt: expires.toISOString()
     };
 
-    set((state) => ({
-      giftCards: [newCard, ...state.giftCards]
-    }));
+    try {
+      const { error } = await supabase.from('gift_cards').insert({
+        code,
+        original_amount: cardData.originalAmount,
+        remaining_balance: cardData.originalAmount,
+        sender_name: cardData.senderName,
+        sender_email: cardData.senderEmail,
+        recipient_name: cardData.recipientName,
+        recipient_email: cardData.recipientEmail,
+        theme: cardData.theme,
+        message: cardData.message,
+        created_at: now.toISOString(),
+        expires_at: expires.toISOString()
+      });
+
+      if (error) throw error;
+
+      set((state) => ({
+        giftCards: [newCard, ...state.giftCards]
+      }));
+    } catch (err) {
+      console.error('Error buying gift card:', err);
+    }
 
     return code;
   },
@@ -134,7 +130,7 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
     return { status: 'valida', card };
   },
 
-  redeemGiftCard: (code, amount) => {
+  redeemGiftCard: async (code, amount) => {
     const cleanCode = code.trim().toUpperCase();
     const validation = get().validateGiftCard(cleanCode);
 
@@ -142,15 +138,29 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
       return false;
     }
 
-    set((state) => ({
-      giftCards: state.giftCards.map(c => 
-        c.code.toUpperCase() === cleanCode
-          ? { ...c, remainingBalance: Math.max(0, c.remainingBalance - amount) }
-          : c
-      )
-    }));
+    const newBalance = Math.max(0, validation.card.remainingBalance - amount);
 
-    return true;
+    try {
+      const { error } = await supabase
+        .from('gift_cards')
+        .update({ remaining_balance: newBalance })
+        .eq('code', cleanCode);
+
+      if (error) throw error;
+
+      set((state) => ({
+        giftCards: state.giftCards.map(c =>
+          c.code.toUpperCase() === cleanCode
+            ? { ...c, remainingBalance: newBalance }
+            : c
+        )
+      }));
+
+      return true;
+    } catch (err) {
+      console.error('Error redeeming gift card:', err);
+      return false;
+    }
   }
 }));
 

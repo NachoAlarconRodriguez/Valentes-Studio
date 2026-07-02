@@ -16,12 +16,13 @@ import {
   Globe, 
   Smartphone, 
   MessageSquare,
+  MessageCircle,
   DollarSign
 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useServicesStore } from '@/store/useServicesStore';
-import { useScheduleStore } from '@/store/useScheduleStore';
+import { useScheduleStore, parseDurationToMinutes } from '@/store/useScheduleStore';
 import Image from 'next/image';
 
 const specialistPhotos: Record<string, string> = {
@@ -60,6 +61,7 @@ export function ManualBookingModal({
 }: ManualBookingModalProps) {
   const { clients, addBooking } = useBookingStore();
   const { servicesData } = useServicesStore();
+  const { workShifts } = useScheduleStore();
 
   const formatDateToDMY = (dateStr: string) => {
     if (!dateStr) return '';
@@ -69,16 +71,23 @@ export function ManualBookingModal({
 
   // Form states
   const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('+56 9 ');
+  const [selectedCountry, setSelectedCountry] = useState('+56');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const clientPhone = `${selectedCountry} ${phoneDigits}`;
   const [clientEmail, setClientEmail] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [timeError, setTimeError] = useState<string | null>(null);
   const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   const [serviceId, setServiceId] = useState('');
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [customTime, setCustomTime] = useState('');
-  const [channel, setChannel] = useState<'Web' | 'WhatsApp' | 'Walk-in'>('Walk-in');
+
+  const [channel, setChannel] = useState<'Web' | 'WhatsApp' | 'Presencial'>('Presencial');
   const [status, setStatus] = useState<'confirmado' | 'pendiente'>('confirmado');
 
   // Availability Bypass states
@@ -119,24 +128,48 @@ export function ManualBookingModal({
         setDate('');
       }
       if (defaultTime) {
-        const standardSlots = [
-          '09:00', '10:00', '11:00', '12:00', 
-          '13:00', '14:00', '15:00', '16:00', 
-          '17:00', '18:00', '19:00', '20:00'
-        ];
-        if (standardSlots.includes(defaultTime)) {
-          setTime(defaultTime);
-          setCustomTime('');
-        } else {
-          setTime('');
-          setCustomTime(defaultTime);
+        setTime(defaultTime);
+
+        // Auto forceBooking if slot is outside shift
+        if (defaultSpecialistId && defaultDate) {
+          const specialistShifts = workShifts[defaultSpecialistId] || [];
+          let dayOfWeek = 1;
+          try {
+            const [y, m, d] = defaultDate.split('-').map(Number);
+            dayOfWeek = new Date(y, m - 1, d).getDay();
+          } catch (e) {
+            console.error(e);
+          }
+          const dayShift = specialistShifts.find((s) => s.dayOfWeek === dayOfWeek);
+          if (!dayShift || !dayShift.isActive) {
+            setForceBooking(true);
+          } else {
+            const localTimeToMinutes = (tStr: string) => {
+              const [h, min] = tStr.split(':').map(Number);
+              return h * 60 + (min || 0);
+            };
+            const slotStart = localTimeToMinutes(defaultTime);
+            const slotEnd = slotStart + 30;
+            const shiftStart = localTimeToMinutes(dayShift.startTime);
+            const shiftEnd = localTimeToMinutes(dayShift.endTime);
+            let hasBreakConflict = false;
+            if (dayShift.hasBreak) {
+              const breakStart = localTimeToMinutes(dayShift.breakStartTime);
+              const breakEnd = localTimeToMinutes(dayShift.breakEndTime);
+              if (slotStart < breakEnd && slotEnd > breakStart) {
+                hasBreakConflict = true;
+              }
+            }
+            if (slotStart < shiftStart || slotEnd > shiftEnd || hasBreakConflict) {
+              setForceBooking(true);
+            }
+          }
         }
       } else {
         setTime('');
-        setCustomTime('');
       }
     }
-  }, [isOpen, defaultCategory, defaultSpecialistId, defaultDate, defaultTime]);
+  }, [isOpen, defaultCategory, defaultSpecialistId, defaultDate, defaultTime, workShifts]);
 
   // Handle client name typeahead suggestions
   useEffect(() => {
@@ -171,40 +204,29 @@ export function ManualBookingModal({
     setCustomTime('');
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value;
-    
-    if (!val.startsWith('+56 9')) {
-      const cleanDigits = val.replace(/\D/g, '');
-      let suffix = '';
-      if (cleanDigits.length > 3) {
-        if (cleanDigits.startsWith('569')) {
-          suffix = cleanDigits.substring(3);
-        } else if (cleanDigits.startsWith('9') && cleanDigits.length === 9) {
-          suffix = cleanDigits.substring(1);
-        } else {
-          suffix = cleanDigits;
-        }
-      }
-      val = '+56 9 ' + suffix;
+  const parsePhoneToPrefixAndDigits = (phoneStr: string) => {
+    const clean = phoneStr.replace(/\s+/g, '');
+    const match = clean.match(/^(\+\d+)(.*)$/);
+    if (match) {
+      const prefix = match[1];
+      const digits = match[2].replace(/\D/g, '').substring(0, 9);
+      return { prefix, digits };
     }
-
-    const suffix = val.substring(5).replace(/\D/g, '').substring(0, 8);
-    
-    let formatted = '+56 9 ';
-    if (suffix.length > 0) {
-      if (suffix.length <= 4) {
-        formatted += suffix;
-      } else {
-        formatted += `${suffix.substring(0, 4)} ${suffix.substring(4)}`;
-      }
+    const digitsOnly = phoneStr.replace(/\D/g, '');
+    if (digitsOnly.startsWith('56')) {
+      return { prefix: '+56', digits: digitsOnly.substring(2).substring(0, 9) };
     }
-    
-    setClientPhone(formatted);
+    return { prefix: '+56', digits: digitsOnly.substring(0, 9) };
+  };
 
-    if (suffix.length > 0 && suffix.length < 8) {
-      setPhoneError('Faltan dígitos (deben ser 8 números)');
-    } else if (suffix.length === 8) {
+  const handlePhoneDigitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const limited = raw.substring(0, 9);
+    setPhoneDigits(limited);
+    
+    if (limited.length > 0 && limited.length < 9) {
+      setPhoneError('El número de WhatsApp debe tener exactamente 9 números.');
+    } else if (limited.length === 9) {
       setPhoneError(null);
     } else {
       setPhoneError(null);
@@ -213,27 +235,9 @@ export function ManualBookingModal({
 
   const handleClientSelect = (client: typeof clients[0]) => {
     setClientName(client.name);
-    
-    // Enforce phone validation formatting on select
-    let phoneVal = client.phone;
-    if (!phoneVal.startsWith('+56 9')) {
-      const clean = phoneVal.replace(/\D/g, '');
-      let suffix = clean;
-      if (clean.startsWith('569')) suffix = clean.substring(3);
-      else if (clean.startsWith('9') && clean.length === 9) suffix = clean.substring(1);
-      phoneVal = '+56 9 ' + suffix;
-    }
-    
-    const suffix = phoneVal.substring(5).replace(/\D/g, '').substring(0, 8);
-    let formatted = '+56 9 ';
-    if (suffix.length > 0) {
-      if (suffix.length <= 4) {
-        formatted += suffix;
-      } else {
-        formatted += `${suffix.substring(0, 4)} ${suffix.substring(4)}`;
-      }
-    }
-    setClientPhone(formatted);
+    const { prefix, digits } = parsePhoneToPrefixAndDigits(client.phone);
+    setSelectedCountry(prefix);
+    setPhoneDigits(digits);
     setPhoneError(null);
     setClientEmail(client.email);
     setShowSuggestions(false);
@@ -265,21 +269,54 @@ export function ManualBookingModal({
   const checkTimeSlotAvailability = (slotTime: string): { available: boolean; reason?: string } => {
     if (!date) return { available: true };
     
-    let duration = 60;
-    if (selectedServiceObj?.duration) {
-      const match = selectedServiceObj.duration.match(/(\d+)\s*min/);
-      if (match) {
-        duration = parseInt(match[1], 10);
-      }
+    // Check if slot is in the past
+    const isPast = (() => {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${y}-${m}-${d}`;
+      
+      if (date < todayStr) return true;
+      if (date > todayStr) return false;
+      
+      const timeToMinutes = (tStr: string) => {
+        const [h, min] = tStr.split(':').map(Number);
+        return h * 60 + min;
+      };
+      
+      const slotMins = timeToMinutes(slotTime);
+      const currentMins = today.getHours() * 60 + today.getMinutes();
+      return slotMins < currentMins;
+    })();
+
+    if (isPast) {
+      return { available: false, reason: 'El horario ya pasó' };
     }
+    
+    const duration = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+
+    const checkAvailabilityForSpec = (spId: string) => {
+      const res = isSpecialistAvailable(spId, date, slotTime, duration);
+      if (res.available) return res;
+      // Bypass shift, day off, and lunch break conflict for manual bookings (sobrecupo)
+      if (
+        res.reason?.includes('Fuera del horario de jornada') ||
+        res.reason?.includes('Día no laboral') ||
+        res.reason?.includes('Horario de colación')
+      ) {
+        return { available: true };
+      }
+      return res;
+    };
 
     if (specialistId) {
-      return isSpecialistAvailable(specialistId, date, slotTime, duration);
+      return checkAvailabilityForSpec(specialistId);
     }
     if (specialistsList.length === 0) return { available: true };
     
     // Check if at least one specialist is available
-    const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime, duration).available);
+    const availableSpecs = specialistsList.filter(s => checkAvailabilityForSpec(s.id).available);
     if (availableSpecs.length > 0) {
       return { available: true };
     }
@@ -289,7 +326,7 @@ export function ManualBookingModal({
   // Reset forceBooking when booking parameters change
   useEffect(() => {
     setForceBooking(false);
-  }, [specialistId, date, time, customTime]);
+  }, [specialistId, date, time]);
 
   const originalPriceNumber = parsePrice(selectedServiceObj?.price);
   
@@ -326,20 +363,50 @@ export function ManualBookingModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName || !clientPhone || !serviceId || !date) return;
-    
-    const finalTime = customTime || time;
-    if (!finalTime) return;
+    let hasError = false;
 
-    // Validate 8 digits
-    const digitsOnly = clientPhone.substring(5).replace(/\D/g, '');
-    if (digitsOnly.length !== 8) {
-      setPhoneError('El número de teléfono debe tener exactamente 8 dígitos.');
-      return;
+    if (!clientName.trim()) {
+      setNameError('El nombre completo es requerido.');
+      hasError = true;
+    } else {
+      setNameError(null);
     }
-    setPhoneError(null);
+
+    if (!phoneDigits.trim()) {
+      setPhoneError('El número de WhatsApp es requerido.');
+      hasError = true;
+    } else if (phoneDigits.trim().length !== 9) {
+      setPhoneError('El número de WhatsApp debe tener exactamente 9 números.');
+      hasError = true;
+    } else {
+      setPhoneError(null);
+    }
+
+    if (!serviceId) {
+      setServiceError('Debes seleccionar un ritual o servicio.');
+      hasError = true;
+    } else {
+      setServiceError(null);
+    }
+
+    if (!date) {
+      setDateError('La fecha de cita es requerida.');
+      hasError = true;
+    } else {
+      setDateError(null);
+    }
+
+    const finalTime = time;
+    if (!finalTime) {
+      setTimeError('La hora de cita es requerida.');
+      hasError = true;
+    } else {
+      setTimeError(null);
+    }
+
+    if (hasError) return;
 
     // Validate availability
     const availability = checkTimeSlotAvailability(finalTime);
@@ -350,8 +417,8 @@ export function ManualBookingModal({
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const code = addBooking({
+    try {
+      const code = await addBooking({
         clientName,
         clientPhone,
         clientEmail,
@@ -368,29 +435,32 @@ export function ManualBookingModal({
 
       // Deduct balance from Gift Card if applied
       if (appliedGiftCard && discountAmount > 0) {
-        useGiftCardStore.getState().redeemGiftCard(appliedGiftCard.code, discountAmount);
+        await useGiftCardStore.getState().redeemGiftCard(appliedGiftCard.code, discountAmount);
       }
 
       setNewBookingId(code);
-      setIsSubmitting(false);
       setIsSuccess(true);
       if (onBookingCreated) {
         onBookingCreated(code);
       }
-    }, 800);
+    } catch (err) {
+      console.error('Error creating booking:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
     setClientName('');
-    setClientPhone('+56 9 ');
+    setSelectedCountry('+56');
+    setPhoneDigits('');
     setClientEmail('');
     setPhoneError(null);
     setServiceId('');
     setSpecialistId('');
     setDate('');
     setTime('');
-    setCustomTime('');
-    setChannel('Walk-in');
+    setChannel('Presencial');
     setStatus('confirmado');
     setIsSuccess(false);
     setNewBookingId('');
@@ -416,7 +486,7 @@ export function ManualBookingModal({
   const bgThemeClass = isTerapias ? 'bg-platinum' : 'bg-gold';
   const shadowThemeClass = isTerapias ? 'shadow-platinum/10' : 'shadow-gold/10';
 
-  const selectedTime = customTime || time;
+  const selectedTime = time;
   const currentAvailability = selectedTime ? checkTimeSlotAvailability(selectedTime) : { available: true };
 
   return (
@@ -546,12 +616,12 @@ export function ManualBookingModal({
                     </div>
                     <div className="flex justify-between">
                       <span>Hora:</span>
-                      <span className="text-white font-medium">{customTime || time || '--:--'}</span>
+                      <span className="text-white font-medium">{time || '--:--'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Canal:</span>
                       <span className="text-white font-medium flex items-center gap-1">
-                        {channel === 'Walk-in' && <Smartphone size={10} className="text-amber-400" />}
+                        {channel === 'Presencial' && <Smartphone size={10} className="text-amber-400" />}
                         {channel === 'WhatsApp' && <MessageSquare size={10} className="text-emerald-400" />}
                         {channel === 'Web' && <Globe size={10} className="text-blue-400" />}
                         <span>{channel}</span>
@@ -632,23 +702,94 @@ export function ManualBookingModal({
                               </motion.div>
                             )}
                           </AnimatePresence>
+                          {nameError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{nameError}</p>
+                          )}
                         </div>
 
-                        {/* Phone */}
+                        {/* WhatsApp (WhatsApp-only) */}
                         <div>
                           <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-1.5">
-                            Teléfono / WhatsApp *
+                            WhatsApp *
                           </label>
-                          <div className="relative flex items-center">
-                            <Phone size={13} className="absolute left-3.5 text-text-secondary" />
-                            <input
-                              type="tel"
-                              required
-                              placeholder="+56 9 1111 2222"
-                              value={clientPhone}
-                              onChange={handlePhoneChange}
-                              className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass} ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                            />
+                          <div className="relative flex items-center gap-2">
+                            {/* Custom Select Dropdown */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                                className="flex items-center space-x-1.5 bg-[#0a0a0a] border border-white/10 hover:border-white/20 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition-colors cursor-pointer select-none h-full"
+                              >
+                                <span className="text-base">
+                                  {
+                                    selectedCountry === '+56' ? '🇨🇱' :
+                                    selectedCountry === '+54' ? '🇦🇷' :
+                                    selectedCountry === '+51' ? '🇵🇪' :
+                                    selectedCountry === '+57' ? '🇨🇴' :
+                                    selectedCountry === '+598' ? '🇺🇾' :
+                                    selectedCountry === '+52' ? '🇲🇽' :
+                                    selectedCountry === '+34' ? '🇪🇸' : '🇺🇸'
+                                  }
+                                </span>
+                                <span className="font-mono text-white/90">{selectedCountry}</span>
+                                <ChevronDown size={10} className="text-text-secondary ml-1" />
+                              </button>
+                              
+                              <AnimatePresence>
+                                {isCountryDropdownOpen && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -5 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -5 }}
+                                      className="absolute left-0 mt-1.5 w-40 bg-black border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 max-h-56 overflow-y-auto"
+                                    >
+                                      {[
+                                        { code: '+56', label: 'Chile', flag: '🇨🇱' },
+                                        { code: '+54', label: 'Argentina', flag: '🇦🇷' },
+                                        { code: '+51', label: 'Perú', flag: '🇵🇪' },
+                                        { code: '+57', label: 'Colombia', flag: '🇨🇴' },
+                                        { code: '+52', label: 'México', flag: '🇲🇽' },
+                                        { code: '+598', label: 'Uruguay', flag: '🇺🇾' },
+                                        { code: '+1', label: 'USA', flag: '🇺🇸' },
+                                        { code: '+34', label: 'España', flag: '🇪🇸' }
+                                      ].map((item) => (
+                                        <button
+                                          key={item.code}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedCountry(item.code);
+                                            setIsCountryDropdownOpen(false);
+                                          }}
+                                          className={`w-full flex items-center space-x-3 px-3 py-2 text-left text-xs hover:bg-white/5 transition-colors cursor-pointer ${
+                                            selectedCountry === item.code ? 'text-gold bg-white/[0.02]' : 'text-white/80'
+                                          }`}
+                                        >
+                                          <span className="text-base">{item.flag}</span>
+                                          <span className="font-mono font-medium">{item.code}</span>
+                                          <span className="text-[10px] text-text-secondary truncate">{item.label}</span>
+                                        </button>
+                                      ))}
+                                    </motion.div>
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* Phone digits input */}
+                            <div className="relative flex-grow flex items-center">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                required
+                                placeholder="Ingrese número"
+                                value={phoneDigits}
+                                onChange={handlePhoneDigitsChange}
+                                className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass} ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                              />
+                            </div>
                           </div>
                           {phoneError && (
                             <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
@@ -799,6 +940,9 @@ export function ManualBookingModal({
                               </>
                             )}
                           </AnimatePresence>
+                          {serviceError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{serviceError}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -889,18 +1033,37 @@ export function ManualBookingModal({
                             <button
                               type="button"
                               onClick={() => setDate(getFormattedDate(0))}
-                              className="px-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+                              className={`px-3 border text-[10px] uppercase tracking-wider transition-colors cursor-pointer rounded-xl font-bold ${
+                                date === getFormattedDate(0)
+                                  ? category === 'barberia'
+                                    ? 'border-gold bg-gold/15 text-gold'
+                                    : category === 'peluqueria'
+                                    ? 'border-[#CD7F32] bg-[#CD7F32]/15 text-[#CD7F32]'
+                                    : 'border-[#E2E0D8] bg-[#E2E0D8]/15 text-[#E2E0D8]'
+                                  : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/70'
+                              }`}
                             >
                               Hoy
                             </button>
                             <button
                               type="button"
                               onClick={() => setDate(getFormattedDate(1))}
-                              className="px-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+                              className={`px-3 border text-[10px] uppercase tracking-wider transition-colors cursor-pointer rounded-xl font-bold ${
+                                date === getFormattedDate(1)
+                                  ? category === 'barberia'
+                                    ? 'border-gold bg-gold/15 text-gold'
+                                    : category === 'peluqueria'
+                                    ? 'border-[#CD7F32] bg-[#CD7F32]/15 text-[#CD7F32]'
+                                    : 'border-[#E2E0D8] bg-[#E2E0D8]/15 text-[#E2E0D8]'
+                                  : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/70'
+                              }`}
                             >
                               Mañ.
                             </button>
                           </div>
+                          {dateError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{dateError}</p>
+                          )}
                         </div>
 
                         {/* Time Slots Grid + Custom time option */}
@@ -911,11 +1074,11 @@ export function ManualBookingModal({
                           
                           <div className="grid grid-cols-4 gap-1.5 mb-2">
                             {[
-                              '09:00', '10:00', '11:00', '12:00', 
-                              '13:00', '14:00', '15:00', '16:00', 
-                              '17:00', '18:00', '19:00', '20:00'
+                              '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                              '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+                              '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
                             ].map((slot) => {
-                              const isSel = time === slot && !customTime;
+                              const isSel = time === slot;
                               const availability = checkTimeSlotAvailability(slot);
                               return (
                                 <button
@@ -925,7 +1088,6 @@ export function ManualBookingModal({
                                   title={availability.reason}
                                   onClick={() => {
                                     setTime(slot);
-                                    setCustomTime('');
                                   }}
                                   className={`py-1.5 rounded-lg border text-[10px] font-semibold transition-all cursor-pointer ${
                                     !availability.available && !forceBooking
@@ -944,21 +1106,11 @@ export function ManualBookingModal({
                               );
                             })}
                           </div>
+                          {timeError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{timeError}</p>
+                          )}
 
-                          {/* Custom Time text input override */}
-                          <div className="flex items-center space-x-2">
-                            <span className="text-[9px] text-text-secondary uppercase tracking-widest whitespace-nowrap">Otro horario:</span>
-                            <input
-                              type="text"
-                              placeholder="Ej: 11:15, 14:45"
-                              value={customTime}
-                              onChange={(e) => {
-                                setCustomTime(e.target.value);
-                                setTime('');
-                              }}
-                              className={`bg-[#0a0a0a] border border-white/10 hover:border-white/20 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none w-28 transition-colors ${borderFocusClass}`}
-                            />
-                          </div>
+
                         </div>
                       </div>
                     </div>
@@ -977,9 +1129,9 @@ export function ManualBookingModal({
                           </label>
                           <div className="flex space-x-2">
                             {[
-                              { id: 'Walk-in', label: 'Presencial', icon: Smartphone, color: 'text-amber-400', activeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400' },
+                              { id: 'Presencial', label: 'Presencial', icon: Smartphone, color: 'text-amber-400', activeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400' },
                               { id: 'WhatsApp', label: 'WhatsApp', icon: MessageSquare, color: 'text-emerald-400', activeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' },
-                              { id: 'Web', label: 'Web / App', icon: Globe, color: 'text-blue-400', activeBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400' }
+                              { id: 'Web', label: 'Web', icon: Globe, color: 'text-blue-400', activeBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400' }
                             ].map((item) => {
                               const isSel = channel === item.id;
                               const Icon = item.icon;
@@ -1171,7 +1323,7 @@ export function ManualBookingModal({
                     </div>
                     <div className="flex justify-between border-b border-white/5 pb-2">
                       <span className="text-text-secondary uppercase tracking-widest text-[9px] font-semibold">Fecha y Hora</span>
-                      <span className="text-sm font-semibold text-white">{formatDateToDMY(date)} a las {customTime || time}</span>
+                      <span className="text-sm font-semibold text-white">{formatDateToDMY(date)} a las {time}</span>
                     </div>
                     <div className="flex justify-between border-b border-white/5 pb-2">
                       <span className="text-text-secondary uppercase tracking-widest text-[9px] font-semibold">Canal / Estado</span>

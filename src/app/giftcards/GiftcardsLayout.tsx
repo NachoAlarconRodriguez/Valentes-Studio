@@ -48,14 +48,14 @@ export default function GiftcardsLayout() {
     setStep('checkout');
   };
 
-  const handlePurchase = (e: React.FormEvent) => {
+  const handlePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cardNumber || !cardExpiry || !cardCvv) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       // Create card in store
-      const code = buyGiftCard({
+      const code = await buyGiftCard({
         originalAmount: amount,
         senderName,
         senderEmail,
@@ -66,9 +66,12 @@ export default function GiftcardsLayout() {
       });
 
       setGeneratedCode(code);
-      setIsSubmitting(false);
       setStep('success');
-    }, 1500);
+    } catch (err) {
+      console.error('Error purchasing gift card:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const copyToClipboard = () => {

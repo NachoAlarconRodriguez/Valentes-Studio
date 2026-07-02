@@ -7,6 +7,12 @@ import { useUIStore, SectionTheme } from '@/store/useUIStore';
 import Navbar from './Navbar';
 import BookingModal from './BookingModal';
 
+import { useServicesStore } from '@/store/useServicesStore';
+import { useBookingStore } from '@/store/useBookingStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import { useGiftCardStore } from '@/store/useGiftCardStore';
+import { useContentStore } from '@/store/useContentStore';
+
 // Dynamically import the WebGL Canvas, disabling server-side rendering
 // because WebGL, Three.js, and browser events require client-side execution.
 const WebGLCanvas = dynamic(() => import('./WebGLCanvas'), {
@@ -20,10 +26,30 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const setMenuOpen = useUIStore((state) => state.setMenuOpen);
   const [mounted, setMounted] = useState(false);
 
+  // Load initial data actions from Supabase
+  const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
+  const fetchBookingsAndClients = useBookingStore(state => state.fetchBookingsAndClients);
+  const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
+  const fetchGiftCards = useGiftCardStore(state => state.fetchGiftCards);
+  const fetchContent = useContentStore(state => state.fetchContent);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-  }, []);
+
+    // Fetch all data from Supabase
+    fetchServicesAndSpecialists();
+    fetchBookingsAndClients();
+    fetchSchedules();
+    fetchGiftCards();
+    fetchContent();
+  }, [
+    fetchServicesAndSpecialists,
+    fetchBookingsAndClients,
+    fetchSchedules,
+    fetchGiftCards,
+    fetchContent
+  ]);
 
   // Update theme in store when path changes
   useEffect(() => {

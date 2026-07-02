@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -20,9 +21,12 @@ import {
   UserCheck, 
   UserX,
   Mail,
+  Eye,
+  EyeOff,
   Sparkles, 
   Save, 
   ArrowLeft,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   TrendingUp,
@@ -32,13 +36,17 @@ import {
   Redo2,
   Camera,
   X,
-  Gift
+  AlertCircle,
+  Gift,
+  UploadCloud,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useServicesStore } from '@/store/useServicesStore';
-import { useScheduleStore, DailyShift, TimeBlock } from '@/store/useScheduleStore';
+import { useScheduleStore, DailyShift, TimeBlock, parseDurationToMinutes } from '@/store/useScheduleStore';
 import { ManualBookingModal } from '@/components/ManualBookingModal';
 import Image from 'next/image';
 
@@ -63,9 +71,17 @@ interface CustomSelectProps {
   options: { value: string; label: string }[];
   placeholder?: string;
   className?: string;
+  buttonClassName?: string;
 }
 
-function CustomSelect({ value, onChange, options, placeholder = 'Seleccionar...', className = '' }: CustomSelectProps) {
+function CustomSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder = 'Seleccionar...', 
+  className = '',
+  buttonClassName = ''
+}: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   const selectedOption = options.find(opt => opt.value === value);
@@ -75,7 +91,7 @@ function CustomSelect({ value, onChange, options, placeholder = 'Seleccionar...'
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-black/60 border border-white/5 text-white text-xs px-4 py-2.5 rounded-xl flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+        className={buttonClassName || "w-full bg-black/60 border border-white/5 text-white text-xs px-4 py-2.5 rounded-xl flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown size={14} className={`text-gold ml-2 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
@@ -126,8 +142,18 @@ export default function AdminPage() {
     specialistsList
   } = useServicesStore();
 
+  const holidaysRowRef = useRef<HTMLDivElement>(null);
+
   // Session User State
   const [currentUser, setCurrentUser] = useState<any | null>(null);
+
+  const [nowState, setNowState] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNowState(new Date());
+    const timer = setInterval(() => setNowState(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const {
     workShifts,
@@ -164,7 +190,167 @@ export default function AdminPage() {
   const [staffFormAgendas, setStaffFormAgendas] = useState<('barberia' | 'peluqueria' | 'terapias')[]>(['barberia']);
   const [staffFormAvatar, setStaffFormAvatar] = useState('');
   const [staffFormImageUrl, setStaffFormImageUrl] = useState('');
+  const [staffFormPhone, setStaffFormPhone] = useState('');
+  const [staffFormCountryCode, setStaffFormCountryCode] = useState('+56');
+  const [isStaffCountryDropdownOpen, setIsStaffCountryDropdownOpen] = useState(false);
+  const [staffPhoneError, setStaffPhoneError] = useState('');
   const [flippedStaff, setFlippedStaff] = useState<Record<string, boolean>>({});
+  const [staffToDelete, setStaffToDelete] = useState<{ category: string; id: string; name: string } | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<{ phone: string; name: string } | null>(null);
+  const [serviceToDelete, setServiceToDelete] = useState<{ category: string; id: string; name: string } | null>(null);
+
+  // Client Edit States
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [clientToEdit, setClientToEdit] = useState<any | null>(null);
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientPhone, setEditClientPhone] = useState('');
+  const [editClientEmail, setEditClientEmail] = useState('');
+  const [countryCode, setCountryCode] = useState('+56');
+  const [isEditCountryDropdownOpen, setIsEditCountryDropdownOpen] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+
+  // Access Requests and Approval State
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [requestToApprove, setRequestToApprove] = useState<any | null>(null);
+  const [approvedCredentials, setApprovedCredentials] = useState<{ email: string; tempPass: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
+  const [forceNewPassword, setForceNewPassword] = useState('');
+  const [forceConfirmPassword, setForceConfirmPassword] = useState('');
+  const [forcePasswordLoading, setForcePasswordLoading] = useState(false);
+
+  // Form states inside approval modal
+  const [approveProfileType, setApproveProfileType] = useState<'barber' | 'estilista' | 'terapeuta' | 'mixto' | 'admin'>('barber');
+  const [approveRole, setApproveRole] = useState('');
+  const [approveSpecialty, setApproveSpecialty] = useState('');
+  const [approveAgendas, setApproveAgendas] = useState<('barberia' | 'peluqueria' | 'terapias')[]>(['barberia']);
+  const [approvalLoading, setApprovalLoading] = useState(false);
+
+  // Request access phone helpers
+  const [reqCountryCode, setReqCountryCode] = useState('+56');
+  const [reqPhoneNumber, setReqPhoneNumber] = useState('');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [showRequestSuccessModal, setShowRequestSuccessModal] = useState(false);
+
+  const countries = [
+    { code: '+56', flag: '🇨🇱', name: 'Chile' },
+    { code: '+54', flag: '🇦🇷', name: 'Argentina' },
+    { code: '+55', flag: '🇧🇷', name: 'Brasil' },
+    { code: '+51', flag: '🇵🇪', name: 'Perú' },
+    { code: '+57', flag: '🇨🇴', name: 'Colombia' },
+    { code: '+52', flag: '🇲🇽', name: 'México' },
+    { code: '+34', flag: '🇪🇸', name: 'España' },
+    { code: '+1', flag: '🇺🇸', name: 'EE.UU.' }
+  ];
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleanVal = e.target.value.replace(/\D/g, '').slice(0, 9);
+    setReqPhoneNumber(cleanVal);
+  };
+
+  const fetchPendingRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('access_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setPendingRequests(data);
+      }
+    } catch (err) {
+      console.error('Error fetching pending access requests:', err);
+    }
+  };
+
+  const handleApproveRequest = async () => {
+    if (!requestToApprove) return;
+    try {
+      setApprovalLoading(true);
+      
+      const { id, first_name, last_name, email } = requestToApprove;
+      const tempPassword = `TempValentes_${Math.floor(100000 + Math.random() * 900000)}`;
+
+      // 1. Create the user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: tempPassword,
+        options: {
+          data: {
+            require_password_change: true,
+            firstName: first_name,
+            lastName: last_name
+          }
+        }
+      });
+
+      if (authError) {
+        triggerNotification(`Error al crear usuario de acceso: ${authError.message}`);
+        setApprovalLoading(false);
+        return;
+      }
+
+      // 2. Add the specialist profile using the store action
+      const primaryCategory = approveAgendas[0] || 'barberia';
+      
+      let inferredRole = 'Colaborador';
+      let inferredSpecialty = 'Especialista';
+
+      if (approveProfileType === 'barber') {
+        inferredRole = 'Barbero';
+        inferredSpecialty = 'Barbería';
+      } else if (approveProfileType === 'estilista') {
+        inferredRole = 'Estilista';
+        inferredSpecialty = 'Estilismo';
+      } else if (approveProfileType === 'terapeuta') {
+        inferredRole = 'Terapeuta';
+        inferredSpecialty = 'Terapias Holísticas';
+      } else if (approveProfileType === 'mixto') {
+        inferredRole = 'Especialista';
+        inferredSpecialty = 'Multidisciplinario';
+      } else if (approveProfileType === 'admin') {
+        inferredRole = 'Administrador';
+        inferredSpecialty = 'Gestión';
+      }
+
+      const specialistData = {
+        name: `${first_name} ${last_name}`,
+        role: inferredRole,
+        specialty: inferredSpecialty,
+        bio: '',
+        avatar: `${first_name[0]}${last_name[0]}`.toUpperCase(),
+        email: email.trim(),
+        profileType: approveProfileType,
+        assignedAgendas: approveAgendas,
+        imageUrl: ''
+      };
+
+      await addSpecialist(primaryCategory, specialistData);
+
+      // 3. Update the request status to 'approved'
+      const { error: updateError } = await supabase
+        .from('access_requests')
+        .update({ status: 'approved' })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      setRequestToApprove(null);
+      setApprovedCredentials({
+        email: email,
+        tempPass: tempPassword
+      });
+
+      fetchPendingRequests();
+      triggerNotification(`Solicitud de ${first_name} aprobada con éxito.`);
+    } catch (err) {
+      console.error('Error in approving access request:', err);
+      triggerNotification('Ocurrió un error al procesar la aprobación.');
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
 
   const resetServiceForm = () => {
     setServiceFormName('');
@@ -228,6 +414,10 @@ export default function AdminPage() {
     setStaffFormAgendas(['barberia']);
     setStaffFormAvatar('');
     setStaffFormImageUrl('');
+    setStaffFormPhone('');
+    setStaffFormCountryCode('+56');
+    setIsStaffCountryDropdownOpen(false);
+    setStaffPhoneError('');
     setEditingStaff(null);
   };
 
@@ -242,15 +432,43 @@ export default function AdminPage() {
     setStaffFormAgendas(staff.assignedAgendas || ['barberia']);
     setStaffFormAvatar(staff.avatar || '');
     setStaffFormImageUrl(staff.imageUrl || '');
+
+    // Parse phone number
+    let code = '+56';
+    let rawNum = '';
+    const phoneVal = staff.phone || '';
+    if (phoneVal.startsWith('+')) {
+      const match = ['+56', '+54', '+51', '+57', '+34', '+52', '+598'].find(c => phoneVal.startsWith(c));
+      if (match) {
+        code = match;
+        rawNum = phoneVal.substring(match.length);
+      } else {
+        rawNum = phoneVal;
+      }
+    } else {
+      rawNum = phoneVal;
+    }
+    setStaffFormCountryCode(code);
+    setStaffFormPhone(rawNum);
+    setStaffPhoneError('');
+    setIsStaffCountryDropdownOpen(false);
     setIsStaffDrawerOpen(true);
   };
 
   const handleStaffFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffFormName || !staffFormEmail || !staffFormRole || !staffFormProfileType) {
+    if (!staffFormName || !staffFormEmail || !staffFormProfileType) {
       triggerNotification('Por favor, completa los campos obligatorios.');
       return;
     }
+
+    if (staffFormPhone.length !== 9) {
+      setStaffPhoneError('El teléfono debe tener exactamente 9 dígitos.');
+      triggerNotification('Corrige los errores antes de guardar.');
+      return;
+    }
+
+    const finalPhone = staffFormCountryCode + staffFormPhone.trim();
 
     // Determine target category based on profileType
     let primaryCategory = 'barberia';
@@ -261,16 +479,40 @@ export default function AdminPage() {
 
     const initials = staffFormName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
+    let inferredRole = staffFormRole.trim() || 'Colaborador';
+    let inferredSpecialty = staffFormSpecialty.trim() || 'Especialista';
+
+    // If creating a new staff, or if editing and the profile type changed, infer it
+    if (!editingStaff || (editingStaff && editingStaff.profileType !== staffFormProfileType)) {
+      if (staffFormProfileType === 'barber') {
+        inferredRole = 'Barbero';
+        inferredSpecialty = 'Barbería';
+      } else if (staffFormProfileType === 'estilista') {
+        inferredRole = 'Estilista';
+        inferredSpecialty = 'Estilismo';
+      } else if (staffFormProfileType === 'terapeuta') {
+        inferredRole = 'Terapeuta';
+        inferredSpecialty = 'Terapias Holísticas';
+      } else if (staffFormProfileType === 'mixto') {
+        inferredRole = 'Especialista';
+        inferredSpecialty = 'Multidisciplinario';
+      } else if (staffFormProfileType === 'admin') {
+        inferredRole = 'Administrador';
+        inferredSpecialty = 'Gestión';
+      }
+    }
+
     const staffPayload = {
       name: staffFormName.trim(),
       email: staffFormEmail.trim(),
-      role: staffFormRole.trim(),
-      specialty: staffFormSpecialty.trim(),
+      role: inferredRole,
+      specialty: inferredSpecialty,
       bio: staffFormBio.trim(),
       profileType: staffFormProfileType,
       assignedAgendas: staffFormAgendas,
       avatar: staffFormAvatar.trim() || initials,
-      imageUrl: staffFormImageUrl.trim()
+      imageUrl: staffFormImageUrl.trim(),
+      phone: finalPhone
     };
 
     if (editingStaff) {
@@ -295,15 +537,27 @@ export default function AdminPage() {
   };
 
   // Login State
+  const supabase = createClient();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('valentes123');
+  const [authLoading, setAuthLoading] = useState(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authView, setAuthView] = useState<'login' | 'reset_password' | 'request_access'>('login');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  
+  // Request access state
+  const [reqFirstName, setReqFirstName] = useState('');
+  const [reqLastName, setReqLastName] = useState('');
+  const [reqPhone, setReqPhone] = useState('');
+  const [reqEmail, setReqEmail] = useState('');
+  const [reqBusiness, setReqBusiness] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   
   // Tab Navigation State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'agenda' | 'crm' | 'giftcards' | 'vsm' | 'servicios' | 'profesionales' | 'perfil' | 'horarios'>('dashboard');
 
   // Schedule and Time Block States
-  const [selectedScheduleStaffId, setSelectedScheduleStaffId] = useState<string>('sb1');
+  const [selectedScheduleStaffId, setSelectedScheduleStaffId] = useState<string>('');
   const [activeScheduleBusinessFilter, setActiveScheduleBusinessFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
   const [isScheduleStaffDropdownOpen, setIsScheduleStaffDropdownOpen] = useState(false);
 
@@ -323,11 +577,27 @@ export default function AdminPage() {
     }
   };
 
+  // Auto-select first specialist when specialistsList is loaded
+  useEffect(() => {
+    if (specialistsList.length > 0 && (!selectedScheduleStaffId || !specialistsList.some(spec => spec.id === selectedScheduleStaffId))) {
+      const filtered = specialistsList.filter(spec => {
+        if (activeScheduleBusinessFilter === 'todos') return true;
+        return spec.assignedAgendas?.includes(activeScheduleBusinessFilter as any);
+      });
+      if (filtered.length > 0) {
+        setSelectedScheduleStaffId(filtered[0].id);
+      } else {
+        setSelectedScheduleStaffId(specialistsList[0].id);
+      }
+    }
+  }, [specialistsList, selectedScheduleStaffId, activeScheduleBusinessFilter]);
+
   const [blockFormDate, setBlockFormDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [blockFormStart, setBlockFormStart] = useState('10:00');
   const [blockFormEnd, setBlockFormEnd] = useState('11:00');
-  const [blockFormReason, setBlockFormReason] = useState<'Almuerzo' | 'Permiso Médico' | 'Capacitación' | 'Vacaciones' | 'Asunto Personal'>('Asunto Personal');
+  const [blockFormReason, setBlockFormReason] = useState<string>('Asunto Personal');
   const [activeScheduleSubTab, setActiveScheduleSubTab] = useState<'jornadas' | 'bloqueos'>('jornadas');
+  const [blockToDelete, setBlockToDelete] = useState<{ id: string; date: string; reason: string; startTime: string; endTime: string } | null>(null);
   
   // Booking Sub-tabs State
   const [activeBusinessTab, setActiveBusinessTab] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
@@ -365,11 +635,34 @@ export default function AdminPage() {
   const [agendaCustomDate, setAgendaCustomDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeSpecialistFilter, setActiveSpecialistFilter] = useState<string>('all');
 
-  // Profile Form States
   const [profileName, setProfileName] = useState('Sofia Valente');
   const [profileRole, setProfileRole] = useState('Directora de Operaciones');
   const [profileEmail, setProfileEmail] = useState('sofia.valente@valentes.cl');
   const [newPassword, setNewPassword] = useState('');
+  const [profilePhoneCode, setProfilePhoneCode] = useState('+56');
+  const [profilePhoneNum, setProfilePhoneNum] = useState('');
+  const [profilePhoneError, setProfilePhoneError] = useState<string | null>(null);
+  const [isProfilePhoneDropdownOpen, setIsProfilePhoneDropdownOpen] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmBtnClass?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirmar',
+    confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+    onConfirm: () => {}
+  });
 
   // Synchronize profile form states when currentUser changes (e.g. upon login or edit)
   React.useEffect(() => {
@@ -377,6 +670,21 @@ export default function AdminPage() {
       setProfileName(currentUser.name || '');
       setProfileRole(currentUser.role || '');
       setProfileEmail(currentUser.email || '');
+      
+      const phoneStr = currentUser.phone || '';
+      if (phoneStr.startsWith('+')) {
+        const parts = phoneStr.split(' ');
+        if (parts.length >= 2) {
+          setProfilePhoneCode(parts[0]);
+          setProfilePhoneNum(parts.slice(1).join('').replace(/\D/g, '').substring(0, 9));
+        } else {
+          setProfilePhoneCode('+56');
+          setProfilePhoneNum(phoneStr.replace(/\D/g, '').substring(0, 9));
+        }
+      } else {
+        setProfilePhoneCode('+56');
+        setProfilePhoneNum(phoneStr.replace(/\D/g, '').substring(0, 9));
+      }
     }
   }, [currentUser]);
 
@@ -396,69 +704,243 @@ export default function AdminPage() {
   const [isEmitting, setIsEmitting] = useState(false);
 
   // Stores
-  const { bookings, clients, addBooking, updateBookingStatus, deleteBooking, updateClientNotes, markAsNotGoodClient } = useBookingStore();
+  const { bookings, clients, addBooking, updateBookingStatus, deleteBooking, updateClientNotes, markAsNotGoodClient, deleteClient, updateClient } = useBookingStore();
   const { content, updateContent } = useContentStore();
 
   // Temporary local VSM form state (initialized to content values)
   const [vsmForm, setVsmForm] = useState(content);
+  
+  // Keep local VSM form state in sync with store changes
+  useEffect(() => {
+    setVsmForm(content);
+  }, [content]);
+
   const [vsmPeluEntered, setVsmPeluEntered] = useState(false);
   const [vsmViewMode, setVsmViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [editingAsset, setEditingAsset] = useState<{ page: string; key: string; label: string; currentValue: string; itemId?: string } | null>(null);
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
+  const [vsmFullscreen, setVsmFullscreen] = useState(false);
+  const [vsmGalleryIdx, setVsmGalleryIdx] = useState(0);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Check active session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const email = session.user.email;
+          
+          if (session.user.user_metadata?.require_password_change === true) {
+            setRequirePasswordChange(true);
+          }
+
+          // Resolve specialist profile
+          const allSpecialists = Object.keys(servicesData).flatMap(cat => servicesData[cat].specialists);
+          const matchedSp = allSpecialists.find(sp => sp.email.toLowerCase() === email?.toLowerCase());
+
+          if (matchedSp) {
+            const userWithPhone = {
+              ...matchedSp,
+              phone: matchedSp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
+            };
+            setCurrentUser(userWithPhone);
+            if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
+              setActiveBusinessTab(matchedSp.assignedAgendas[0]);
+            }
+            setIsLoggedIn((prevLoggedIn) => {
+              if (!prevLoggedIn) {
+                if (matchedSp.profileType !== 'admin') {
+                  setActiveTab('agenda');
+                } else {
+                  setActiveTab('dashboard');
+                }
+              }
+              return true;
+            });
+            if (matchedSp.profileType === 'admin') {
+              fetchPendingRequests();
+            }
+          } else {
+            // Fallback to Administrator for custom emails like the user's
+            const isAdminEmail = email?.toLowerCase() === 'ialarconr.684@gmail.com';
+            setCurrentUser({
+              id: 'admin',
+              name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
+              email: email || '',
+              phone: isAdminEmail ? '+56953332492' : undefined,
+              profileType: 'admin',
+              assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
+              role: 'Administrador Principal',
+              avatar: isAdminEmail ? 'IA' : 'AD'
+            });
+            setIsLoggedIn((prevLoggedIn) => {
+              if (!prevLoggedIn) {
+                setActiveTab('dashboard');
+              }
+              return true;
+            });
+            fetchPendingRequests();
+          }
+        }
+      } catch (err) {
+        console.error('Error checking auth session:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkSession();
+  }, [servicesData]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Resolve all specialists flat list to check if username matches any email
-    const allSpecialists = Object.keys(servicesData).flatMap(cat => servicesData[cat].specialists);
-    const matchedSp = allSpecialists.find(sp => sp.email.toLowerCase() === username.trim().toLowerCase());
-    
-    if (matchedSp) {
-      setCurrentUser(matchedSp);
-      setIsLoggedIn(true);
-      if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
-        setActiveBusinessTab(matchedSp.assignedAgendas[0]);
-      }
-      if (matchedSp.profileType !== 'admin') {
-        setActiveTab('agenda');
-      } else {
-        setActiveTab('dashboard');
-      }
-      triggerNotification(`Sesión iniciada como ${matchedSp.name} (${matchedSp.profileType.toUpperCase()}).`);
-    } else if (username.trim().toLowerCase() === 'admin' || username.trim().toLowerCase() === 'sofia') {
-      setCurrentUser({
-        id: 'admin',
-        name: 'Sofía Valente',
-        email: 'sofia.valente@valentes.cl',
-        profileType: 'admin',
-        assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
-        role: 'Directora de Operaciones',
-        avatar: 'SV'
+    if (!username || !password) return;
+
+    try {
+      setAuthLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: username.trim(),
+        password: password.trim()
       });
-      setIsLoggedIn(true);
-      setActiveTab('dashboard');
-      triggerNotification('Sesión iniciada como Administrador Principal.');
-    } else {
-      // Demo fallback: default to admin, let user know
-      setCurrentUser({
-        id: 'admin',
-        name: 'Sofía Valente',
-        email: 'sofia.valente@valentes.cl',
-        profileType: 'admin',
-        assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
-        role: 'Directora de Operaciones',
-        avatar: 'SV'
-      });
-      setIsLoggedIn(true);
-      setActiveTab('dashboard');
-      triggerNotification('Acceso Demo: Iniciando sesión como Administrador.');
+
+      if (error) {
+        triggerNotification(`Error de acceso: ${error.message}`);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (data?.user) {
+        const email = data.user.email;
+        
+        if (data.user.user_metadata?.require_password_change === true) {
+          setRequirePasswordChange(true);
+        }
+
+        // Resolve profile
+        const allSpecialists = Object.keys(servicesData).flatMap(cat => servicesData[cat].specialists);
+        const matchedSp = allSpecialists.find(sp => sp.email.toLowerCase() === email?.toLowerCase());
+
+        if (matchedSp) {
+          const userWithPhone = {
+            ...matchedSp,
+            phone: matchedSp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
+          };
+          setCurrentUser(userWithPhone);
+          setIsLoggedIn(true);
+          if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
+            setActiveBusinessTab(matchedSp.assignedAgendas[0]);
+          }
+          if (matchedSp.profileType !== 'admin') {
+            setActiveTab('agenda');
+          } else {
+            setActiveTab('dashboard');
+          }
+          if (matchedSp.profileType === 'admin') {
+            fetchPendingRequests();
+          }
+          triggerNotification(`Sesión iniciada como ${matchedSp.name} (${matchedSp.profileType.toUpperCase()}).`);
+        } else {
+          const isAdminEmail = username.trim().toLowerCase() === 'ialarconr.684@gmail.com';
+          setCurrentUser({
+            id: 'admin',
+            name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
+            email: username.trim(),
+            phone: isAdminEmail ? '+56953332492' : undefined,
+            profileType: 'admin',
+            assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
+            role: 'Administrador Principal',
+            avatar: isAdminEmail ? 'IA' : 'AD'
+          });
+          setIsLoggedIn(true);
+          setActiveTab('dashboard');
+          fetchPendingRequests();
+          triggerNotification('Sesión iniciada como Administrador Principal.');
+        }
+      }
+    } catch (err: any) {
+      triggerNotification(`Error al conectar con el servidor.`);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    setUsername('admin');
-    setPassword('valentes123');
+  const handleLogout = async () => {
+    try {
+      setAuthLoading(true);
+      await supabase.auth.signOut();
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      setUsername('');
+      setPassword('');
+      triggerNotification('Sesión cerrada con éxito.');
+    } catch (err) {
+      console.error('Error signing out:', err);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      triggerNotification('Por favor, ingresa tu correo electrónico.');
+      return;
+    }
+    try {
+      setAuthLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/admin`
+      });
+      if (error) {
+        triggerNotification(`Error: ${error.message}`);
+      } else {
+        triggerNotification('Enlace de recuperación enviado a tu correo.');
+        setAuthView('login');
+      }
+    } catch (err) {
+      triggerNotification('Error al conectar con el servidor.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRequestAccess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqFirstName || !reqLastName || !reqPhoneNumber || !reqEmail || !reqBusiness) {
+      triggerNotification('Por favor, completa todos los campos.');
+      return;
+    }
+    if (reqPhoneNumber.length !== 9) {
+      triggerNotification('El número de teléfono debe tener exactamente 9 dígitos.');
+      return;
+    }
+
+    try {
+      setAuthLoading(true);
+      const fullPhone = `${reqCountryCode} ${reqPhoneNumber}`;
+      const { error } = await supabase.from('access_requests').insert({
+        first_name: reqFirstName.trim(),
+        last_name: reqLastName.trim(),
+        phone: fullPhone,
+        email: reqEmail.trim(),
+        business: reqBusiness
+      });
+
+      if (error) {
+        console.warn('access_requests table might not exist:', error.message);
+      }
+      setShowRequestSuccessModal(true);
+      
+      setReqFirstName('');
+      setReqLastName('');
+      setReqPhoneNumber('');
+      setReqCountryCode('+56');
+      setReqEmail('');
+      setReqBusiness('barberia');
+    } catch (err) {
+      triggerNotification('Error al conectar con el servidor.');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -468,12 +950,30 @@ export default function AdminPage() {
       return;
     }
 
+    if (profilePhoneNum.length !== 9) {
+      setProfilePhoneError('El número de teléfono debe tener exactamente 9 dígitos.');
+      triggerNotification('Por favor, ingresa un número de teléfono válido.');
+      return;
+    }
+    setProfilePhoneError(null);
+
+    if (newPassword) {
+      if (newPassword !== confirmPassword) {
+        setPasswordError('Las contraseñas no coinciden.');
+        triggerNotification('Las contraseñas no coinciden.');
+        return;
+      }
+      setPasswordError(null);
+    }
+
     if (currentUser) {
+      const fullPhone = `${profilePhoneCode} ${profilePhoneNum}`;
       const updatedUser = {
         ...currentUser,
         name: profileName,
         role: profileRole,
         email: profileEmail,
+        phone: fullPhone,
         avatar: profileName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
       };
       setCurrentUser(updatedUser);
@@ -487,12 +987,39 @@ export default function AdminPage() {
               name: profileName,
               role: profileRole,
               email: profileEmail,
+              phone: fullPhone,
               avatar: updatedUser.avatar
             });
           }
         });
       }
+      setNewPassword('');
+      setConfirmPassword('');
       triggerNotification('Perfil actualizado con éxito.');
+    }
+  };
+
+  const handleProfileResetPassword = () => {
+    if (!newPassword || !confirmPassword) {
+      triggerNotification('Por favor, escribe y confirma la nueva contraseña.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      triggerNotification('Las contraseñas no coinciden.');
+      return;
+    }
+    setPasswordError(null);
+
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        password: newPassword
+      };
+      setCurrentUser(updatedUser);
+      setNewPassword('');
+      setConfirmPassword('');
+      triggerNotification('Contraseña restablecida con éxito.');
     }
   };
 
@@ -501,13 +1028,100 @@ export default function AdminPage() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleVsmSave = () => {
-    if (vsmPage === 'peluqueria-gallery') {
-      updateContent('peluqueria', { galleryItems: vsmForm.peluqueria.galleryItems });
-      triggerNotification('¡Galería de Peluquería actualizada con éxito en el sitio público!');
-    } else {
-      updateContent(vsmPage as any, (vsmForm as any)[vsmPage]);
-      triggerNotification(`¡Página de ${vsmPage.toUpperCase()} actualizada con éxito en el sitio público!`);
+  const optimizeAndUploadImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('No se pudo obtener el contexto del canvas'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            async (blob) => {
+              if (!blob) {
+                reject(new Error('Fallo al comprimir la imagen'));
+                return;
+              }
+
+              try {
+                const filename = `cms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+                const { error } = await supabase.storage
+                  .from('cms-images')
+                  .upload(filename, blob, {
+                    contentType: 'image/jpeg',
+                    cacheControl: '3600',
+                    upsert: false
+                  });
+
+                if (error) throw error;
+
+                const { data } = supabase.storage.from('cms-images').getPublicUrl(filename);
+                resolve(data.publicUrl);
+              } catch (uploadError) {
+                reject(uploadError);
+              }
+            },
+            'image/jpeg',
+            0.82
+          );
+        };
+        img.onerror = () => reject(new Error('Error al cargar la imagen'));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleVsmSave = async () => {
+    try {
+      const sections: ('home' | 'barberia' | 'peluqueria' | 'terapias')[] = ['home', 'barberia', 'peluqueria', 'terapias'];
+      let updatedCount = 0;
+      
+      for (const section of sections) {
+        const localSectionData = vsmForm[section];
+        const storeSectionData = content[section];
+        
+        if (JSON.stringify(localSectionData) !== JSON.stringify(storeSectionData)) {
+          await updateContent(section, localSectionData);
+          updatedCount++;
+        }
+      }
+      
+      if (updatedCount > 0) {
+        triggerNotification(`¡Sitio web publicado con éxito! (${updatedCount} pág. actualizadas)`);
+      } else {
+        triggerNotification('No hay cambios pendientes para publicar.');
+      }
+    } catch (err) {
+      console.error(err);
+      triggerNotification('Error al publicar los cambios en el sitio web.');
     }
   };
 
@@ -589,6 +1203,22 @@ export default function AdminPage() {
           }));
         }}
         className={`${className} outline-none hover:bg-white/10 hover:ring-1 hover:ring-gold/30 focus:bg-white/5 focus:ring-1 focus:ring-gold px-1 rounded transition-all cursor-text`}
+      >
+        {value}
+      </span>
+    );
+  };
+
+  const renderEditableGalleryText = (itemId: string, field: string, value: string, className: string) => {
+    return (
+      <span
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={(e) => {
+          const val = e.currentTarget.innerText;
+          handleGalleryItemChange(itemId, field, val);
+        }}
+        className={`${className} outline-none hover:bg-white/10 hover:ring-1 hover:ring-gold/30 focus:bg-white/5 focus:ring-1 focus:ring-gold px-1 rounded transition-all cursor-text inline-block`}
       >
         {value}
       </span>
@@ -686,8 +1316,15 @@ export default function AdminPage() {
     }
   };
 
-  const getCurrentBookingStatus = (dateStr: string, timeStr: string, baseStatus: string): 'reservado' | 'proximo' | 'En Proceso' | 'Finalizado' | 'bloqueado' => {
+  const getCurrentBookingStatus = (
+    dateStr: string,
+    timeStr: string,
+    baseStatus: string,
+    specialistName?: string
+  ): 'reservado' | 'proximo' | 'En Proceso' | 'Finalizado' | 'bloqueado' | 'Espera' => {
     if (baseStatus === 'bloqueado') return 'bloqueado';
+    if (baseStatus === 'completado') return 'Finalizado';
+    if (baseStatus === 'en_proceso') return 'En Proceso';
     
     try {
       const now = new Date();
@@ -695,18 +1332,27 @@ export default function AdminPage() {
       const start = new Date(dateStr + 'T00:00:00');
       start.setHours(hours, minutes, 0, 0);
 
-      // A slot is 1 hour
-      const end = new Date(start);
-      end.setHours(start.getHours() + 1);
+      // Check if there is an active "en_proceso" booking for this specialist on the same day BEFORE this booking's time.
+      if (specialistName) {
+        const hasActiveBefore = bookings.some(b => {
+          if (b.date !== dateStr) return false;
+          if (b.specialistName.trim().toLowerCase() !== specialistName.trim().toLowerCase()) return false;
+          if (b.status !== 'en_proceso') return false;
+          
+          const bMins = localTimeToMinutes(b.time);
+          const thisMins = localTimeToMinutes(timeStr);
+          return bMins < thisMins;
+        });
+
+        if (hasActiveBefore) {
+          return 'Espera';
+        }
+      }
 
       const diffMs = start.getTime() - now.getTime();
       const diffMins = diffMs / (1000 * 60);
 
-      if (now >= end) {
-        return 'Finalizado';
-      } else if (now >= start) {
-        return 'En Proceso';
-      } else if (diffMins <= 30) {
+      if (diffMins <= 30) {
         return 'proximo';
       } else {
         return 'reservado';
@@ -734,23 +1380,117 @@ export default function AdminPage() {
     ? allowedSpecialists 
     : allowedSpecialists.filter(sp => sp.id === activeSpecialistFilter);
 
-  const timeSlots = [
-    '09:00', '10:00', '11:00', '12:00', 
-    '13:00', '14:00', '15:00', '16:00', 
-    '17:00', '18:00', '19:00', '20:00'
-  ];
+  const localTimeToMinutes = (tStr: string) => {
+    const [h, m] = tStr.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+
+  const isSlotWithinWorkShift = (specialistId: string, dateStr: string, slotTime: string) => {
+    const specialistShifts = workShifts[specialistId];
+    if (!specialistShifts) return true;
+    
+    let dayOfWeek = 1;
+    try {
+      if (dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        dayOfWeek = new Date(y, m - 1, d).getDay();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    
+    const dayShift = specialistShifts.find((s) => s.dayOfWeek === dayOfWeek);
+    if (!dayShift || !dayShift.isActive) return false;
+    
+    const slotStart = localTimeToMinutes(slotTime);
+    const slotEnd = slotStart + 30;
+    
+    const shiftStart = localTimeToMinutes(dayShift.startTime);
+    const shiftEnd = localTimeToMinutes(dayShift.endTime);
+    
+    if (slotStart < shiftStart || slotEnd > shiftEnd) return false;
+    
+    if (dayShift.hasBreak) {
+      const breakStart = localTimeToMinutes(dayShift.breakStartTime);
+      const breakEnd = localTimeToMinutes(dayShift.breakEndTime);
+      if (slotStart < breakEnd && slotEnd > breakStart) return false;
+    }
+    
+    return true;
+  };
+
+  const timeSlots = (() => {
+    let dayOfWeek = 1;
+    try {
+      if (targetDate) {
+        const [y, m, d] = targetDate.split('-').map(Number);
+        dayOfWeek = new Date(y, m - 1, d).getDay();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    let minMins = 9 * 60;
+    let maxMins = 20 * 60;
+
+    specialistsForView.forEach(sp => {
+      const shifts = workShifts[sp.id] || [];
+      const dayShift = shifts.find(s => s.dayOfWeek === dayOfWeek);
+      if (dayShift && dayShift.isActive) {
+        const startMins = localTimeToMinutes(dayShift.startTime);
+        const endMins = localTimeToMinutes(dayShift.endTime);
+        if (startMins < minMins) minMins = startMins;
+        if (endMins > maxMins) maxMins = endMins;
+      }
+    });
+
+    bookings.forEach(b => {
+      if (b.category === activeBusinessTab && b.date === targetDate) {
+        const bookingMins = localTimeToMinutes(b.time);
+        if (bookingMins < minMins) minMins = bookingMins;
+        if (bookingMins + 60 > maxMins) maxMins = bookingMins + 60;
+      }
+    });
+
+    minMins = Math.floor(minMins / 30) * 30;
+    maxMins = Math.ceil(maxMins / 30) * 30;
+
+    const slots: string[] = [];
+    for (let m = minMins; m < maxMins; m += 30) {
+      const hh = String(Math.floor(m / 60)).padStart(2, '0');
+      const mm = String(m % 60).padStart(2, '0');
+      slots.push(`${hh}:${mm}`);
+    }
+    
+    return slots.length > 0 ? slots : ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+  })();
 
   const gridRows: { time: string; specialist: typeof specialistsInUnit[0]; booking: any | null }[] = [];
 
   if (isSingleDayMode) {
-    timeSlots.forEach(slot => {
+    timeSlots.forEach((slot, slotIndex) => {
+      const currentSlotMin = localTimeToMinutes(slot);
+      const nextSlotMin = slotIndex < timeSlots.length - 1 
+        ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
+        : currentSlotMin + 30;
+
       specialistsForView.forEach(sp => {
-        const matchedBooking = bookings.find(b => 
-          b.category === activeBusinessTab && 
-          b.date === targetDate && 
-          b.time.startsWith(slot.split(':')[0]) && 
-          b.specialistName.trim() === sp.name.trim()
-        );
+        const matchedBooking = bookings.find(b => {
+          if (b.category !== activeBusinessTab) return false;
+          if (b.date !== targetDate) return false;
+          if (b.specialistName.trim().toLowerCase() !== sp.name.trim().toLowerCase()) return false;
+          
+          const bookingMin = localTimeToMinutes(b.time);
+          const allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
+            cat => useServicesStore.getState().servicesData[cat].services || []
+          );
+          const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
+          const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+          const bookingEnd = bookingMin + bookingDuration;
+
+          return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
+        });
+
         gridRows.push({
           time: slot,
           specialist: sp,
@@ -870,10 +1610,115 @@ export default function AdminPage() {
   }, 0);
   const averageTicket = totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 0;
 
+  // Calculate previous period for growth comparison
+  let prevStartDate = '';
+  let prevEndDate = '';
+  const todayDateObj = new Date();
+  const todayStrOnly = todayDateObj.toISOString().split('T')[0];
+  
+  if (dbDateFilter === 'hoy') {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yesterdayStr = d.toISOString().split('T')[0];
+    prevStartDate = yesterdayStr;
+    prevEndDate = yesterdayStr;
+  } else if (dbDateFilter === 'semana') {
+    const dStart = new Date();
+    dStart.setDate(dStart.getDate() - 14);
+    const dEnd = new Date();
+    dEnd.setDate(dEnd.getDate() - 8);
+    prevStartDate = dStart.toISOString().split('T')[0];
+    prevEndDate = dEnd.toISOString().split('T')[0];
+  } else if (dbDateFilter === 'mes') {
+    const dStart = new Date();
+    dStart.setDate(dStart.getDate() - 60);
+    const dEnd = new Date();
+    dEnd.setDate(dEnd.getDate() - 31);
+    prevStartDate = dStart.toISOString().split('T')[0];
+    prevEndDate = dEnd.toISOString().split('T')[0];
+  } else if (dbDateFilter === 'personalizado' && dbStartDate && dbEndDate) {
+    const startMs = new Date(dbStartDate).getTime();
+    const endMs = new Date(dbEndDate).getTime();
+    const diff = endMs - startMs;
+    prevEndDate = new Date(startMs - 86400000).toISOString().split('T')[0];
+    prevStartDate = new Date(startMs - 86400000 - diff).toISOString().split('T')[0];
+  }
+
+  const prevPeriodBookings = prevStartDate ? bookings.filter(b => {
+    const matchesDate = b.date >= prevStartDate && b.date <= prevEndDate;
+    if (!matchesDate) return false;
+
+    const matchesBusiness = dbBusinessFilter === 'todos' || b.category === dbBusinessFilter;
+    if (!matchesBusiness) return false;
+
+    const matchesService = dbServiceFilter === 'todos' || b.serviceName === dbServiceFilter;
+    if (!matchesService) return false;
+
+    return true;
+  }) : [];
+
+  const prevRevenue = prevPeriodBookings.reduce((sum, b) => {
+    const priceVal = parseInt(b.price.replace(/[^0-9]/g, ''), 10) || 0;
+    return sum + priceVal;
+  }, 0);
+  const prevBookingsCount = prevPeriodBookings.length;
+  const prevAverageTicket = prevBookingsCount > 0 ? Math.round(prevRevenue / prevBookingsCount) : 0;
+
+  // Formatting helper for diff percentages
+  const formatDiff = (current: number, prev: number) => {
+    if (prev === 0) {
+      return current > 0 ? '+100%' : '0%';
+    }
+    const percent = ((current - prev) / prev) * 100;
+    const sign = percent >= 0 ? '+' : '';
+    return `${sign}${percent.toFixed(1)}%`;
+  };
+
+  const revenueDiff = formatDiff(totalRevenue, prevRevenue);
+  const bookingsDiff = formatDiff(totalBookings, prevBookingsCount);
+  const ticketDiff = formatDiff(averageTicket, prevAverageTicket);
+
+  // Dynamic retention rate
+  const uniqueClientsWithMultipleBookings = Object.values(
+    bookings.reduce((acc, b) => {
+      if (b.status !== 'bloqueado') {
+        acc[b.clientPhone] = (acc[b.clientPhone] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>)
+  ).filter(count => count >= 2).length;
+
+  const totalUniqueClients = new Set(
+    bookings.filter(b => b.status !== 'bloqueado').map(b => b.clientPhone)
+  ).size;
+
+  const retentionRate = totalUniqueClients > 0 
+    ? Math.round((uniqueClientsWithMultipleBookings / totalUniqueClients) * 100) 
+    : 0;
+
+  const prevUniqueClientsWithMultipleBookings = Object.values(
+    prevPeriodBookings.reduce((acc, b) => {
+      if (b.status !== 'bloqueado') {
+        acc[b.clientPhone] = (acc[b.clientPhone] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>)
+  ).filter(count => count >= 2).length;
+
+  const prevTotalUniqueClients = new Set(
+    prevPeriodBookings.filter(b => b.status !== 'bloqueado').map(b => b.clientPhone)
+  ).size;
+
+  const prevRetentionRate = prevTotalUniqueClients > 0 
+    ? Math.round((prevUniqueClientsWithMultipleBookings / prevTotalUniqueClients) * 100) 
+    : 0;
+
+  const retentionDiff = formatDiff(retentionRate, prevRetentionRate);
+
   // Channels count
   const webBookingsCount = dashboardBookings.filter(b => b.channel === 'Web').length;
   const waBookingsCount = dashboardBookings.filter(b => b.channel === 'WhatsApp').length;
-  const walkinBookingsCount = dashboardBookings.filter(b => b.channel === 'Walk-in').length;
+  const walkinBookingsCount = dashboardBookings.filter(b => b.channel === 'Presencial').length;
   
   const totalChannels = webBookingsCount + waBookingsCount + walkinBookingsCount;
   const webPct = totalChannels > 0 ? Math.round((webBookingsCount / totalChannels) * 100) : 0;
@@ -1020,6 +1865,17 @@ export default function AdminPage() {
     ? `${pathD} L ${svgPoints[svgPoints.length - 1].x} 135 L ${svgPoints[0].x} 135 Z`
     : 'M 0 130 L 500 130 L 500 135 L 0 135 Z';
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#070707] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-[10px] uppercase tracking-widest text-gold font-light">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#070707] flex items-center justify-center p-6 relative overflow-hidden">
@@ -1041,56 +1897,320 @@ export default function AdminPage() {
         >
           <div className="space-y-2">
             <span className="text-[9px] uppercase tracking-[0.4em] text-gold font-semibold block">SANTUARIO DE BIENESTAR</span>
-            <h1 className="font-serif text-3xl font-bold tracking-[0.2em] text-white">ADMINISTRACIÓN</h1>
+            <h1 className="font-serif text-3xl font-bold tracking-[0.2em] text-white">
+              {authView === 'login' && 'ADMINISTRACIÓN'}
+              {authView === 'reset_password' && 'RECUPERAR'}
+              {authView === 'request_access' && 'SOLICITAR ACCESO'}
+            </h1>
             <p className="text-xs text-text-secondary font-light max-w-[280px] mx-auto leading-relaxed">
-              Ingresa tus credenciales para acceder a la consola administrativa de los 3 negocios.
+              {authView === 'login' && 'Ingresa tus credenciales para acceder a la consola administrativa de los 3 negocios.'}
+              {authView === 'reset_password' && 'Ingresa tu correo para recibir un enlace de recuperación de contraseña.'}
+              {authView === 'request_access' && 'Completa el formulario para solicitar credenciales de acceso al panel.'}
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5 text-left">
-            <div className="space-y-1">
-              <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Usuario / Correo</label>
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
-                required
-              />
-            </div>
+          {authView === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-5 text-left">
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Usuario / Correo</label>
+                <input 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                  placeholder="admin@valentes.cl"
+                  required
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Contraseña</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
-                required
-              />
-            </div>
+              <div className="space-y-1 relative">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Contraseña</label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-black/40 border-b border-white/10 text-white py-3 pr-10 pl-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-gold transition-colors focus:outline-none cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              className="w-full mt-6 py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-gold/5 flex items-center justify-center space-x-2 shimmer-button"
-            >
-              <UserCheck size={14} />
-              <span>Acceder al Panel</span>
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full mt-6 py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-gold/5 flex items-center justify-center space-x-2 shimmer-button"
+              >
+                <UserCheck size={14} />
+                <span>Acceder al Panel</span>
+              </button>
 
-          <div className="text-[10px] text-text-secondary font-light italic border-t border-white/5 pt-4 space-y-2 text-left">
-            <p className="text-center font-semibold text-gold/80">Cuentas Demo de Prueba:</p>
-            <div className="grid grid-cols-1 gap-1 font-mono text-[8px] md:text-[9px] bg-black/30 p-2.5 rounded-xl border border-white/5">
-              <div>• Admin: <span className="text-white">admin</span> (Acceso Total)</div>
-              <div>• Barber: <span className="text-white">carlos.mendoza@valentes.cl</span> (Solo Barbería)</div>
-              <div>• Estilista: <span className="text-white">lucia.rivas@valentes.cl</span> (Solo Peluquería)</div>
-              <div>• Terapeuta: <span className="text-white">mateo.silva@santuario.cl</span> (Solo Terapias)</div>
-              <div>• Mixto (B+P): <span className="text-white">marcos.delgado@valentes.cl</span> (Barbería y Peluquería)</div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-white/5 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setAuthView('reset_password')}
+                  className="text-[10px] text-white/50 hover:text-gold transition-colors cursor-pointer"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthView('request_access')}
+                  className="text-[10px] text-white/50 hover:text-gold transition-colors font-semibold cursor-pointer"
+                >
+                  Solicitar acceso
+                </button>
+              </div>
+            </form>
+          )}
+
+          {authView === 'reset_password' && (
+            <div className="space-y-4 text-left animate-fadeIn">
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Correo Electrónico</label>
+                <input 
+                  type="email" 
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                  placeholder="tu@correo.com"
+                  required
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="w-full mt-4 py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-gold/5 flex items-center justify-center space-x-2"
+              >
+                <Mail size={14} />
+                <span>Enviar enlace de recuperación</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthView('login')}
+                className="w-full text-center text-xs text-white/50 hover:text-gold transition-colors mt-2 cursor-pointer"
+              >
+                Volver al inicio de sesión
+              </button>
             </div>
-            <p className="text-center text-[8px] text-white/35 mt-1">* Contraseña demo: cualquier valor es aceptado.</p>
-          </div>
+          )}
+
+          {authView === 'request_access' && (
+            <form onSubmit={handleRequestAccess} className="space-y-4 text-left animate-fadeIn">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Nombre</label>
+                  <input 
+                    type="text" 
+                    value={reqFirstName}
+                    onChange={(e) => setReqFirstName(e.target.value)}
+                    className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                    placeholder="Juan"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Apellido</label>
+                  <input 
+                    type="text" 
+                    value={reqLastName}
+                    onChange={(e) => setReqLastName(e.target.value)}
+                    className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                    placeholder="Pérez"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Teléfono</label>
+                <div className="flex gap-2 relative">
+                  {/* Custom Dropdown Trigger */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                      className="h-11 bg-black/40 border border-white/10 text-white px-3 text-sm focus:border-gold/60 focus:outline-none transition-colors flex items-center space-x-2 rounded-xl hover:bg-black/60 cursor-pointer"
+                    >
+                      <span>{countries.find(c => c.code === reqCountryCode)?.flag}</span>
+                      <span className="font-mono text-xs">{reqCountryCode}</span>
+                      <ChevronDown size={10} className={`text-white/60 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Custom Dropdown Menu */}
+                    <AnimatePresence>
+                      {isCountryDropdownOpen && (
+                        <>
+                          {/* Invisible Backdrop */}
+                          <div 
+                            className="fixed inset-0 z-30" 
+                            onClick={() => setIsCountryDropdownOpen(false)} 
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 mt-2 w-44 bg-[#121212] border border-white/10 rounded-2xl shadow-2xl py-2 z-40 max-h-60 overflow-y-auto custom-scrollbar"
+                          >
+                            {countries.map((c) => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => {
+                                  setReqCountryCode(c.code);
+                                  setIsCountryDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs flex items-center justify-between hover:bg-gold/10 hover:text-gold transition-colors cursor-pointer ${
+                                  reqCountryCode === c.code ? 'text-gold bg-gold/5 font-semibold' : 'text-white/85'
+                                }`}
+                              >
+                                <span className="flex items-center space-x-2">
+                                  <span>{c.flag}</span>
+                                  <span>{c.name}</span>
+                                </span>
+                                <span className="font-mono text-[10px] opacity-60">{c.code}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Phone Input */}
+                  <input 
+                    type="tel"
+                    value={reqPhoneNumber}
+                    onChange={handlePhoneChange}
+                    className="flex-1 h-11 bg-black/40 border border-white/10 rounded-xl text-white px-3 text-xs focus:border-gold/60 focus:outline-none transition-colors font-sans"
+                    placeholder="9 1234 5678"
+                    maxLength={9}
+                    required
+                  />
+                </div>
+
+                {/* Error message */}
+                {reqPhoneNumber.length > 0 && reqPhoneNumber.length < 9 && (
+                  <p className="text-[10px] text-red-500 font-medium tracking-wide animate-fadeIn mt-1.5 flex items-center space-x-1">
+                    <AlertCircle size={10} />
+                    <span>El teléfono debe tener exactamente 9 dígitos.</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Correo</label>
+                <input 
+                  type="email" 
+                  value={reqEmail}
+                  onChange={(e) => setReqEmail(e.target.value)}
+                  className="w-full bg-black/40 border-b border-white/10 text-white py-3 px-2 text-sm focus:border-gold/60 focus:outline-none transition-colors"
+                  placeholder="tu@correo.com"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Negocio a Solicitar</label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {(['barberia', 'peluqueria', 'terapias'] as const).map((b) => {
+                    const isSelected = reqBusiness === b;
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setReqBusiness(b)}
+                        className={`py-2.5 px-1 text-[9px] uppercase tracking-wider font-bold rounded-lg border transition-all duration-300 cursor-pointer ${
+                          isSelected 
+                            ? 'bg-gold/20 border-gold text-gold shadow-md shadow-gold/5' 
+                            : 'bg-black/40 border-white/10 text-white/60 hover:text-white hover:border-white/20'
+                        }`}
+                      >
+                        {b === 'barberia' ? 'Barbería' : b === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={reqPhoneNumber.length !== 9}
+                className="w-full mt-6 py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-gold/5 flex items-center justify-center space-x-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                <span>Solicitar Acceso</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthView('login')}
+                className="w-full text-center text-xs text-white/50 hover:text-gold transition-colors mt-2 cursor-pointer"
+              >
+                Volver al inicio de sesión
+              </button>
+            </form>
+          )}
         </motion.div>
+
+        {/* REQUEST ACCESS SUCCESS MODAL */}
+        <AnimatePresence>
+          {showRequestSuccessModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setShowRequestSuccessModal(false);
+                  setAuthView('login');
+                }}
+                className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="relative w-full max-w-sm bg-[#0c0c0c]/90 border border-gold/15 rounded-[32px] p-8 shadow-2xl z-10 text-center space-y-6"
+              >
+                <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold mx-auto shadow-[0_4px_15px_rgba(198,155,60,0.15)]">
+                  <Sparkles size={20} className="animate-pulse" />
+                </div>
+
+                <div className="space-y-3">
+                  <span className="text-[8px] uppercase tracking-[0.4em] text-gold font-bold block">Santuario de Bienestar</span>
+                  <h3 className="font-serif text-lg text-white font-medium">Solicitud Recibida</h3>
+                  <p className="text-xs text-white/80 font-normal leading-relaxed font-sans px-2">
+                    Tu solicitud de acceso ha sido registrada exitosamente en nuestro sistema de administración.
+                  </p>
+                  <p className="text-xs text-white/80 font-normal leading-relaxed font-sans px-2">
+                    Nuestro equipo revisará tu postulación para configurar tu perfil y agendas autorizadas. Nos comunicaremos contigo a la brevedad para entregarte tus credenciales.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowRequestSuccessModal(false);
+                    setAuthView('login');
+                  }}
+                  className="w-full py-3.5 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer shadow-lg shadow-gold/5"
+                >
+                  Entendido
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -1114,7 +2234,7 @@ export default function AdminPage() {
 
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col justify-between p-6 md:h-screen md:sticky md:top-0 z-20">
-        <div className="space-y-10">
+        <div className="md:flex-1 md:overflow-y-auto pr-2 md:-mr-2 min-h-0 space-y-10">
           {/* Brand Logo */}
           <Link href="/" className="flex flex-col select-none">
             <span className="font-serif text-xl font-bold tracking-[0.25em] text-gold text-gold-gradient leading-none">
@@ -1360,12 +2480,16 @@ export default function AdminPage() {
             {/* Metric Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {[
-                { title: 'Ingresos Totales (CLP)', val: `$${totalRevenue.toLocaleString('es-CL')}`, diff: '+12.4%', icon: DollarSign },
-                { title: 'Rituales Agendados', val: totalBookings, diff: '+8.3%', icon: Calendar },
-                { title: 'Ticket Promedio', val: `$${averageTicket.toLocaleString('es-CL')}`, diff: '+4.1%', icon: TrendingUp },
-                { title: 'Retención de Clientes', val: '76%', diff: '+2.5%', icon: UserCheck }
+                { title: 'Ingresos Totales (CLP)', val: `$${totalRevenue.toLocaleString('es-CL')}`, diff: revenueDiff, icon: DollarSign },
+                { title: 'Rituales Agendados', val: totalBookings, diff: bookingsDiff, icon: Calendar },
+                { title: 'Ticket Promedio', val: `$${averageTicket.toLocaleString('es-CL')}`, diff: ticketDiff, icon: TrendingUp },
+                { title: 'Retención de Clientes', val: `${retentionRate}%`, diff: retentionDiff, icon: UserCheck }
               ].map((card, i) => {
                 const Icon = card.icon;
+                const isPositive = card.diff.startsWith('+') || card.diff === '0%';
+                const badgeColorClass = isPositive 
+                  ? 'text-emerald-500 bg-emerald-500/5' 
+                  : 'text-rose-500 bg-rose-500/5';
                 return (
                   <div key={i} className="bg-[#0c0c0c] border border-white/5 rounded-2xl p-6 hover:border-gold/15 transition-all duration-300 space-y-4 shadow-lg">
                     <div className="flex items-center justify-between">
@@ -1376,7 +2500,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-baseline justify-between pt-1">
                       <span className="font-serif text-2xl font-bold text-white leading-none">{card.val}</span>
-                      <span className="text-[10px] text-emerald-500 font-semibold bg-emerald-500/5 px-2 py-0.5 rounded">{card.diff}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${badgeColorClass}`}>{card.diff}</span>
                     </div>
                   </div>
                 );
@@ -1501,7 +2625,7 @@ export default function AdminPage() {
                     <span className="text-text-secondary">{waBookingsCount} ({waPct}%)</span>
                   </div>
                   <div className="flex justify-between items-center text-[10px] font-medium">
-                    <span className="flex items-center gap-1.5 text-white/95"><span className="w-2 h-2 rounded-full bg-[#E2E0D8]" /> Presencial (Walk-in)</span>
+                    <span className="flex items-center gap-1.5 text-white/95"><span className="w-2 h-2 rounded-full bg-[#E2E0D8]" /> Presencial</span>
                     <span className="text-text-secondary">{walkinBookingsCount} ({walkinPct}%)</span>
                   </div>
                 </div>
@@ -1761,13 +2885,76 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-white/5 text-xs font-light">
                     {isSingleDayMode ? (
-                      gridRows.map(({ time, specialist, booking }) => {
+                      gridRows.map(({ time, specialist, booking }, idx) => {
                         const rowKey = `${targetDate}-${time}-${specialist.id}`;
+                        
+                        const isPast = (() => {
+                          if (!nowState) return false;
+                          const today = new Date();
+                          const y = today.getFullYear();
+                          const m = String(today.getMonth() + 1).padStart(2, '0');
+                          const d = String(today.getDate()).padStart(2, '0');
+                          const todayStr = `${y}-${m}-${d}`;
+                          
+                          if (targetDate < todayStr) return true;
+                          if (targetDate > todayStr) return false;
+                          
+                          const slotMins = localTimeToMinutes(time);
+                          const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
+                          return slotMins < currentMins;
+                        })();
+
+                        const isToday = targetDate === (() => {
+                          const today = new Date();
+                          const y = today.getFullYear();
+                          const m = String(today.getMonth() + 1).padStart(2, '0');
+                          const d = String(today.getDate()).padStart(2, '0');
+                          return `${y}-${m}-${d}`;
+                        })();
+                        
+                        const currentMins = nowState ? (nowState.getHours() * 60 + nowState.getMinutes()) : 0;
+                        const isLastSpecialistForSlot = idx % specialistsForView.length === specialistsForView.length - 1;
+                        const slotIndex = timeSlots.indexOf(time);
+                        
+                        const showLineAfterThisSlot = isToday && nowState && isLastSpecialistForSlot && slotIndex !== -1 &&
+                          currentMins >= localTimeToMinutes(time) &&
+                          (slotIndex === timeSlots.length - 1 || currentMins < localTimeToMinutes(timeSlots[slotIndex + 1]));
+
+                        const showLineBeforeFirstSlot = isToday && nowState && idx === 0 && currentMins < localTimeToMinutes(timeSlots[0]);
+
+                        const timeIndicatorRow = (
+                          <tr key={`indicator-${time}-${idx}`} className="relative h-0">
+                            <td colSpan={7} className="py-0 px-0 relative">
+                              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none w-full">
+                                <div className={`w-2.5 h-2.5 rounded-full ${
+                                  activeBusinessTab === 'barberia' ? 'bg-gold' : activeBusinessTab === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-[#E2E0D8]'
+                                } animate-ping absolute ml-6`} style={{ animationDuration: '2s' }} />
+                                <div className={`w-2.5 h-2.5 rounded-full ${
+                                  activeBusinessTab === 'barberia' ? 'bg-gold' : activeBusinessTab === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-[#E2E0D8]'
+                                } ml-6`} />
+                                <div className={`h-[1px] flex-grow ${
+                                  activeBusinessTab === 'barberia' 
+                                    ? 'bg-gradient-to-r from-gold via-gold/40 to-transparent' 
+                                    : activeBusinessTab === 'peluqueria' 
+                                    ? 'bg-gradient-to-r from-[#CD7F32] via-[#CD7F32]/40 to-transparent' 
+                                    : 'bg-gradient-to-r from-[#E2E0D8] via-[#E2E0D8]/40 to-transparent'
+                                } ml-2`} />
+                                <span className={`text-[8px] font-bold font-mono px-2 py-0.5 rounded bg-black/95 border ${
+                                  activeBusinessTab === 'barberia' ? 'border-gold/30 text-gold' : activeBusinessTab === 'peluqueria' ? 'border-[#CD7F32]/30 text-[#CD7F32]' : 'border-[#E2E0D8]/30 text-[#E2E0D8]'
+                                } mr-8 uppercase tracking-widest shadow-2xl`}>
+                                  Hora Actual: {nowState.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+
+                        let rowElement = null;
 
                         if (booking) {
                           if (booking.status === 'bloqueado') {
-                            return (
-                              <tr key={rowKey} className="hover:bg-red-500/[0.01] bg-red-950/[0.01] transition-colors group">
+                            rowElement = (
+                              <tr key={rowKey} className={`hover:bg-red-500/[0.01] bg-red-950/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
                                 <td className="py-4.5 px-6 space-y-1">
                                   <div className="flex items-center space-x-1.5 font-bold text-red-400">
                                     <Clock size={11} />
@@ -1797,210 +2984,359 @@ export default function AdminPage() {
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
                                   <button
+                                    disabled={isPast}
                                     onClick={() => {
                                       deleteBooking(booking.id);
                                       triggerNotification(`Horario ${time} desbloqueado.`);
                                     }}
-                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary text-[10px] font-semibold rounded-lg border border-white/10 transition-all cursor-pointer inline-flex items-center space-x-1"
+                                    className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg border transition-all inline-flex items-center space-x-1 ${
+                                      isPast 
+                                        ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50' 
+                                        : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer'
+                                    }`}
+                                    title={isPast ? "No se puede desbloquear un horario pasado" : "Desbloquear"}
                                   >
                                     <span>Desbloquear</span>
                                   </button>
                                 </td>
                               </tr>
                             );
-                          }
-
-                          return (
-                            <tr key={rowKey} className="hover:bg-white/[0.01] transition-colors group">
-                              <td className="py-4.5 px-6 space-y-1">
-                                <div className="flex items-center space-x-1.5 font-bold text-white">
-                                  <Clock size={11} className="text-gold" />
-                                  <span>{booking.time} hrs</span>
-                                </div>
-                                <div className="text-[8px] font-mono text-text-secondary">{booking.id}</div>
-                              </td>
-                              <td className="py-4.5 px-6 space-y-0.5">
-                                <div className="font-semibold text-white">{booking.clientName}</div>
-                                {(() => {
-                                  const cleanPhone = booking.clientPhone.replace(/\D/g, '');
-                                  return (
-                                    <a
-                                      href={`https://wa.me/${cleanPhone}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-[10px] text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer w-fit font-mono"
-                                    >
-                                      <Smartphone size={10} className="text-emerald-500/80" />
-                                      <span>{booking.clientPhone}</span>
-                                    </a>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-4.5 px-6 font-medium text-white/90">{booking.serviceName}</td>
-                              <td className="py-4.5 px-6">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-gold">
-                                    {specialist.avatar}
-                                  </span>
-                                  <span>{specialist.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-4.5 px-6">
-                                <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
-                                  {booking.channel === 'Web' ? <Globe size={11} className="text-blue-400" /> : <Smartphone size={11} className="text-emerald-400" />}
-                                  <span>{booking.channel}</span>
-                                </span>
-                              </td>
-                              {(() => {
-                                const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status);
-                                return (
-                                  <td className="py-4.5 px-6">
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
-                                      computedStatus === 'En Proceso'
-                                        ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
-                                        : computedStatus === 'proximo'
-                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
-                                        : computedStatus === 'reservado'
-                                        ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
-                                        : computedStatus === 'Finalizado'
-                                        ? 'bg-zinc-700/5 border-zinc-700/35 text-zinc-400'
-                                        : 'bg-red-500/5 border-red-500/35 text-red-400'
-                                    }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${
-                                        computedStatus === 'En Proceso'
-                                          ? 'bg-emerald-400'
-                                          : computedStatus === 'proximo'
-                                          ? 'bg-amber-400'
-                                          : computedStatus === 'reservado'
-                                          ? 'bg-blue-400'
-                                          : computedStatus === 'Finalizado'
-                                          ? 'bg-zinc-400'
-                                          : 'bg-red-400'
-                                      }`} />
-                                      <span>{computedStatus}</span>
-                                    </span>
-                                  </td>
-                                );
-                              })()}
-                              <td className="py-4.5 px-6 text-right">
-                                <div className="flex items-center justify-end space-x-2">
-                                  {(() => {
-                                    const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status);
-                                    if (computedStatus === 'Finalizado') {
-                                      const clientObj = clients.find(c => c.phone === booking.clientPhone);
-                                      const isBad = clientObj?.notSoGoodClient;
-                                      if (isBad) {
-                                        return (
-                                          <span className="text-[10px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2.5 py-1 rounded-lg select-none">
-                                            No asistió (Registrado)
-                                          </span>
-                                        );
-                                      }
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            markAsNotGoodClient(booking.clientPhone);
-                                            triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
-                                          }}
-                                          className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center space-x-1"
-                                          title="Marcar Inasistencia (No-show)"
-                                        >
-                                          <UserX size={10} />
-                                          <span>No asistió</span>
-                                        </button>
-                                      );
-                                    }
-                                    return null;
+                          } else {
+                            const isContinuation = booking.time !== time;
+                            const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
+                            rowElement = (
+                              <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast || isContinuation ? 'opacity-50 select-none grayscale-[30%]' : ''}`}>
+                                <td className="py-4.5 px-6 space-y-1">
+                                  <div className="flex items-center space-x-1.5 font-bold text-white">
+                                    <Clock size={11} className={isContinuation ? "text-white/20" : "text-gold"} />
+                                    <span>{time} hrs</span>
+                                  </div>
+                                  <div className="text-[8px] font-mono text-text-secondary">
+                                    {isContinuation ? "Ocupado por cita previa" : booking.id}
+                                  </div>
+                                </td>
+                                <td className="py-4.5 px-6 space-y-0.5">
+                                  <div className="font-semibold text-white">{booking.clientName}</div>
+                                  {!isContinuation && (() => {
+                                    const cleanPhone = booking.clientPhone.replace(/\D/g, '');
+                                    return (
+                                      <a
+                                        href={`https://wa.me/${cleanPhone}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer w-fit font-mono"
+                                      >
+                                        <Smartphone size={10} className="text-emerald-500/80" />
+                                        <span>{booking.clientPhone}</span>
+                                      </a>
+                                    );
                                   })()}
-                                  <button
-                                    onClick={() => {
-                                      deleteBooking(booking.id);
-                                      triggerNotification(`Reserva ${booking.id} eliminada.`);
-                                    }}
-                                    className="p-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded border border-transparent hover:border-red-500/20 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                                    title="Eliminar Reserva"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
+                                </td>
+                                <td className="py-4.5 px-6 font-medium text-white/90">
+                                  {booking.serviceName}
+                                </td>
+                                <td className="py-4.5 px-6">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-gold">
+                                      {specialist.avatar}
+                                    </span>
+                                    <span>{specialist.name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4.5 px-6">
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
+                                    {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
+                                    {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
+                                    {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
+                                    <span>{booking.channel}</span>
+                                  </span>
+                                </td>
+                                <td className="py-4.5 px-6">
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
+                                    isContinuation
+                                      ? 'bg-zinc-700/5 border-zinc-700/35 text-zinc-400'
+                                      : computedStatus === 'En Proceso'
+                                      ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
+                                      : computedStatus === 'Espera'
+                                      ? 'bg-amber-500/5 border-amber-500/35 text-amber-400 animate-pulse'
+                                      : computedStatus === 'proximo'
+                                      ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
+                                      : computedStatus === 'reservado'
+                                      ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
+                                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                      isContinuation
+                                        ? 'bg-zinc-400'
+                                        : computedStatus === 'En Proceso'
+                                        ? 'bg-emerald-400'
+                                        : computedStatus === 'Espera'
+                                        ? 'bg-amber-400'
+                                        : computedStatus === 'proximo'
+                                        ? 'bg-amber-400'
+                                        : computedStatus === 'reservado'
+                                        ? 'bg-blue-400'
+                                        : 'bg-emerald-400'
+                                    }`} />
+                                    <span>
+                                      {isContinuation ? 'En Curso' : 
+                                       computedStatus === 'Finalizado' ? 'Pagado' : 
+                                       computedStatus === 'Espera' ? 'En Espera' : 
+                                       computedStatus}
+                                    </span>
+                                  </span>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex items-center justify-end space-x-2">
+                                    {isContinuation ? (
+                                      <span className="text-[10px] text-white/35 italic select-none">
+                                        Horario ocupado
+                                      </span>
+                                    ) : (
+                                      <>
+                                        {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
+                                          <button
+                                            disabled={isPast}
+                                            onClick={() => {
+                                              updateBookingStatus(booking.id, 'en_proceso');
+                                              triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
+                                            }}
+                                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                              isPast
+                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                : activeBusinessTab === 'barberia'
+                                                ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
+                                                : activeBusinessTab === 'peluqueria'
+                                                ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
+                                                : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
+                                            }`}
+                                          >
+                                            <span>Iniciar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'Espera' && (
+                                          <button
+                                            disabled={true}
+                                            title="Debe finalizar el servicio en curso de este especialista primero"
+                                            className="px-2.5 py-1 text-[10px] font-bold rounded-lg border bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50 flex items-center space-x-1"
+                                          >
+                                            <span>Iniciar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'En Proceso' && (
+                                          <button
+                                            disabled={isPast}
+                                            onClick={() => {
+                                              updateBookingStatus(booking.id, 'completado');
+                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
+                                            }}
+                                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                              isPast
+                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
+                                            }`}
+                                          >
+                                            <span>Cobrar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'Finalizado' && (() => {
+                                          const clientObj = clients.find(c => c.phone === booking.clientPhone);
+                                          const isBad = clientObj?.notSoGoodClient;
+                                          if (isBad) {
+                                            return (
+                                              <span className="text-[10px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2.5 py-1 rounded-lg select-none">
+                                                No asistió (Registrado)
+                                              </span>
+                                            );
+                                          }
+                                          return (
+                                            <button
+                                              disabled={isPast}
+                                              onClick={() => {
+                                                markAsNotGoodClient(booking.clientPhone);
+                                                triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
+                                              }}
+                                              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                                isPast
+                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
+                                              }`}
+                                              title={isPast ? "No se puede marcar una cita pasada" : "Marcar Inasistencia (No-show)"}
+                                            >
+                                              <UserX size={10} />
+                                              <span>No asistió</span>
+                                            </button>
+                                          );
+                                        })()}
+                                        {computedStatus !== 'Finalizado' && (
+                                          <button
+                                            disabled={isPast}
+                                            onClick={() => {
+                                              deleteBooking(booking.id);
+                                              triggerNotification(`Reserva ${booking.id} eliminada.`);
+                                            }}
+                                            className={`p-1.5 rounded border transition-all ${
+                                              isPast 
+                                                ? 'text-text-secondary/30 cursor-not-allowed border-transparent opacity-30' 
+                                                : 'hover:bg-red-500/10 text-red-400 hover:text-red-300 border-transparent hover:border-red-500/20 cursor-pointer opacity-0 group-hover:opacity-100'
+                                            }`}
+                                            title={isPast ? "No se puede eliminar una cita pasada" : "Eliminar Reserva"}
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+                        } else {
+                          const isWithinShift = isSlotWithinWorkShift(specialist.id, targetDate, time);
+                          if (isWithinShift) {
+                            rowElement = (
+                              <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
+                                <td className="py-4.5 px-6 space-y-1">
+                                  <div className="flex items-center space-x-1.5 font-bold text-white/35">
+                                    <Clock size={11} />
+                                    <span>{time} hrs</span>
+                                  </div>
+                                  <div className="text-[8px] font-mono text-white/20">DISPONIBLE</div>
+                                </td>
+                                <td className="py-4.5 px-6 text-white/30 italic font-light">
+                                  Disponible
+                                </td>
+                                <td className="py-4.5 px-6 text-white/20 font-light italic">
+                                  Sin agendar
+                                </td>
+                                <td className="py-4.5 px-6">
+                                  <div className="flex items-center space-x-2 text-white/40">
+                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold">
+                                      {specialist.avatar}
+                                    </span>
+                                    <span>{specialist.name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4.5 px-6 text-white/20">-</td>
+                                <td className="py-4.5 px-6">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border border-dashed border-white/10 text-white/20">
+                                    Libre
+                                  </span>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      disabled={isPast}
+                                      onClick={() => {
+                                        setPrefillSpecialistId(specialist.id);
+                                        setPrefillDate(targetDate);
+                                        setPrefillTime(time);
+                                        setIsManualBookingOpen(true);
+                                      }}
+                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                        isPast
+                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                          : activeBusinessTab === 'barberia'
+                                          ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
+                                          : activeBusinessTab === 'peluqueria'
+                                          ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
+                                          : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
+                                      }`}
+                                    >
+                                      <span>Agendar</span>
+                                    </button>
+                                    <button
+                                      disabled={isPast}
+                                      onClick={() => {
+                                        addBooking({
+                                          clientName: 'Horario Bloqueado',
+                                          clientPhone: '-',
+                                          clientEmail: '-',
+                                          category: activeBusinessTab,
+                                          serviceName: 'Bloqueo Administrativo',
+                                          price: '$0',
+                                          specialistName: specialist.name,
+                                          date: targetDate,
+                                          time: time,
+                                          channel: 'Presencial',
+                                          status: 'bloqueado'
+                                        });
+                                        triggerNotification(`Horario ${time} bloqueado con éxito.`);
+                                      }}
+                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                        isPast
+                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                          : 'bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 border-white/5 hover:border-red-500/20 cursor-pointer'
+                                      }`}
+                                    >
+                                      <span>Bloquear</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          } else {
+                            rowElement = (
+                              <tr key={rowKey} className={`hover:bg-amber-500/[0.01] bg-amber-950/[0.005] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
+                                <td className="py-4.5 px-6 space-y-1">
+                                  <div className="flex items-center space-x-1.5 font-bold text-amber-500/60">
+                                    <Clock size={11} />
+                                    <span>{time} hrs</span>
+                                  </div>
+                                  <div className="text-[8px] font-mono text-amber-500/50">NO LABORAL</div>
+                                </td>
+                                <td className="py-4.5 px-6 text-amber-500/70 font-semibold italic">
+                                  Disponible (Sobrecupo)
+                                </td>
+                                <td className="py-4.5 px-6 text-white/10 font-light italic">
+                                  Fuera de jornada
+                                </td>
+                                <td className="py-4.5 px-6">
+                                  <div className="flex items-center space-x-2 text-white/40">
+                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold">
+                                      {specialist.avatar}
+                                    </span>
+                                    <span>{specialist.name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4.5 px-6 text-white/10">-</td>
+                                <td className="py-4.5 px-6">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border border-dashed border-amber-500/35 text-amber-500/60 bg-amber-500/[0.01]">
+                                    Sobrecupo
+                                  </span>
+                                </td>
+                                <td className="py-4.5 px-6 text-right">
+                                  <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      disabled={isPast}
+                                      onClick={() => {
+                                        setPrefillSpecialistId(specialist.id);
+                                        setPrefillDate(targetDate);
+                                        setPrefillTime(time);
+                                        setIsManualBookingOpen(true);
+                                      }}
+                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                        isPast
+                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                          : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20 cursor-pointer shadow-sm shadow-amber-500/5'
+                                      }`}
+                                    >
+                                      <span>Sobrecupo</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
                         }
 
-                        // RENDER AVAILABLE SLOT
                         return (
-                          <tr key={rowKey} className="hover:bg-white/[0.01] transition-colors group">
-                            <td className="py-4.5 px-6 space-y-1">
-                              <div className="flex items-center space-x-1.5 font-bold text-white/35">
-                                <Clock size={11} />
-                                <span>{time} hrs</span>
-                              </div>
-                              <div className="text-[8px] font-mono text-white/20">DISPONIBLE</div>
-                            </td>
-                            <td className="py-4.5 px-6 text-white/30 italic font-light">
-                              Disponible
-                            </td>
-                            <td className="py-4.5 px-6 text-white/20 font-light italic">
-                              Sin agendar
-                            </td>
-                            <td className="py-4.5 px-6">
-                              <div className="flex items-center space-x-2 text-white/40">
-                                <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold">
-                                  {specialist.avatar}
-                                </span>
-                                <span>{specialist.name}</span>
-                              </div>
-                            </td>
-                            <td className="py-4.5 px-6 text-white/20">-</td>
-                            <td className="py-4.5 px-6">
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border border-dashed border-white/10 text-white/20">
-                                Libre
-                              </span>
-                            </td>
-                            <td className="py-4.5 px-6 text-right">
-                              <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => {
-                                    setPrefillSpecialistId(specialist.id);
-                                    setPrefillDate(targetDate);
-                                    setPrefillTime(time);
-                                    setIsManualBookingOpen(true);
-                                  }}
-                                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center space-x-1 ${
-                                    activeBusinessTab === 'barberia'
-                                      ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20'
-                                      : activeBusinessTab === 'peluqueria'
-                                      ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20'
-                                      : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20'
-                                  }`}
-                                >
-                                  <span>Agendar</span>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    addBooking({
-                                      clientName: 'Horario Bloqueado',
-                                      clientPhone: '-',
-                                      clientEmail: '-',
-                                      category: activeBusinessTab,
-                                      serviceName: 'Bloqueo Administrativo',
-                                      price: '$0',
-                                      specialistName: specialist.name,
-                                      date: targetDate,
-                                      time: time,
-                                      channel: 'Walk-in',
-                                      status: 'bloqueado'
-                                    });
-                                    triggerNotification(`Horario ${time} bloqueado con éxito.`);
-                                  }}
-                                  className="px-2.5 py-1 bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 text-[10px] font-bold rounded-lg border border-white/5 hover:border-red-500/20 transition-all cursor-pointer flex items-center space-x-1"
-                                >
-                                  <span>Bloquear</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                          <React.Fragment key={rowKey}>
+                            {showLineBeforeFirstSlot && timeIndicatorRow}
+                            {rowElement}
+                            {showLineAfterThisSlot && timeIndicatorRow}
+                          </React.Fragment>
                         );
                       })
                     ) : (
@@ -2106,37 +3442,43 @@ export default function AdminPage() {
                               </td>
                               <td className="py-4.5 px-6">
                                 <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
-                                  {booking.channel === 'Web' ? <Globe size={11} className="text-blue-400" /> : <Smartphone size={11} className="text-emerald-400" />}
+                                  {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
+                                  {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
+                                  {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
                                   <span>{booking.channel}</span>
                                 </span>
                               </td>
                               {(() => {
-                                const computedStatus = getCurrentBookingStatus(booking.date, booking.time, booking.status);
+                                const computedStatus = getCurrentBookingStatus(booking.date, booking.time, booking.status, specialist.name);
                                 return (
                                   <td className="py-4.5 px-6">
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
                                       computedStatus === 'En Proceso'
                                         ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
+                                        : computedStatus === 'Espera'
+                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400 animate-pulse'
                                         : computedStatus === 'proximo'
                                         ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
                                         : computedStatus === 'reservado'
                                         ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
-                                        : computedStatus === 'Finalizado'
-                                        ? 'bg-zinc-700/5 border-zinc-700/35 text-zinc-400'
-                                        : 'bg-red-500/5 border-red-500/35 text-red-400'
+                                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                                     }`}>
                                       <span className={`w-1.5 h-1.5 rounded-full ${
                                         computedStatus === 'En Proceso'
                                           ? 'bg-emerald-400'
+                                          : computedStatus === 'Espera'
+                                          ? 'bg-amber-400'
                                           : computedStatus === 'proximo'
                                           ? 'bg-amber-400'
                                           : computedStatus === 'reservado'
                                           ? 'bg-blue-400'
-                                          : computedStatus === 'Finalizado'
-                                          ? 'bg-zinc-400'
-                                          : 'bg-red-400'
+                                          : 'bg-emerald-400'
                                       }`} />
-                                      <span>{computedStatus}</span>
+                                      <span>
+                                        {computedStatus === 'Finalizado' ? 'Pagado' : 
+                                         computedStatus === 'Espera' ? 'En Espera' : 
+                                         computedStatus}
+                                      </span>
                                     </span>
                                   </td>
                                 );
@@ -2144,43 +3486,79 @@ export default function AdminPage() {
                               <td className="py-4.5 px-6 text-right">
                                 <div className="flex items-center justify-end space-x-2">
                                   {(() => {
-                                    const computedStatus = getCurrentBookingStatus(booking.date, booking.time, booking.status);
-                                    if (computedStatus === 'Finalizado') {
-                                      const clientObj = clients.find(c => c.phone === booking.clientPhone);
-                                      const isBad = clientObj?.notSoGoodClient;
-                                      if (isBad) {
-                                        return (
-                                          <span className="text-[10px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2.5 py-1 rounded-lg select-none">
-                                            No asistió (Registrado)
-                                          </span>
-                                        );
-                                      }
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            markAsNotGoodClient(booking.clientPhone);
-                                            triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
-                                          }}
-                                          className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center space-x-1"
-                                          title="Marcar Inasistencia (No-show)"
-                                        >
-                                          <UserX size={10} />
-                                          <span>No asistió</span>
-                                        </button>
-                                      );
-                                    }
-                                    return null;
+                                    const computedStatus = getCurrentBookingStatus(booking.date, booking.time, booking.status, specialist.name);
+                                    return (
+                                      <>
+                                        {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
+                                          <button
+                                            onClick={() => {
+                                              updateBookingStatus(booking.id, 'en_proceso');
+                                              triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
+                                            }}
+                                            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white text-[10px] font-bold rounded-lg border border-white/10 transition-all cursor-pointer"
+                                          >
+                                            <span>Iniciar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'Espera' && (
+                                          <button
+                                            disabled={true}
+                                            title="Debe finalizar el servicio en curso de este especialista primero"
+                                            className="px-2.5 py-1 text-[10px] font-bold rounded-lg border bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50 flex items-center space-x-1"
+                                          >
+                                            <span>Iniciar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'En Proceso' && (
+                                          <button
+                                            onClick={() => {
+                                              updateBookingStatus(booking.id, 'completado');
+                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
+                                            }}
+                                            className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20 transition-all cursor-pointer"
+                                          >
+                                            <span>Cobrar</span>
+                                          </button>
+                                        )}
+                                        {computedStatus === 'Finalizado' && (() => {
+                                          const clientObj = clients.find(c => c.phone === booking.clientPhone);
+                                          const isBad = clientObj?.notSoGoodClient;
+                                          if (isBad) {
+                                            return (
+                                              <span className="text-[10px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2.5 py-1 rounded-lg select-none">
+                                                No asistió (Registrado)
+                                              </span>
+                                            );
+                                          }
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                markAsNotGoodClient(booking.clientPhone);
+                                                triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
+                                              }}
+                                              className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center space-x-1"
+                                              title="Marcar Inasistencia (No-show)"
+                                            >
+                                              <UserX size={10} />
+                                              <span>No asistió</span>
+                                            </button>
+                                          );
+                                        })()}
+                                        {computedStatus !== 'Finalizado' && (
+                                          <button
+                                            onClick={() => {
+                                              deleteBooking(booking.id);
+                                              triggerNotification(`Reserva ${booking.id} eliminada.`);
+                                            }}
+                                            className="p-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded border border-transparent hover:border-red-500/20 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                                            title="Eliminar Reserva"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        )}
+                                      </>
+                                    );
                                   })()}
-                                  <button
-                                    onClick={() => {
-                                      deleteBooking(booking.id);
-                                      triggerNotification(`Reserva ${booking.id} eliminada.`);
-                                    }}
-                                    className="p-1.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded border border-transparent hover:border-red-500/20 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                                    title="Eliminar Reserva"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -2250,57 +3628,77 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-xs font-light">
-                    {filteredClients.map((client) => {
-                      const isSelected = selectedClient?.phone === client.phone;
-                      return (
-                        <tr 
-                          key={client.phone} 
-                          onClick={() => setSelectedClient(client)}
-                          className={`hover:bg-white/[0.01] transition-colors cursor-pointer ${
-                            isSelected ? 'bg-white/[0.02] border-l-2 border-gold' : ''
-                          }`}
-                        >
-                          <td className="py-4.5 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white">{client.name}</span>
-                              {client.notSoGoodClient && (
-                                <span className="text-[8px] font-bold uppercase tracking-wider bg-red-500/10 border border-red-500/25 text-red-400 px-2 py-0.5 rounded-full select-none">
-                                  No tan buen cliente
-                                </span>
+                    {filteredClients.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 px-4 text-center text-text-secondary text-xs italic">
+                          No hay clientes registrados en esta unidad de negocio.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredClients.map((client) => {
+                        const isSelected = selectedClient?.phone === client.phone;
+                        return (
+                          <tr 
+                            key={client.phone} 
+                            onClick={() => setSelectedClient(client)}
+                            className={`hover:bg-white/[0.01] transition-colors cursor-pointer ${
+                              isSelected ? 'bg-white/[0.02] border-l-2 border-gold' : ''
+                            }`}
+                          >
+                            <td className="py-4.5 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-white">{client.name}</span>
+                                {client.notSoGoodClient && (
+                                  <span className="text-[8px] font-bold uppercase tracking-wider bg-red-500/10 border border-red-500/25 text-red-400 px-2 py-0.5 rounded-full select-none">
+                                    No tan buen cliente
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-text-secondary mt-0.5">
+                                <a 
+                                  href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
+                                >
+                                  <span>{client.phone}</span>
+                                </a>
+                              </div>
+                            </td>
+                            <td className="py-4.5 px-4 flex flex-wrap gap-1.5">
+                              {client.businesses.includes('barberia') && (
+                                <span className="text-[8px] font-bold uppercase tracking-wider bg-gold/5 border border-gold/15 text-gold px-2 py-0.5 rounded-full">Barbería</span>
                               )}
-                            </div>
-                            <div className="text-[10px] text-text-secondary mt-0.5">
-                              <a 
-                                href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
-                              >
-                                <span>{client.phone}</span>
-                              </a>
-                            </div>
-                          </td>
-                          <td className="py-4.5 px-4 flex flex-wrap gap-1.5">
-                            {client.businesses.includes('barberia') && (
-                              <span className="text-[8px] font-bold uppercase tracking-wider bg-gold/5 border border-gold/15 text-gold px-2 py-0.5 rounded-full">Barbería</span>
-                            )}
-                            {client.businesses.includes('peluqueria') && (
-                              <span className="text-[8px] font-bold uppercase tracking-wider bg-bronze/5 border border-bronze/15 text-[#CD7F32] px-2 py-0.5 rounded-full">Peluquería</span>
-                            )}
-                            {client.businesses.includes('terapias') && (
-                              <span className="text-[8px] font-bold uppercase tracking-wider bg-platinum/5 border border-platinum/15 text-[#E2E0D8] px-2 py-0.5 rounded-full">Terapias</span>
-                            )}
-                          </td>
-                          <td className="py-4.5 px-4 text-right font-semibold text-white/95">
-                            ${client.totalSpent.toLocaleString('es-CL')}
-                          </td>
-                          <td className="py-4.5 px-4 text-right">
-                            <ChevronRight size={14} className="text-text-secondary group-hover:text-gold inline-block transition-transform group-hover:translate-x-0.5" />
-                          </td>
-                        </tr>
-                      );
-                    })}
+                              {client.businesses.includes('peluqueria') && (
+                                <span className="text-[8px] font-bold uppercase tracking-wider bg-bronze/5 border border-bronze/15 text-[#CD7F32] px-2 py-0.5 rounded-full">Peluquería</span>
+                              )}
+                              {client.businesses.includes('terapias') && (
+                                <span className="text-[8px] font-bold uppercase tracking-wider bg-platinum/5 border border-platinum/15 text-[#E2E0D8] px-2 py-0.5 rounded-full">Terapias</span>
+                              )}
+                            </td>
+                            <td className="py-4.5 px-4 text-right font-semibold text-white/95">
+                              ${client.totalSpent.toLocaleString('es-CL')}
+                            </td>
+                            <td className="py-4.5 px-4 text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClientToDelete({ phone: client.phone, name: client.name });
+                                  }}
+                                  className="p-1.5 hover:bg-red-500/10 text-white/30 hover:text-red-400 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                                  title="Eliminar Cliente"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                                <ChevronRight size={14} className="text-text-secondary group-hover:text-gold transition-transform group-hover:translate-x-0.5" />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2311,7 +3709,60 @@ export default function AdminPage() {
               {selectedClient ? (
                 <div className="space-y-6">
                   {/* Avatar & Basic Info */}
-                  <div className="text-center space-y-3 pb-6 border-b border-white/5">
+                  <div className="text-center space-y-3 pb-6 border-b border-white/5 relative group/detail">
+                    <div className="absolute right-0 top-0 flex items-center space-x-1">
+                      {/* Botón de editar cliente */}
+                      <button
+                        onClick={() => {
+                          setClientToEdit(selectedClient);
+                          setEditClientName(selectedClient.name || '');
+                          
+                          // Parse country code and phone
+                          const rawPhone = selectedClient.phone || '';
+                          let parsedCountryCode = '+56';
+                          let parsedPhone = rawPhone.replace(/\s+/g, '');
+                          
+                          const countries = [
+                            { code: '+56', label: 'Chile (+56)' },
+                            { code: '+54', label: 'Argentina (+54)' },
+                            { code: '+51', label: 'Perú (+51)' },
+                            { code: '+57', label: 'Colombia (+57)' },
+                            { code: '+34', label: 'España (+34)' },
+                            { code: '+52', label: 'México (+52)' },
+                            { code: '+598', label: 'Uruguay (+598)' },
+                          ];
+
+                          const matchedCountry = countries.find(c => parsedPhone.startsWith(c.code));
+                          if (matchedCountry) {
+                            parsedCountryCode = matchedCountry.code;
+                            parsedPhone = parsedPhone.substring(matchedCountry.code.length);
+                          } else if (parsedPhone.startsWith('+')) {
+                            if (parsedPhone.length > 9) {
+                              parsedCountryCode = parsedPhone.substring(0, parsedPhone.length - 9);
+                              parsedPhone = parsedPhone.substring(parsedPhone.length - 9);
+                            }
+                          }
+
+                          setCountryCode(parsedCountryCode);
+                          setEditClientPhone(parsedPhone.replace(/\D/g, ''));
+                          setPhoneError('');
+                          setEditClientEmail(selectedClient.email || '');
+                          setIsEditingClient(true);
+                        }}
+                        className="p-2 text-white/30 hover:text-gold hover:bg-gold/10 rounded-xl transition-all cursor-pointer"
+                        title="Editar Cliente"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                      {/* Botón de eliminar cliente */}
+                      <button
+                        onClick={() => setClientToDelete({ phone: selectedClient.phone, name: selectedClient.name })}
+                        className="p-2 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+                        title="Eliminar Cliente"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                     <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-2xl font-bold text-gold mx-auto shadow-[inset_0_2px_12px_rgba(198,155,60,0.15)]">
                       {selectedClient.name.split(' ').map((n: string) => n[0]).join('')}
                     </div>
@@ -2324,29 +3775,39 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-text-secondary tracking-wide flex items-center justify-center gap-1.5 flex-wrap">
+                      <div className="flex items-center justify-center space-x-3 pt-1">
                         <a 
                           href={`https://wa.me/${selectedClient.phone.replace(/\D/g, '')}`} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="hover:text-emerald-400 hover:underline transition-colors flex items-center gap-1 cursor-pointer font-mono"
+                          className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                          title={`WhatsApp: ${selectedClient.phone}`}
                         >
-                          <Smartphone size={10} className="text-emerald-500/80" />
-                          <span>{selectedClient.phone}</span>
+                          <svg
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                            className="w-3.5 h-3.5"
+                          >
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.16 5.348 5.507 0 12.008 0c3.148.002 6.11 1.228 8.332 3.454a11.758 11.758 0 0 1 3.451 8.35c-.006 6.525-5.352 11.87-11.85 11.87-.193-.001-.387-.006-.579-.017l-5.61 1.472A1.03 1.03 0 0 1 .057 24zm6.59-4.846c1.6.95 3.6 1.455 5.362 1.456 5.4 0 9.8-4.4 9.8-9.8 0-2.613-1.018-5.07-2.868-6.92C17.09 2.038 14.63 1.02 12.01 1.02c-5.4 0-9.8 4.4-9.8 9.8.001 1.95.586 3.86 1.694 5.485l.1.15-.99 3.62 3.7-.97.14.09zm10.158-6.685c-.247-.123-1.463-.722-1.69-.804-.226-.082-.39-.123-.555.124-.165.247-.638.804-.783.969-.144.165-.29.185-.536.062-.247-.124-1.042-.384-1.986-1.226-.733-.653-1.228-1.46-1.372-1.707-.144-.247-.015-.38.109-.503.111-.11.247-.288.37-.433.124-.144.165-.247.248-.412.082-.165.04-.309-.02-.433-.062-.124-.555-1.339-.76-1.833-.2-.482-.401-.416-.554-.424-.144-.007-.31-.008-.474-.008-.165 0-.433.062-.66.309-.226.247-.865.845-.865 2.06 0 1.215.886 2.39 1.009 2.555.124.165 1.744 2.662 4.225 3.731.59.254 1.05.405 1.41.519.593.189 1.132.162 1.558.098.475-.072 1.463-.598 1.669-1.175.206-.577.206-1.071.144-1.175-.062-.103-.226-.165-.473-.288z" />
+                          </svg>
                         </a>
-                        <span className="text-white/20">•</span>
                         {selectedClient.email ? (
                           <a 
                             href={`mailto:${selectedClient.email}`}
-                            className="hover:text-gold hover:underline transition-colors flex items-center gap-1 cursor-pointer"
+                            className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-gold hover:bg-gold/5 hover:border-gold/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                            title={`Email: ${selectedClient.email}`}
                           >
-                            <Mail size={10} className="text-gold/80" />
-                            <span>{selectedClient.email}</span>
+                            <Mail size={13} />
                           </a>
                         ) : (
-                          <span className="text-white/40">Sin correo</span>
+                          <div 
+                            className="w-8 h-8 rounded-full bg-white/5 border border-white/5 text-white/20 flex items-center justify-center select-none"
+                            title="Sin correo"
+                          >
+                            <Mail size={13} className="opacity-40" />
+                          </div>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
 
@@ -2380,12 +3841,14 @@ export default function AdminPage() {
                             <p className="text-xs text-text-secondary italic">Sin reservas registradas.</p>
                           ) : (
                             clientBookings.map((b) => {
-                              const status = getCurrentBookingStatus(b.date, b.time, b.status);
+                              const status = getCurrentBookingStatus(b.date, b.time, b.status, b.specialistName);
                               let statusStyles = '';
                               if (status === 'Finalizado') {
-                                statusStyles = 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400';
+                                statusStyles = 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'; // pagado
                               } else if (status === 'En Proceso') {
                                 statusStyles = 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400';
+                              } else if (status === 'Espera') {
+                                statusStyles = 'bg-amber-500/10 border-amber-500/25 text-amber-400 animate-pulse';
                               } else if (status === 'proximo') {
                                 statusStyles = 'bg-blue-500/10 border-blue-500/25 text-blue-400';
                               } else { // reservado
@@ -2403,7 +3866,7 @@ export default function AdminPage() {
                                       <p className="text-[9px] text-text-secondary">{b.specialistName}</p>
                                     </div>
                                     <span className={`text-[8px] uppercase tracking-wider font-bold border px-2 py-0.5 rounded-full whitespace-nowrap ${statusStyles}`}>
-                                      {status}
+                                      {status === 'Finalizado' ? 'Pagado' : status === 'Espera' ? 'Espera' : status}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center text-[9px] text-text-secondary border-t border-white/5 pt-1.5 font-mono">
@@ -2864,57 +4327,60 @@ export default function AdminPage() {
 
         {/* 4. VISUAL CMS TAB */}
         {activeTab === 'vsm' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className={vsmFullscreen ? "fixed inset-0 z-50 bg-[#080808] p-4 overflow-y-auto flex flex-col" : "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"}>
             
-            {/* Left Column: Visual CMS Sidebar Navigation */}
-            <div className="lg:col-span-3 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[500px]">
-              <div className="space-y-6 text-left">
-                <div className="border-b border-white/5 pb-4">
-                  <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">Páginas Disponibles</span>
-                </div>
-                <div className="flex flex-col space-y-2">
-                  {[
-                    { id: 'home', label: 'Inicio' },
-                    { id: 'barberia', label: 'Barbería' },
-                    { id: 'peluqueria', label: 'Peluquería' },
-                    { id: 'peluqueria-gallery', label: 'Galería Peluquería' },
-                    { id: 'terapias', label: 'Terapias' }
-                  ].map((p) => (
+            <div className={vsmFullscreen ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full flex-grow" : "contents"}>
+              {/* Left Column: Visual CMS Sidebar Navigation */}
+              {!vsmFullscreen && (
+                <div className="lg:col-span-3 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[500px]">
+                  <div className="space-y-6 text-left">
+                    <div className="border-b border-white/5 pb-4">
+                      <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">Páginas Disponibles</span>
+                    </div>
+                    <div className="flex flex-col space-y-2">
+                      {[
+                        { id: 'home', label: 'Inicio' },
+                        { id: 'barberia', label: 'Barbería' },
+                        { id: 'peluqueria', label: 'Peluquería' },
+                        { id: 'peluqueria-gallery', label: 'Galería Peluquería' },
+                        { id: 'terapias', label: 'Terapias' }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setVsmPage(p.id as any);
+                            setVsmPeluEntered(false);
+                          }}
+                          className={`w-full flex items-center space-x-3.5 px-4 py-3 rounded-xl text-xs uppercase tracking-widest font-semibold transition-all duration-300 text-left focus:outline-none cursor-pointer ${
+                            vsmPage === p.id 
+                              ? 'bg-gold/10 border border-gold/25 text-gold' 
+                              : 'text-text-secondary hover:text-white hover:bg-white/[0.02] border border-transparent'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${vsmPage === p.id ? 'bg-gold' : 'bg-white/20'}`} />
+                          <span>{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 space-y-3">
                     <button
-                      key={p.id}
-                      onClick={() => {
-                        setVsmPage(p.id as any);
-                        setVsmPeluEntered(false);
-                      }}
-                      className={`w-full flex items-center space-x-3.5 px-4 py-3 rounded-xl text-xs uppercase tracking-widest font-semibold transition-all duration-300 text-left focus:outline-none cursor-pointer ${
-                        vsmPage === p.id 
-                          ? 'bg-gold/10 border border-gold/25 text-gold' 
-                          : 'text-text-secondary hover:text-white hover:bg-white/[0.02] border border-transparent'
-                      }`}
+                      onClick={handleVsmSave}
+                      className="w-full py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-lg flex items-center justify-center space-x-2 cursor-pointer"
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${vsmPage === p.id ? 'bg-gold' : 'bg-white/20'}`} />
-                      <span>{p.label}</span>
+                      <Save size={14} />
+                      <span>Publicar Web</span>
                     </button>
-                  ))}
+                    <p className="text-[9px] text-text-secondary leading-relaxed font-light text-center">
+                      Edita directamente los textos e imágenes haciendo clic sobre ellos en la ventana del navegador.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="pt-6 border-t border-white/5 space-y-3">
-                <button
-                  onClick={handleVsmSave}
-                  className="w-full py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-lg flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <Save size={14} />
-                  <span>Publicar Web</span>
-                </button>
-                <p className="text-[9px] text-text-secondary leading-relaxed font-light text-center">
-                  Edita directamente los textos e imágenes haciendo clic sobre ellos en la ventana del navegador.
-                </p>
-              </div>
-            </div>
-
-            {/* Right Column: Browser Simulator */}
-            <div className="lg:col-span-9 bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+              {/* Right Column: Browser Simulator */}
+            <div className={vsmFullscreen ? "lg:col-span-12 w-full bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col flex-grow min-h-[calc(100vh-12rem)] pb-20" : "lg:col-span-9 bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col"}>
               
               {/* Browser Header Bar */}
               <div className="py-3 px-6 bg-[#121212] border-b border-white/5 flex items-center justify-between gap-4 select-none">
@@ -2936,42 +4402,14 @@ export default function AdminPage() {
 
                 {/* Controls */}
                 <div className="flex items-center space-x-4 flex-shrink-0">
-                  {/* View Switcher */}
-                  <div className="flex bg-black rounded-lg border border-white/5 p-0.5">
-                    <button
-                      onClick={() => setVsmViewMode('desktop')}
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${
-                        vsmViewMode === 'desktop' ? 'bg-gold/15 text-gold' : 'text-text-secondary hover:text-white'
-                      }`}
-                      title="Vista Escritorio"
-                    >
-                      <Monitor size={12} />
-                    </button>
-                    <button
-                      onClick={() => setVsmViewMode('mobile')}
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${
-                        vsmViewMode === 'mobile' ? 'bg-gold/15 text-gold' : 'text-text-secondary hover:text-white'
-                      }`}
-                      title="Vista Móvil"
-                    >
-                      <Smartphone size={12} />
-                    </button>
-                  </div>
-
-                  {/* Undo / Redo */}
-                  <div className="flex items-center space-x-1 text-text-secondary">
-                    <button className="p-1 hover:text-white transition-colors cursor-not-allowed opacity-40" disabled title="Deshacer">
-                      <Undo2 size={12} />
-                    </button>
-                    <button className="p-1 hover:text-white transition-colors cursor-not-allowed opacity-40" disabled title="Rehacer">
-                      <Redo2 size={12} />
-                    </button>
-                  </div>
-
-                  {/* Zoom indicator */}
-                  <div className="bg-black rounded-lg border border-white/5 px-2.5 py-1 text-[9px] uppercase tracking-widest text-text-secondary font-bold">
-                    ZOOM 100%
-                  </div>
+                  {/* Fullscreen Toggle */}
+                  <button
+                    onClick={() => setVsmFullscreen(!vsmFullscreen)}
+                    className="p-1.5 bg-black rounded-lg border border-white/5 text-text-secondary hover:text-white hover:border-white/25 transition-all cursor-pointer flex items-center justify-center"
+                    title={vsmFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa"}
+                  >
+                    {vsmFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  </button>
                 </div>
               </div>
 
@@ -2979,112 +4417,180 @@ export default function AdminPage() {
               <div className="p-6 bg-black/60 min-h-[500px] flex items-center justify-center overflow-auto max-h-[550px] w-full">
                 
                 {vsmPage === 'peluqueria-gallery' ? (
-                  /* Render the custom Gallery Editor */
-                  <div className="w-full max-w-4xl mx-auto space-y-6 text-left py-2">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                      <div>
-                        <h3 className="font-serif text-lg text-white font-medium">Gestión de Galería de Trabajos</h3>
-                        <p className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">Agrega, edita o elimina los trabajos destacados en la sección de Peluquería</p>
-                      </div>
-                      <button
-                        onClick={handleGalleryItemAdd}
-                        className="py-2.5 px-5 rounded-full bg-gold hover:bg-gold/90 text-black text-[10px] uppercase font-bold tracking-widest flex items-center space-x-1.5 cursor-pointer transition-all shadow-md shadow-gold/10"
-                      >
-                        <Plus size={12} />
-                        <span>Añadir Trabajo</span>
-                      </button>
-                    </div>
+                  /* Render the custom Visual Gallery Editor */
+                  <div className="w-full max-w-4xl mx-auto bg-[#090909] text-[#fdfbf7] rounded-[24px] overflow-hidden border border-white/5 shadow-2xl grid grid-cols-1 md:grid-cols-12 min-h-[460px] text-left select-none relative">
+                    
+                    {/* Left Panel: Featured Image & Technique Details */}
+                    {vsmForm.peluqueria.galleryItems && vsmForm.peluqueria.galleryItems.length > 0 ? (() => {
+                      const currentItem = vsmForm.peluqueria.galleryItems[vsmGalleryIdx] || vsmForm.peluqueria.galleryItems[0];
+                      if (!currentItem) return null;
+                      return (
+                        <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group">
+                          <img
+                            src={currentItem.imageUrl}
+                            alt={currentItem.title}
+                            className="absolute inset-0 object-cover w-full h-full opacity-60 group-hover:opacity-85 transition-all duration-700 pointer-events-none"
+                          />
+                          {/* Dark shading mask */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10 pointer-events-none" />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {(vsmForm.peluqueria.galleryItems || []).map((item) => (
-                        <div key={item.id} className="bg-[#121212] border border-white/5 rounded-2xl p-5 space-y-4 hover:border-white/10 transition-all relative group flex flex-col justify-between">
-                          
-                          {/* Card Header: Image Preview & Remove button */}
-                          <div className="flex gap-4 items-start">
-                            <div className="w-20 h-20 rounded-xl overflow-hidden relative border border-white/10 bg-zinc-900 flex-shrink-0 group">
-                              <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full" />
-                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button
-                                  onClick={() => setEditingAsset({ page: 'peluqueria-gallery', key: 'imageUrl', label: 'Imagen de Portafolio', currentValue: item.imageUrl, itemId: item.id })}
-                                  className="p-1.5 rounded-full bg-gold text-black hover:scale-110 transition-all cursor-pointer"
-                                  title="Cambiar Imagen"
-                                >
-                                  <Camera size={12} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 space-y-3 text-left">
-                              {/* Title */}
-                              <div className="space-y-1">
-                                <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Título del Trabajo</label>
-                                <input
-                                  type="text"
-                                  value={item.title}
-                                  onChange={(e) => handleGalleryItemChange(item.id, 'title', e.target.value)}
-                                  className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30"
-                                  placeholder="Ej. Balayage Premium Vainilla"
-                                />
-                                <span className="text-[7px] text-text-secondary">Se usa para inferir el servicio de reserva (ej: "Coloración")</span>
-                              </div>
-
-                              {/* Style/Technique */}
-                              <div className="space-y-1">
-                                <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Técnica / Detalles</label>
-                                <textarea
-                                  rows={2}
-                                  value={item.technique}
-                                  onChange={(e) => handleGalleryItemChange(item.id, 'technique', e.target.value)}
-                                  className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 resize-none leading-relaxed"
-                                  placeholder="Ej. Balayage tridimensional..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Card Details: Stylist, Duration, Price */}
-                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
-                            <div className="space-y-1 text-left">
-                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Estilista</label>
-                              <input
-                                type="text"
-                                value={item.stylist}
-                                onChange={(e) => handleGalleryItemChange(item.id, 'stylist', e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30"
-                              />
-                            </div>
-                            <div className="space-y-1 text-left">
-                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Duración</label>
-                              <input
-                                type="text"
-                                value={item.duration}
-                                onChange={(e) => handleGalleryItemChange(item.id, 'duration', e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30"
-                              />
-                            </div>
-                            <div className="space-y-1 text-left">
-                              <label className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Precio</label>
-                              <input
-                                type="text"
-                                value={item.price}
-                                onChange={(e) => handleGalleryItemChange(item.id, 'price', e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl py-1.5 px-2.5 text-[10px] text-white focus:outline-none focus:border-gold/30 font-mono"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Card Footer: Remove Button */}
-                          <div className="flex justify-end pt-2 border-t border-white/5">
+                          {/* Image Edit Trigger */}
+                          <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <button
-                              onClick={() => handleGalleryItemDelete(item.id)}
-                              className="py-1 px-3.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center space-x-1"
+                              onClick={() => setEditingAsset({ page: 'peluqueria-gallery', key: 'imageUrl', label: 'Imagen de Portafolio', currentValue: currentItem.imageUrl, itemId: currentItem.id })}
+                              className="bg-black/80 hover:bg-gold hover:text-black border border-white/10 text-white rounded-full px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-lg"
                             >
-                              <Trash2 size={10} />
-                              <span>Eliminar</span>
+                              <Camera size={10} />
+                              <span>Cambiar Imagen</span>
                             </button>
                           </div>
+
+                          {/* Service Linker Selector */}
+                          <div className="absolute top-3 left-3 z-35">
+                            <select
+                              value={currentItem.serviceId || ''}
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                if (selectedId) {
+                                  // Find the linked service in servicesData
+                                  const allServices = Object.values(servicesData).flatMap(section => section.services || []);
+                                  const s = allServices.find(srv => srv.id === selectedId);
+                                  if (s) {
+                                    handleGalleryItemChange(currentItem.id, 'serviceId', selectedId);
+                                    handleGalleryItemChange(currentItem.id, 'title', s.name);
+                                    handleGalleryItemChange(currentItem.id, 'price', s.price);
+                                    handleGalleryItemChange(currentItem.id, 'duration', s.duration);
+                                  }
+                                } else {
+                                  // Unlink serviceId
+                                  handleGalleryItemChange(currentItem.id, 'serviceId', '');
+                                }
+                              }}
+                              className="bg-black/85 hover:bg-black border border-white/10 text-white hover:border-gold/30 rounded-full px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold focus:outline-none transition-all cursor-pointer shadow-lg max-w-[180px] font-sans"
+                            >
+                              <option value="">Texto Libre</option>
+                              {Object.entries(servicesData).map(([catKey, section]) => (
+                                <optgroup key={catKey} label={catKey.toUpperCase()} className="bg-neutral-900 text-white">
+                                  {(section.services || []).map((srv) => (
+                                    <option key={srv.id} value={srv.id}>
+                                      {srv.name} ({srv.price})
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Left/Right Navigation Arrows */}
+                          {vsmForm.peluqueria.galleryItems.length > 1 && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVsmGalleryIdx((prev) => (prev - 1 + vsmForm.peluqueria.galleryItems.length) % vsmForm.peluqueria.galleryItems.length);
+                                }}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/55 border border-white/10 text-white hover:text-black hover:bg-gold hover:border-gold hover:scale-110 transition-all cursor-pointer z-20 focus:outline-none"
+                              >
+                                <ChevronLeft size={14} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVsmGalleryIdx((prev) => (prev + 1) % vsmForm.peluqueria.galleryItems.length);
+                                }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/55 border border-white/10 text-white hover:text-black hover:bg-gold hover:border-gold hover:scale-110 transition-all cursor-pointer z-20 focus:outline-none"
+                              >
+                                <ChevronRight size={14} />
+                              </button>
+                            </>
+                          )}
+
+                          {/* Details overlay at the bottom */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 z-20 space-y-2">
+                            <span className="text-[8px] uppercase tracking-widest text-gold bg-gold/10 border border-gold/25 px-2 py-0.5 rounded-full font-semibold inline-block">
+                              {renderEditableGalleryText(currentItem.id, 'stylist', currentItem.stylist, 'text-gold')}
+                            </span>
+                            <h4 className="font-serif text-lg text-white font-medium tracking-wide">
+                              {renderEditableGalleryText(currentItem.id, 'title', currentItem.title, 'text-white font-serif')}
+                            </h4>
+                            <p className="text-[11px] text-white/70 leading-relaxed font-light max-w-xl">
+                              {renderEditableGalleryText(currentItem.id, 'technique', currentItem.technique, 'text-white/70 font-light')}
+                            </p>
+                            <div className="flex items-center space-x-3 pt-1 text-[10px] text-gold font-light">
+                              <span className="flex items-center gap-1">
+                                <Clock size={11} />
+                                {renderEditableGalleryText(currentItem.id, 'duration', currentItem.duration, 'text-gold')}
+                              </span>
+                              <span>•</span>
+                              <span>
+                                Valor: {renderEditableGalleryText(currentItem.id, 'price', currentItem.price, 'text-gold')}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      ))}
+                      );
+                    })() : (
+                      <div className="col-span-7 flex items-center justify-center text-text-secondary text-xs">No hay trabajos en la galería</div>
+                    )}
+
+                    {/* Right Panel: Thumbnails Grid & Actions */}
+                    <div className="col-span-1 md:col-span-5 p-6 flex flex-col justify-between bg-[#060606] overflow-y-auto max-h-[460px]">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                          <div>
+                            <h3 className="font-serif text-xs text-gold tracking-wide">Trabajos en Galería</h3>
+                            <p className="text-[8px] text-text-secondary tracking-widest uppercase mt-0.5">Gestión visual interactiva</p>
+                          </div>
+                          
+                          {/* Add button */}
+                          <button
+                            onClick={handleGalleryItemAdd}
+                            className="py-1.5 px-3.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase font-bold tracking-widest flex items-center space-x-1 cursor-pointer transition-all shadow-md shadow-gold/10"
+                            title="Añadir Trabajo"
+                          >
+                            <Plus size={10} />
+                            <span>Añadir</span>
+                          </button>
+                        </div>
+
+                        {/* Grid of thumbnails */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {(vsmForm.peluqueria.galleryItems || []).map((item, index) => {
+                            const isSelected = vsmGalleryIdx === index;
+                            return (
+                              <div key={item.id} className="relative group/thumb aspect-square">
+                                <button
+                                  onClick={() => setVsmGalleryIdx(index)}
+                                  className={`w-full h-full rounded-xl overflow-hidden border-2 transition-all duration-300 focus:outline-none ${
+                                    isSelected ? 'border-gold scale-105 shadow-[0_0_10px_rgba(198,155,60,0.25)]' : 'border-white/10 hover:border-white/20'
+                                  }`}
+                                >
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.title}
+                                    className="object-cover w-full h-full pointer-events-none"
+                                  />
+                                </button>
+                                
+                                {/* Trash button overlay */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isSelected) {
+                                      setVsmGalleryIdx(prev => Math.max(0, prev - 1));
+                                    }
+                                    handleGalleryItemDelete(item.id);
+                                  }}
+                                  className="absolute -top-1 -right-1 p-1 bg-red-600/90 text-white rounded-full border border-red-500/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110 cursor-pointer shadow-lg z-20"
+                                  title="Eliminar Trabajo"
+                                >
+                                  <Trash2 size={9} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : vsmViewMode === 'desktop' ? (
@@ -3166,9 +4672,30 @@ export default function AdminPage() {
                           {/* Tryptych Grid */}
                           <div className="grid grid-cols-3 gap-4">
                             {[
-                              { title: 'Ritual de Cabello', price: 'Desde $12.000', img: vsmForm.barberia.imageCabello, keyImg: 'imageCabello' },
-                              { title: 'Ritual de Barba', price: 'Desde $12.000', img: vsmForm.barberia.imageBarba, keyImg: 'imageBarba' },
-                              { title: 'Ritual Completo', price: 'Desde $20.000', img: vsmForm.barberia.imageCompleto, keyImg: 'imageCompleto' }
+                              { 
+                                title: vsmForm.barberia.titleCabello || 'Ritual de Cabello', 
+                                price: vsmForm.barberia.priceCabello || 'Desde $12.000', 
+                                img: vsmForm.barberia.imageCabello, 
+                                keyImg: 'imageCabello',
+                                keyTitle: 'titleCabello',
+                                keyPrice: 'priceCabello'
+                              },
+                              { 
+                                title: vsmForm.barberia.titleBarba || 'Ritual de Barba', 
+                                price: vsmForm.barberia.priceBarba || 'Desde $12.000', 
+                                img: vsmForm.barberia.imageBarba, 
+                                keyImg: 'imageBarba',
+                                keyTitle: 'titleBarba',
+                                keyPrice: 'priceBarba'
+                              },
+                              { 
+                                title: vsmForm.barberia.titleCompleto || 'Ritual Completo', 
+                                price: vsmForm.barberia.priceCompleto || 'Desde $20.000', 
+                                img: vsmForm.barberia.imageCompleto, 
+                                keyImg: 'imageCompleto',
+                                keyTitle: 'titleCompleto',
+                                keyPrice: 'priceCompleto'
+                              }
                             ].map((rit, idx) => (
                               <div key={idx} className="relative h-[130px] rounded-xl overflow-hidden flex flex-col justify-end p-3.5 border border-white/5 group select-none">
                                 <img src={rit.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-45 group-hover:opacity-75 transition-all duration-700 pointer-events-none" />
@@ -3179,9 +4706,13 @@ export default function AdminPage() {
                                 <div className="relative z-10 flex justify-between items-end">
                                   <div className="text-left">
                                     <span className="text-[6px] text-gold uppercase block">Ritual 0{idx+1}</span>
-                                    <span className="font-serif text-[10px] text-white font-medium block leading-none mt-0.5">{rit.title}</span>
+                                    <span className="font-serif text-[10px] text-white font-medium block leading-none mt-0.5">
+                                      {renderEditableText('barberia', rit.keyTitle, rit.title, 'text-white font-serif')}
+                                    </span>
                                   </div>
-                                  <span className="text-[8px] text-gold font-serif leading-none font-semibold">{rit.price}</span>
+                                  <span className="text-[8px] text-gold font-serif leading-none font-semibold">
+                                    {renderEditableText('barberia', rit.keyPrice, rit.price, 'text-gold font-serif')}
+                                  </span>
                                 </div>
                               </div>
                             ))}
@@ -3414,9 +4945,30 @@ export default function AdminPage() {
                           {/* Cards stack */}
                           <div className="space-y-2">
                             {[
-                              { title: 'Ritual de Cabello', price: '$12K', img: vsmForm.barberia.imageCabello, keyImg: 'imageCabello' },
-                              { title: 'Ritual de Barba', price: '$12K', img: vsmForm.barberia.imageBarba, keyImg: 'imageBarba' },
-                              { title: 'Ritual Completo', price: '$20K', img: vsmForm.barberia.imageCompleto, keyImg: 'imageCompleto' }
+                              { 
+                                title: vsmForm.barberia.titleCabello || 'Ritual de Cabello', 
+                                price: vsmForm.barberia.priceCabello || 'Desde $12.000', 
+                                img: vsmForm.barberia.imageCabello, 
+                                keyImg: 'imageCabello',
+                                keyTitle: 'titleCabello',
+                                keyPrice: 'priceCabello'
+                              },
+                              { 
+                                title: vsmForm.barberia.titleBarba || 'Ritual de Barba', 
+                                price: vsmForm.barberia.priceBarba || 'Desde $12.000', 
+                                img: vsmForm.barberia.imageBarba, 
+                                keyImg: 'imageBarba',
+                                keyTitle: 'titleBarba',
+                                keyPrice: 'priceBarba'
+                              },
+                              { 
+                                title: vsmForm.barberia.titleCompleto || 'Ritual Completo', 
+                                price: vsmForm.barberia.priceCompleto || 'Desde $20.000', 
+                                img: vsmForm.barberia.imageCompleto, 
+                                keyImg: 'imageCompleto',
+                                keyTitle: 'titleCompleto',
+                                keyPrice: 'priceCompleto'
+                              }
                             ].map((rit, idx) => (
                               <div key={idx} className="relative h-[80px] rounded-xl overflow-hidden flex flex-col justify-end p-2.5 border border-white/5 group select-none">
                                 <img src={rit.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-40 pointer-events-none" />
@@ -3427,9 +4979,13 @@ export default function AdminPage() {
                                 <div className="relative z-10 flex justify-between items-end">
                                   <div>
                                     <span className="text-[5px] text-gold uppercase block">Ritual 0{idx+1}</span>
-                                    <span className="font-serif text-[8px] text-white font-medium block leading-none">{rit.title}</span>
+                                    <span className="font-serif text-[8px] text-white font-medium block leading-none">
+                                      {renderEditableText('barberia', rit.keyTitle, rit.title, 'text-white font-serif')}
+                                    </span>
                                   </div>
-                                  <span className="text-[7px] text-gold font-serif leading-none font-semibold">{rit.price}</span>
+                                  <span className="text-[7px] text-gold font-serif leading-none font-semibold">
+                                    {renderEditableText('barberia', rit.keyPrice, rit.price, 'text-gold font-serif')}
+                                  </span>
                                 </div>
                               </div>
                             ))}
@@ -3583,6 +5139,63 @@ export default function AdminPage() {
 
             </div>
 
+            {/* Floating Dock at the bottom center */}
+            {vsmFullscreen && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-45 bg-black/85 backdrop-blur-xl border border-white/10 rounded-full px-5 py-2.5 shadow-[0_15px_35px_rgba(0,0,0,0.65)] flex items-center space-x-5 select-none animate-in fade-in slide-in-from-bottom-5 duration-300">
+                {/* Horizontal Page Tabs */}
+                <div className="flex items-center space-x-1.5">
+                  {[
+                    { id: 'home', label: 'Inicio' },
+                    { id: 'barberia', label: 'Barbería' },
+                    { id: 'peluqueria', label: 'Peluquería' },
+                    { id: 'peluqueria-gallery', label: 'Galería' },
+                    { id: 'terapias', label: 'Terapias' }
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setVsmPage(p.id as any);
+                        setVsmPeluEntered(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-semibold transition-all duration-300 cursor-pointer ${
+                        vsmPage === p.id 
+                          ? 'bg-gold/10 border border-gold/25 text-gold shadow-md shadow-gold/5' 
+                          : 'text-text-secondary hover:text-white border border-transparent'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div className="w-[1px] h-4 bg-white/10" />
+
+                {/* Publicar Web button */}
+                <button
+                  onClick={handleVsmSave}
+                  className="py-1.5 px-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-all duration-300 shadow-md flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Save size={11} />
+                  <span>Publicar Web</span>
+                </button>
+
+                {/* Divider */}
+                <div className="w-[1px] h-4 bg-white/10" />
+
+                {/* Salir button */}
+                <button
+                  onClick={() => setVsmFullscreen(false)}
+                  className="py-1.5 px-4 rounded-full border border-white/10 hover:bg-white/5 text-white font-bold uppercase tracking-widest text-[9px] transition-all duration-300 flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Minimize2 size={11} />
+                  <span>Salir</span>
+                </button>
+              </div>
+            )}
+            
+            </div>
+
           </div>
         )}
 
@@ -3614,36 +5227,223 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Rol en el Negocio</label>
-                  <input
-                    type="text"
-                    value={profileRole}
-                    onChange={(e) => setProfileRole(e.target.value)}
-                    className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30"
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={currentUser?.profileType !== 'admin'}
+                      onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                      className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white text-left flex justify-between items-center focus:outline-none focus:border-gold/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <span>{profileRole || 'Seleccionar Rol...'}</span>
+                      {currentUser?.profileType === 'admin' && <ChevronDown size={12} className="text-text-secondary" />}
+                    </button>
+
+                    <AnimatePresence>
+                      {isRoleDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsRoleDropdownOpen(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            className="absolute left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 max-h-48 overflow-y-auto"
+                          >
+                            {[
+                              'Administrador Principal',
+                              'Administrador',
+                              'Barbero',
+                              'Barbero Senior',
+                              'Estilista',
+                              'Terapeuta Holístico'
+                            ].map((role) => (
+                              <button
+                                key={role}
+                                type="button"
+                                onClick={() => {
+                                  setProfileRole(role);
+                                  setIsRoleDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
+                                  profileRole === role ? 'text-gold font-bold bg-white/[0.02]' : 'text-white/80'
+                                }`}
+                              >
+                                <span>{role}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Correo de Contacto</label>
-                <input
-                  type="email"
-                  value={profileEmail}
-                  onChange={(e) => setProfileEmail(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Correo de Contacto</label>
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    disabled={true}
+                    className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">WhatsApp</label>
+                  <div className="flex space-x-2 relative">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsProfilePhoneDropdownOpen(!isProfilePhoneDropdownOpen)}
+                        className="h-full bg-black/40 border border-white/5 rounded-lg px-3 text-[11px] text-white flex items-center space-x-1.5 focus:outline-none min-w-[70px] justify-between cursor-pointer"
+                      >
+                        <span className="font-mono">{profilePhoneCode}</span>
+                        <ChevronDown size={10} className="text-text-secondary" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {isProfilePhoneDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsProfilePhoneDropdownOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -5 }}
+                              className="absolute left-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 w-28 max-h-40 overflow-y-auto"
+                            >
+                              {[
+                                { code: '+56', label: 'Chile' },
+                                { code: '+54', label: 'Argentina' },
+                                { code: '+51', label: 'Perú' },
+                                { code: '+57', label: 'Colombia' },
+                                { code: '+52', label: 'México' },
+                                { code: '+598', label: 'Uruguay' },
+                                { code: '+1', label: 'USA' },
+                                { code: '+34', label: 'España' }
+                              ].map((item) => (
+                                <button
+                                  key={item.code}
+                                  type="button"
+                                  onClick={() => {
+                                    setProfilePhoneCode(item.code);
+                                    setIsProfilePhoneDropdownOpen(false);
+                                    if (profilePhoneNum.length > 0 && profilePhoneNum.length !== 9) {
+                                      setProfilePhoneError('El número debe tener exactamente 9 dígitos.');
+                                    } else {
+                                      setProfilePhoneError(null);
+                                    }
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
+                                    profilePhoneCode === item.code ? 'text-gold font-bold' : 'text-white/80'
+                                  }`}
+                                >
+                                  <span className="font-mono">{item.code}</span>
+                                  <span className="text-[9px] text-text-secondary">{item.label}</span>
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <input
+                      type="tel"
+                      placeholder="912345678"
+                      value={profilePhoneNum}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\D/g, '').substring(0, 9);
+                        setProfilePhoneNum(cleaned);
+                        if (cleaned.length > 0 && cleaned.length !== 9) {
+                          setProfilePhoneError('El número debe tener exactamente 9 dígitos.');
+                        } else {
+                          setProfilePhoneError(null);
+                        }
+                      }}
+                      className={`flex-1 bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 ${
+                        profilePhoneError ? 'border-red-500/50 focus:border-red-500' : ''
+                      }`}
+                    />
+                  </div>
+                  {profilePhoneError && (
+                    <p className="text-[10px] text-red-400 mt-1 font-light">{profilePhoneError}</p>
+                  )}
+                </div>
               </div>
 
               <h4 className="font-serif text-sm text-white tracking-wide border-b border-white/5 pb-1 pt-4">Seguridad de Acceso</h4>
 
-              <div className="space-y-1">
-                <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Restablecer Contraseña</label>
-                <input
-                  type="password"
-                  placeholder="Escribe la nueva contraseña para cambiarla"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nueva Contraseña</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      placeholder="Nueva contraseña"
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (confirmPassword && e.target.value !== confirmPassword) {
+                          setPasswordError('Las contraseñas no coinciden.');
+                        } else {
+                          setPasswordError(null);
+                        }
+                      }}
+                      className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Confirmar Nueva Contraseña</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirmar nueva contraseña"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (newPassword && e.target.value !== newPassword) {
+                          setPasswordError('Las contraseñas no coinciden.');
+                        } else {
+                          setPasswordError(null);
+                        }
+                      }}
+                      className={`w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30 ${
+                        passwordError ? 'border-red-500/50 focus:border-red-500' : ''
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p className="text-[10px] text-red-400 mt-1 font-light">{passwordError}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleProfileResetPassword}
+                  disabled={!newPassword || !confirmPassword || !!passwordError}
+                  className="py-2 px-5 rounded-full border border-gold/30 hover:border-gold/60 bg-gold/5 hover:bg-gold/10 text-gold font-bold uppercase tracking-widest text-[9px] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Restablecer Contraseña
+                </button>
               </div>
 
               <div className="pt-6 border-t border-white/5 flex justify-end">
@@ -3760,14 +5560,20 @@ export default function AdminPage() {
                             </h3>
                             {/* Toggle switch */}
                             <button
+                              type="button"
                               onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
-                              className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-300 relative cursor-pointer ${
-                                activeServiceCategory === 'barberia' ? 'bg-gold' :
-                                activeServiceCategory === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-white'
+                              className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer flex items-center border ${
+                                activeServiceCategory === 'barberia' ? 'bg-gold/15 border-gold/30' :
+                                activeServiceCategory === 'peluqueria' ? 'bg-[#CD7F32]/15 border-[#CD7F32]/30' :
+                                'bg-white/10 border-white/20'
                               }`}
                             >
                               <div
-                                className="w-4 h-4 rounded-full bg-black shadow-md transform duration-300 translate-x-4"
+                                className={`w-4 h-4 rounded-full shadow-md transform duration-300 translate-x-4 ${
+                                  activeServiceCategory === 'barberia' ? 'bg-gold shadow-[0_0_8px_rgba(198,155,60,0.4)]' :
+                                  activeServiceCategory === 'peluqueria' ? 'bg-[#CD7F32] shadow-[0_0_8px_rgba(205,127,50,0.4)]' :
+                                  'bg-white'
+                                }`}
                               />
                             </button>
                           </div>
@@ -3828,12 +5634,7 @@ export default function AdminPage() {
                               <Edit3 size={12} />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`¿Estás seguro de eliminar el servicio "${service.name}"?`)) {
-                                  deleteService(activeServiceCategory, service.id);
-                                  triggerNotification(`Servicio "${service.name}" eliminado.`);
-                                }
-                              }}
+                              onClick={() => setServiceToDelete({ category: activeServiceCategory, id: service.id, name: service.name })}
                               className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
                               title="Eliminar"
                             >
@@ -3863,13 +5664,14 @@ export default function AdminPage() {
                             Servicio Inactivo
                           </span>
                           <button
-                            onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
-                            className="w-9 h-5 rounded-full p-0.5 bg-white/10 transition-colors duration-300 relative cursor-pointer"
-                          >
-                            <div
-                              className="w-4 h-4 rounded-full bg-black shadow-md transform duration-300 translate-x-0"
-                            />
-                          </button>
+                             type="button"
+                             onClick={() => toggleServiceActive(activeServiceCategory, service.id)}
+                             className="w-9 h-5 rounded-full p-0.5 bg-black/40 border border-white/10 transition-colors duration-300 relative cursor-pointer flex items-center"
+                           >
+                             <div
+                               className="w-4 h-4 rounded-full bg-white/20 shadow-md transform duration-300 translate-x-0"
+                             />
+                           </button>
                         </div>
 
                         {/* Center: Title & Dimmed status */}
@@ -3885,12 +5687,7 @@ export default function AdminPage() {
                         {/* Bottom: Action buttons (only delete) */}
                         <div className="pt-2 flex justify-end border-t border-white/5 border-dashed">
                           <button
-                            onClick={() => {
-                              if (confirm(`¿Estás seguro de eliminar el servicio "${service.name}"?`)) {
-                                deleteService(activeServiceCategory, service.id);
-                                triggerNotification(`Servicio "${service.name}" eliminado.`);
-                              }
-                            }}
+                            onClick={() => setServiceToDelete({ category: activeServiceCategory, id: service.id, name: service.name })}
                             className="p-2 rounded-xl bg-red-500/5 hover:bg-red-500/10 text-red-400/40 hover:text-red-400 transition-colors cursor-pointer"
                             title="Eliminar"
                           >
@@ -3979,17 +5776,15 @@ export default function AdminPage() {
                             <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
                               Duración *
                             </label>
-                            <select
+                            <CustomSelect
                               value={serviceFormDuration}
-                              onChange={(e) => setServiceFormDuration(e.target.value)}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors select-custom cursor-pointer"
-                            >
-                              {['15 min', '30 min', '45 min', '60 min', '75 min', '90 min', '1 hrs', '1 hrs 15 min', '1 hrs 20 min', '1 hrs 30 min', '1 hrs 45 min', '2 hrs'].map((dur) => (
-                                <option key={dur} value={dur} className="bg-[#0c0c0c] text-white">
-                                  {dur}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(val) => setServiceFormDuration(val)}
+                              options={['15 min', '30 min', '45 min', '60 min', '75 min', '90 min', '1 hrs', '1 hrs 15 min', '1 hrs 20 min', '1 hrs 30 min', '1 hrs 45 min', '2 hrs'].map((dur) => ({
+                                value: dur,
+                                label: dur
+                              }))}
+                              buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                            />
                           </div>
                         </div>
 
@@ -4080,6 +5875,118 @@ export default function AdminPage() {
         {/* PROFESSIONALS MANAGEMENT TAB */}
         {activeTab === 'profesionales' && (
           <div className="space-y-8 text-left">
+            {/* PENDING ACCESS REQUESTS SECTION */}
+            {currentUser?.profileType === 'admin' && pendingRequests.length > 0 && (
+              <div className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold">
+                      <Users size={15} />
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-sm font-semibold text-white">Solicitudes de Acceso Pendientes</h3>
+                      <p className="text-[10px] text-text-secondary">Nuevos profesionales esperando credenciales y asignación de rol</p>
+                    </div>
+                  </div>
+                  <span className="bg-gold/15 border border-gold/30 text-gold text-[9px] font-bold px-2 py-0.5 rounded-full">
+                    {pendingRequests.length} pendientes
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5 text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                        <th className="pb-3 pl-2">Nombre</th>
+                        <th className="pb-3">Contacto</th>
+                        <th className="pb-3">Negocio Solicitado</th>
+                        <th className="pb-3 text-right pr-2">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingRequests.map((req) => (
+                        <tr key={req.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                          <td className="py-4 pl-2 font-medium text-white">
+                            {req.first_name} {req.last_name}
+                          </td>
+                          <td className="py-4 space-y-0.5 text-text-secondary font-light">
+                            <div className="flex items-center space-x-1.5">
+                              <Mail size={10} />
+                              <span>{req.email}</span>
+                            </div>
+                            <div className="flex items-center space-x-1.5 font-mono">
+                              <Smartphone size={10} />
+                              <span>{req.phone}</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+                              req.business === 'barberia' ? 'bg-gold/10 border-gold/30 text-gold' :
+                              req.business === 'peluqueria' ? 'bg-[#CD7F32]/10 border-[#CD7F32]/30 text-[#CD7F32]' :
+                              'bg-white/10 border-white/20 text-[#E2E0D8]'
+                            }`}>
+                              {req.business === 'barberia' ? 'Barbería' : req.business === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                            </span>
+                          </td>
+                          <td className="py-4 text-right pr-2">
+                            <div className="inline-flex space-x-2">
+                              <button
+                                onClick={() => {
+                                  setApproveProfileType(
+                                    req.business === 'barberia' ? 'barber' :
+                                    req.business === 'peluqueria' ? 'estilista' :
+                                    'terapeuta'
+                                  );
+                                  setApproveRole(
+                                    req.business === 'barberia' ? 'Barbero Senior' :
+                                    req.business === 'peluqueria' ? 'Estilista Senior' :
+                                    'Terapeuta Holístico'
+                                  );
+                                  setApproveSpecialty('');
+                                  setApproveAgendas([req.business]);
+                                  setRequestToApprove(req);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-all cursor-pointer"
+                              >
+                                Aprobar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Rechazar Solicitud',
+                                    message: `¿Estás seguro de rechazar la solicitud de acceso de ${req.first_name} ${req.last_name}?`,
+                                    confirmText: 'Rechazar',
+                                    confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                    onConfirm: async () => {
+                                      try {
+                                        const { error } = await supabase
+                                          .from('access_requests')
+                                          .update({ status: 'rejected' })
+                                          .eq('id', req.id);
+                                        if (error) throw error;
+                                        triggerNotification(`Solicitud de ${req.first_name} rechazada.`);
+                                        fetchPendingRequests();
+                                      } catch (err) {
+                                        triggerNotification('Error al rechazar la solicitud.');
+                                      }
+                                    }
+                                  });
+                                }}
+                                className="px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/10 text-red-400 font-bold uppercase tracking-widest text-[9px] transition-all cursor-pointer"
+                              >
+                                Rechazar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Top Bar with Filter Selector and Add Button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-5 shadow-xl">
               {/* Category Filter Tabs */}
@@ -4129,7 +6036,11 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {(() => {
                 const allSpecialists = Object.keys(servicesData).flatMap(cat => 
-                  servicesData[cat].specialists.map(sp => ({ ...sp, primaryCategory: cat }))
+                  servicesData[cat].specialists.map(sp => ({ 
+                    ...sp, 
+                    primaryCategory: cat,
+                    phone: sp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
+                  }))
                 );
                 const uniqueSpecialists = Array.from(new Map(allSpecialists.map(sp => [sp.id, sp])).values());
                 const filteredStaff = uniqueSpecialists.filter(sp => {
@@ -4155,11 +6066,11 @@ export default function AdminPage() {
                         animate={{ rotateY: isFlipped ? 180 : 0 }}
                         transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
                         style={{ transformStyle: 'preserve-3d' }}
-                        className="w-full h-full relative cursor-pointer"
-                        onClick={toggleFlip}
+                        className="w-full h-full relative"
                       >
                         {/* FRONT FACE (IMAGE - DEFAULT STATE) */}
                         <div
+                          onClick={toggleFlip}
                           style={{
                             backfaceVisibility: 'hidden',
                             WebkitBackfaceVisibility: 'hidden',
@@ -4168,8 +6079,10 @@ export default function AdminPage() {
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'flex-end',
+                            pointerEvents: isFlipped ? 'none' : 'auto',
+                            zIndex: isFlipped ? 0 : 10,
                           }}
-                          className="bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden group shadow-xl hover:border-gold/30 transition-colors duration-300"
+                          className="bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden group shadow-xl hover:border-gold/30 transition-colors duration-300 cursor-pointer"
                         >
                           {staff.imageUrl ? (
                             <Image
@@ -4228,18 +6141,23 @@ export default function AdminPage() {
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
+                            pointerEvents: isFlipped ? 'auto' : 'none',
+                            zIndex: isFlipped ? 10 : 0,
                           }}
                           className="bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl text-left"
                         >
                           <div className="space-y-4">
                             {/* Header: Avatar, Name & role */}
-                            <div className="flex items-start justify-between gap-3">
+                            <div 
+                              onClick={toggleFlip}
+                              className="flex items-start justify-between gap-3 cursor-pointer group/header hover:opacity-90 transition-opacity"
+                            >
                               <div className="flex items-center space-x-3">
                                 <div className="w-11 h-11 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-base font-bold text-gold shadow-[inset_0_2px_8px_rgba(198,155,60,0.1)] flex-shrink-0">
                                   {staff.avatar || staff.name.split(' ').map(n => n[0]).join('')}
                                 </div>
                                 <div className="text-left truncate max-w-[140px]">
-                                  <h3 className="font-serif text-sm font-medium text-white group-hover:text-gold transition-colors truncate">
+                                  <h3 className="font-serif text-sm font-medium text-white group-hover/header:text-gold transition-colors truncate">
                                     {staff.name}
                                   </h3>
                                   <span className="text-[10px] text-text-secondary truncate block">{staff.role}</span>
@@ -4263,6 +6181,12 @@ export default function AdminPage() {
                                 <Mail size={10} className="text-text-secondary flex-shrink-0" />
                                 <span className="truncate max-w-[180px]">{staff.email}</span>
                               </div>
+                              {(staff as any).phone && (
+                                <div className="flex items-center space-x-1.5 font-mono">
+                                  <Smartphone size={10} className="text-text-secondary flex-shrink-0" />
+                                  <span>{(staff as any).phone}</span>
+                                </div>
+                              )}
                               {staff.specialty && (
                                 <div className="text-[11px] text-text-secondary mt-1">
                                   <span className="font-semibold text-white/50">Especialidad:</span> {staff.specialty}
@@ -4300,6 +6224,16 @@ export default function AdminPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  toggleFlip();
+                                }}
+                                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gold transition-colors cursor-pointer"
+                                title="Volver a la foto"
+                              >
+                                <Undo2 size={12} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   populateStaffForm(staff);
                                 }}
                                 className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
@@ -4310,10 +6244,11 @@ export default function AdminPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (confirm(`¿Estás seguro de eliminar al profesional "${staff.name}"?`)) {
-                                    deleteSpecialist(staff.primaryCategory, staff.id);
-                                    triggerNotification(`Profesional "${staff.name}" eliminado.`);
-                                  }
+                                  setStaffToDelete({
+                                    category: staff.primaryCategory,
+                                    id: staff.id,
+                                    name: staff.name
+                                  });
                                 }}
                                 className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
                                 title="Eliminar profesional"
@@ -4393,52 +6328,108 @@ export default function AdminPage() {
                           <input
                             type="email"
                             required
+                            disabled={!!editingStaff}
                             placeholder="Ej. roberto.sanchez@valentes.cl"
                             value={staffFormEmail}
                             onChange={(e) => setStaffFormEmail(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono disabled:opacity-50 disabled:cursor-not-allowed disabled:border-white/5"
                           />
                         </div>
 
-                        {/* Custom Role Title & Specialty */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                              Rol / Cargo *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Ej. Barbero Senior"
-                              value={staffFormRole}
-                              onChange={(e) => setStaffFormRole(e.target.value)}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
-                            />
-                          </div>
+                        {/* Teléfono */}
+                        <div className="space-y-1">
+                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold font-sans">
+                            Teléfono de Contacto *
+                          </label>
+                          <div className="flex space-x-2 relative">
+                            {/* Custom Country Dropdown */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setIsStaffCountryDropdownOpen(!isStaffCountryDropdownOpen)}
+                                className="h-11 bg-black/40 border border-white/10 focus:border-gold/30 rounded-xl px-3 text-xs text-white flex items-center justify-between space-x-2 focus:outline-none transition-colors cursor-pointer min-w-[75px]"
+                              >
+                                <span>{staffFormCountryCode}</span>
+                                <ChevronDown size={12} className="text-white/40" />
+                              </button>
+                              
+                              {isStaffCountryDropdownOpen && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-45"
+                                    onClick={() => setIsStaffCountryDropdownOpen(false)}
+                                  />
+                                  <div className="absolute left-0 mt-1.5 w-48 bg-[#111] border border-white/10 rounded-xl shadow-2xl py-1 z-50 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 font-sans">
+                                    {[
+                                      { code: '+56', label: 'Chile (+56)' },
+                                      { code: '+54', label: 'Argentina (+54)' },
+                                      { code: '+51', label: 'Perú (+51)' },
+                                      { code: '+57', label: 'Colombia (+57)' },
+                                      { code: '+34', label: 'España (+34)' },
+                                      { code: '+52', label: 'México (+52)' },
+                                      { code: '+598', label: 'Uruguay (+598)' },
+                                    ].map((c) => (
+                                      <button
+                                        key={c.code}
+                                        type="button"
+                                        onClick={() => {
+                                          setStaffFormCountryCode(c.code);
+                                          setIsStaffCountryDropdownOpen(false);
+                                        }}
+                                        className={`w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/5 ${
+                                          staffFormCountryCode === c.code ? 'text-gold font-medium bg-gold/5' : 'text-white/70'
+                                        }`}
+                                      >
+                                        {c.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
 
-                          <div className="space-y-1">
-                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                              Especialidad
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Ej. Degradados, Barbas"
-                              value={staffFormSpecialty}
-                              onChange={(e) => setStaffFormSpecialty(e.target.value)}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
-                            />
+                            {/* Phone Input */}
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                required
+                                value={staffFormPhone}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                  setStaffFormPhone(val);
+                                  if (val.length === 9) {
+                                    setStaffPhoneError('');
+                                  } else {
+                                    setStaffPhoneError('El teléfono debe tener exactamente 9 dígitos.');
+                                  }
+                                }}
+                                className={`w-full h-11 bg-black/40 border rounded-xl px-4 text-xs text-white focus:outline-none transition-colors ${
+                                  staffPhoneError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-gold/30'
+                                }`}
+                                placeholder="Ej. 966118844"
+                              />
+                            </div>
                           </div>
+                          
+                          {/* Error Message */}
+                          {staffPhoneError && (
+                            <p className="text-[10px] text-red-400 flex items-center space-x-1.5 mt-1 font-sans">
+                              <AlertCircle size={10} className="shrink-0" />
+                              <span>{staffPhoneError}</span>
+                            </p>
+                          )}
                         </div>
+
 
                         {/* Profile Type */}
                         <div className="space-y-1">
                           <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
                             Perfil de Acceso *
                           </label>
-                          <select
+                          <CustomSelect
                             value={staffFormProfileType}
-                            onChange={(e) => {
-                              const type = e.target.value as any;
+                            onChange={(val) => {
+                              const type = val as any;
                               setStaffFormProfileType(type);
                               // Auto-configure agenda assignments based on role
                               if (type === 'barber') setStaffFormAgendas(['barberia']);
@@ -4446,14 +6437,15 @@ export default function AdminPage() {
                               else if (type === 'terapeuta') setStaffFormAgendas(['terapias']);
                               else if (type === 'admin') setStaffFormAgendas(['barberia', 'peluqueria', 'terapias']);
                             }}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors select-custom cursor-pointer"
-                          >
-                            <option value="barber">Barber (Solo Barbería)</option>
-                            <option value="estilista">Estilista (Solo Peluquería)</option>
-                            <option value="terapeuta">Terapeuta (Solo Terapias Holísticas)</option>
-                            <option value="mixto">Mixto (Múltiples Agendas)</option>
-                            <option value="admin">Administrador (Acceso Total)</option>
-                          </select>
+                            options={[
+                              { value: 'barber', label: 'Barber (Solo Barbería)' },
+                              { value: 'estilista', label: 'Estilista (Solo Peluquería)' },
+                              { value: 'terapeuta', label: 'Terapeuta (Solo Terapias Holísticas)' },
+                              { value: 'mixto', label: 'Mixto (Múltiples Agendas)' },
+                              { value: 'admin', label: 'Administrador (Acceso Total)' }
+                            ]}
+                            buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                          />
                         </div>
 
                         {/* Agendas checkboxes (Active only for Mixto profile) */}
@@ -4474,57 +6466,38 @@ export default function AdminPage() {
                                 <label
                                   key={ag.id}
                                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                    isDisabled ? 'opacity-40 bg-black/10 border-white/5 cursor-not-allowed' : 'cursor-pointer hover:bg-white/[0.01]'
-                                  } ${isChecked && !isDisabled ? 'bg-white/[0.02] border-white/15' : 'border-white/5'}`}
+                                    isDisabled ? 'opacity-50 bg-black/10 border-white/5 cursor-not-allowed' : 'cursor-pointer hover:bg-white/[0.01]'
+                                  } ${isChecked ? 'bg-gold/5 border-gold/30' : 'border-white/5'}`}
                                 >
-                                  <span className="text-xs text-white">{ag.label}</span>
+                                  <span className={`text-xs transition-colors ${isChecked ? 'text-white' : 'text-white/60'}`}>{ag.label}</span>
                                   <input
                                     type="checkbox"
                                     disabled={isDisabled}
                                     checked={isChecked}
                                     onChange={() => {
+                                      if (isDisabled) return;
                                       if (isChecked) {
                                         setStaffFormAgendas(prev => prev.filter(id => id !== ag.id));
                                       } else {
                                         setStaffFormAgendas(prev => [...prev, ag.id as any]);
                                       }
                                     }}
-                                    className="rounded border-white/10 text-gold focus:ring-0 focus:ring-offset-0 bg-black disabled:opacity-50"
+                                    className="sr-only"
                                   />
+                                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${
+                                    isChecked 
+                                      ? 'bg-gold border-gold text-black shadow-[0_0_8px_rgba(198,155,60,0.25)]' 
+                                      : 'border-white/20 bg-black/40'
+                                  }`}>
+                                    {isChecked && <Check size={12} className="stroke-[3]" />}
+                                  </div>
                                 </label>
                               );
                             })}
                           </div>
                         </div>
 
-                        {/* Bio */}
-                        <div className="space-y-1">
-                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                            Biografía
-                          </label>
-                          <textarea
-                            rows={3}
-                            placeholder="Breve reseña del profesional para el cliente..."
-                            value={staffFormBio}
-                            onChange={(e) => setStaffFormBio(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors resize-none leading-relaxed"
-                          />
-                        </div>
 
-                        {/* Optional Avatar initials */}
-                        <div className="space-y-1">
-                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                            Iniciales Avatar (Opcional)
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={2}
-                            placeholder="Ej. RS (Dejar en blanco para auto-generar)"
-                            value={staffFormAvatar}
-                            onChange={(e) => setStaffFormAvatar(e.target.value.toUpperCase())}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono"
-                          />
-                        </div>
 
                         {/* Imagen del Profesional */}
                         <div className="space-y-3">
@@ -4570,20 +6543,6 @@ export default function AdminPage() {
                                 />
                               </label>
                             </div>
-                          </div>
-
-                          {/* URL input fallback */}
-                          <div className="space-y-1">
-                            <input
-                              type="text"
-                              placeholder="O pega una URL de imagen (ej. Unsplash)"
-                              value={staffFormImageUrl.startsWith('data:') ? '' : staffFormImageUrl}
-                              onChange={(e) => setStaffFormImageUrl(e.target.value)}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
-                            />
-                            {staffFormImageUrl.startsWith('data:') && (
-                              <p className="text-[9px] text-gold/80 italic font-light">Imagen cargada desde archivo local.</p>
-                            )}
                           </div>
                         </div>
                       </form>
@@ -4796,7 +6755,9 @@ export default function AdminPage() {
                     };
 
                     const handleShiftTimeChange = (field: keyof DailyShift, val: string) => {
-                      updateWorkShift(selectedScheduleStaffId, dayNum, { [field]: val });
+                      const digits = val.replace(/\D/g, '').slice(0, 4);
+                      const formatted = digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                      updateWorkShift(selectedScheduleStaffId, dayNum, { [field]: formatted });
                     };
 
                     return (
@@ -4836,17 +6797,21 @@ export default function AdminPage() {
                             <div className="flex items-center space-x-2">
                               <span className="text-[10px] text-text-secondary uppercase tracking-widest font-semibold">Jornada:</span>
                               <input
-                                type="time"
+                                type="text"
+                                placeholder="09:00"
+                                maxLength={5}
                                 value={shift.startTime}
                                 onChange={(e) => handleShiftTimeChange('startTime', e.target.value)}
-                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono"
+                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono w-[65px] text-center"
                               />
                               <span className="text-text-secondary text-xs">-</span>
                               <input
-                                type="time"
+                                type="text"
+                                placeholder="18:00"
+                                maxLength={5}
                                 value={shift.endTime}
                                 onChange={(e) => handleShiftTimeChange('endTime', e.target.value)}
-                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono"
+                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono w-[65px] text-center"
                               />
                             </div>
 
@@ -4866,17 +6831,21 @@ export default function AdminPage() {
                               {shift.hasBreak && (
                                 <div className="flex items-center space-x-1 ml-2">
                                   <input
-                                    type="time"
+                                    type="text"
+                                    placeholder="13:00"
+                                    maxLength={5}
                                     value={shift.breakStartTime}
                                     onChange={(e) => handleShiftTimeChange('breakStartTime', e.target.value)}
-                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] font-mono"
+                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] text-center font-mono"
                                   />
                                   <span className="text-text-secondary text-[10px]">-</span>
                                   <input
-                                    type="time"
+                                    type="text"
+                                    placeholder="14:00"
+                                    maxLength={5}
                                     value={shift.breakEndTime}
                                     onChange={(e) => handleShiftTimeChange('breakEndTime', e.target.value)}
-                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] font-mono"
+                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] text-center font-mono"
                                   />
                                 </div>
                               )}
@@ -4891,163 +6860,289 @@ export default function AdminPage() {
             )}
 
             {/* Sub-tab Content: BLOQUEOS DE HORAS */}
-            {activeScheduleSubTab === 'bloqueos' && (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                {/* Add block form panel */}
-                <div className="md:col-span-5 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-5 h-fit text-left">
-                  <div>
-                    <h3 className="font-serif text-base text-white font-bold tracking-wide">Bloquear Franja Horaria</h3>
-                    <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
-                      Ingresa una excepción en la agenda de este profesional.
-                    </p>
-                  </div>
+            {activeScheduleSubTab === 'bloqueos' && (() => {
+              const currentYear = new Date().getFullYear();
+              const todayDateStr = new Date().toISOString().split('T')[0];
+              const allChileHolidays = [
+                { date: `${currentYear}-01-01`, name: 'Año Nuevo', isIrrenunciable: true },
+                { date: `${currentYear}-04-03`, name: 'Viernes Santo', isIrrenunciable: false },
+                { date: `${currentYear}-04-04`, name: 'Sábado Santo', isIrrenunciable: false },
+                { date: `${currentYear}-05-01`, name: 'Día del Trabajo', isIrrenunciable: true },
+                { date: `${currentYear}-05-21`, name: 'Glorias Navales', isIrrenunciable: false },
+                { date: `${currentYear}-06-21`, name: 'Pueblos Indígenas', isIrrenunciable: false },
+                { date: `${currentYear}-06-29`, name: 'San Pedro y San Pablo', isIrrenunciable: false },
+                { date: `${currentYear}-07-16`, name: 'Virgen del Carmen', isIrrenunciable: false },
+                { date: `${currentYear}-08-15`, name: 'Asunción de la Virgen', isIrrenunciable: false },
+                { date: `${currentYear}-09-18`, name: 'Independencia Nacional', isIrrenunciable: true },
+                { date: `${currentYear}-09-19`, name: 'Glorias del Ejército', isIrrenunciable: true },
+                { date: `${currentYear}-10-12`, name: 'Encuentro de Dos Mundos', isIrrenunciable: false },
+                { date: `${currentYear}-10-31`, name: 'Día de las Iglesias Evangélicas', isIrrenunciable: false },
+                { date: `${currentYear}-11-01`, name: 'Día de Todos los Santos', isIrrenunciable: false },
+                { date: `${currentYear}-12-08`, name: 'Inmaculada Concepción', isIrrenunciable: false },
+                { date: `${currentYear}-12-25`, name: 'Navidad', isIrrenunciable: true },
+              ];
+              const upcomingHolidays = allChileHolidays.filter(h => h.date >= todayDateStr);
 
-                  <div className="space-y-4">
-                    {/* Date picker */}
-                    <div className="space-y-1">
-                      <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Fecha *</label>
-                      <input
-                        type="date"
-                        value={blockFormDate}
-                        onChange={(e) => setBlockFormDate(e.target.value)}
-                        className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer font-mono"
-                      />
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                  {/* Add block form panel */}
+                  <div className="md:col-span-5 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-5 h-fit text-left">
+                    <div>
+                      <h3 className="font-serif text-base text-white font-bold tracking-wide">Bloquear Franja Horaria</h3>
+                      <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
+                        Ingresa una excepción en la agenda de este profesional.
+                      </p>
                     </div>
 
-                    {/* Start & End Times */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Inicio *</label>
-                        <input
-                          type="time"
-                          value={blockFormStart}
-                          onChange={(e) => setBlockFormStart(e.target.value)}
-                          className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Fin *</label>
-                        <input
-                          type="time"
-                          value={blockFormEnd}
-                          onChange={(e) => setBlockFormEnd(e.target.value)}
-                          className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
-                        />
-                      </div>
-                    </div>
+                    <div className="space-y-4">
+                      {/* Feriados Carousel */}
+                      <div className="space-y-1.5 pb-2 border-b border-white/5">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Feriados Chile ({currentYear})</label>
+                          <div className="flex space-x-1">
+                            <button
+                              type="button"
+                              onClick={() => holidaysRowRef.current?.scrollBy({ left: -105, behavior: 'smooth' })}
+                              className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <ChevronLeft size={10} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => holidaysRowRef.current?.scrollBy({ left: 105, behavior: 'smooth' })}
+                              className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <ChevronRight size={10} />
+                            </button>
+                          </div>
+                        </div>
 
-                    {/* Reason drop down selector */}
-                    <div className="space-y-1">
-                      <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Motivo del Bloqueo *</label>
-                      <select
-                        value={blockFormReason}
-                        onChange={(e) => setBlockFormReason(e.target.value as any)}
-                        className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer"
+                        <div 
+                          ref={holidaysRowRef}
+                          className="flex space-x-2 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-1 scroll-smooth"
+                        >
+                          {upcomingHolidays.map((h) => {
+                            const [year, month, day] = h.date.split('-');
+                            const monthNames: Record<string, string> = {
+                              '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr', '05': 'May', '06': 'Jun',
+                              '07': 'Jul', '08': 'Ago', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic'
+                            };
+                            const displayDate = `${day} ${monthNames[month]}`;
+                            const isSelected = blockFormDate === h.date;
+
+                            return (
+                              <button
+                                key={h.date}
+                                type="button"
+                                onClick={() => {
+                                  setBlockFormDate(h.date);
+                                  setBlockFormReason(`Feriado: ${h.name}`);
+                                  setBlockFormStart('00:00');
+                                  setBlockFormEnd('23:59');
+                                  triggerNotification(`Feriado "${h.name}" seleccionado.`);
+                                }}
+                                className={`flex-shrink-0 w-[95px] h-[75px] rounded-2xl p-2.5 flex flex-col justify-between items-start transition-all cursor-pointer border select-none snap-start ${
+                                  isSelected
+                                    ? 'bg-gold/10 border-gold shadow-[0_0_12px_rgba(198,155,60,0.15)] text-gold'
+                                    : 'bg-white/[0.02] border-white/5 hover:border-gold/30 hover:bg-white/5'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span className={`text-[10px] font-mono font-bold ${isSelected ? 'text-gold' : 'text-gold/80'}`}>
+                                    {displayDate}
+                                  </span>
+                                  {h.isIrrenunciable && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" title="Feriado Irrenunciable" />
+                                  )}
+                                </div>
+                                <span className={`text-[9px] leading-tight font-medium line-clamp-2 text-left ${isSelected ? 'text-white font-semibold' : 'text-white/70'}`}>
+                                  {h.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                          {upcomingHolidays.length === 0 && (
+                            <div className="text-[10px] text-text-secondary italic py-2">No quedan feriados en este año.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Date picker */}
+                      <div className="space-y-1">
+                        <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Fecha *</label>
+                        <input
+                          type="date"
+                          value={blockFormDate}
+                          onChange={(e) => setBlockFormDate(e.target.value)}
+                          className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer font-mono"
+                        />
+                      </div>
+
+                      {/* Start & End Times */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Inicio *</label>
+                          <input
+                            type="time"
+                            value={blockFormStart}
+                            onChange={(e) => setBlockFormStart(e.target.value)}
+                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Fin *</label>
+                          <input
+                            type="time"
+                            value={blockFormEnd}
+                            onChange={(e) => setBlockFormEnd(e.target.value)}
+                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reason drop down selector */}
+                      <div className="space-y-1">
+                        <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Motivo del Bloqueo *</label>
+                        <CustomSelect
+                          value={blockFormReason}
+                          onChange={(val) => setBlockFormReason(val)}
+                          options={[
+                            { value: 'Almuerzo', label: 'Almuerzo' },
+                            { value: 'Permiso Médico', label: 'Permiso Médico' },
+                            { value: 'Capacitación', label: 'Capacitación' },
+                            { value: 'Vacaciones', label: 'Vacaciones' },
+                            { value: 'Asunto Personal', label: 'Asunto Personal' },
+                            ...(!['Almuerzo', 'Permiso Médico', 'Capacitación', 'Vacaciones', 'Asunto Personal'].includes(blockFormReason) && blockFormReason
+                              ? [{ value: blockFormReason, label: blockFormReason }]
+                              : [])
+                          ]}
+                          buttonClassName="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!blockFormDate || !blockFormStart || !blockFormEnd) {
+                            triggerNotification('Por favor completa todos los campos.');
+                            return;
+                          }
+                          if (blockFormStart >= blockFormEnd) {
+                            triggerNotification('La hora de inicio debe ser anterior a la hora de fin.');
+                            return;
+                          }
+
+                          if (blockFormReason.startsWith('Feriado:')) {
+                            if (specialistsList.length === 0) {
+                              triggerNotification('No hay profesionales registrados para bloquear.');
+                              return;
+                            }
+                            specialistsList.forEach((spec) => {
+                              addTimeBlock({
+                                specialistId: spec.id,
+                                date: blockFormDate,
+                                startTime: blockFormStart,
+                                endTime: blockFormEnd,
+                                reason: blockFormReason as any
+                              });
+                            });
+                            triggerNotification('Feriado bloqueado para todos los profesionales.');
+                          } else {
+                            if (!selectedScheduleStaffId) {
+                              triggerNotification('Por favor selecciona un profesional.');
+                              return;
+                            }
+                            addTimeBlock({
+                              specialistId: selectedScheduleStaffId,
+                              date: blockFormDate,
+                              startTime: blockFormStart,
+                              endTime: blockFormEnd,
+                              reason: blockFormReason as any
+                            });
+                            triggerNotification('Franja horaria bloqueada correctamente.');
+                          }
+                        }}
+                        className="w-full py-3 bg-gold hover:bg-gold/90 text-black text-[10px] uppercase font-bold tracking-widest rounded-full transition-colors cursor-pointer"
                       >
-                        <option value="Almuerzo">Almuerzo</option>
-                        <option value="Permiso Médico">Permiso Médico</option>
-                        <option value="Capacitación">Capacitación</option>
-                        <option value="Vacaciones">Vacaciones</option>
-                        <option value="Asunto Personal">Asunto Personal</option>
-                      </select>
+                        Bloquear Horas
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Blocks list panel */}
+                  <div className="md:col-span-7 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-4 text-left">
+                    <div>
+                      <h3 className="font-serif text-base text-white font-bold tracking-wide">Bloqueos Activos</h3>
+                      <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
+                        Historial de franjas horarias bloqueadas para el profesional seleccionado.
+                      </p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        if (!blockFormDate || !blockFormStart || !blockFormEnd) {
-                          triggerNotification('Por favor completa todos los campos.');
-                          return;
-                        }
-                        if (blockFormStart >= blockFormEnd) {
-                          triggerNotification('La hora de inicio debe ser anterior a la hora de fin.');
-                          return;
-                        }
-                        addTimeBlock({
-                          specialistId: selectedScheduleStaffId,
-                          date: blockFormDate,
-                          startTime: blockFormStart,
-                          endTime: blockFormEnd,
-                          reason: blockFormReason
-                        });
-                        triggerNotification('Franja horaria bloqueada correctamente.');
-                      }}
-                      className="w-full py-3 bg-gold hover:bg-gold/90 text-black text-[10px] uppercase font-bold tracking-widest rounded-full transition-colors cursor-pointer"
-                    >
-                      Bloquear Horas
-                    </button>
+                    <div className="overflow-x-auto w-full">
+                      {timeBlocks.filter(b => b.specialistId === selectedScheduleStaffId).length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-white/5 rounded-2xl bg-black/20">
+                          <Clock size={20} className="mx-auto text-text-secondary/35 mb-2" />
+                          <p className="text-xs text-text-secondary font-light">No hay bloqueos activos para este profesional.</p>
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs text-white border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/5 text-[9px] uppercase tracking-wider text-text-secondary">
+                              <th className="pb-3 font-semibold font-serif">Fecha</th>
+                              <th className="pb-3 font-semibold font-serif">Horario</th>
+                              <th className="pb-3 font-semibold font-serif">Motivo</th>
+                              <th className="pb-3 font-semibold font-serif text-right">Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {timeBlocks
+                              .filter(b => b.specialistId === selectedScheduleStaffId)
+                              .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+                              .map((block) => {
+                                const [y, m, d] = block.date.split('-');
+                                const formattedDate = `${d}/${m}/${y}`;
+                                
+                                let badgeColor = 'bg-stone-500/10 text-stone-400 border-stone-500/20';
+                                if (block.reason === 'Permiso Médico') badgeColor = 'bg-red-500/10 text-red-400 border-red-500/20';
+                                else if (block.reason === 'Capacitación') badgeColor = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+                                else if (block.reason === 'Vacaciones') badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                                else if (block.reason === 'Almuerzo') badgeColor = 'bg-[#CD7F32]/10 text-[#CD7F32] border-[#CD7F32]/20';
+                                
+                                return (
+                                  <tr key={block.id} className="hover:bg-white/[0.01]">
+                                    <td className="py-3.5 font-mono text-[11px] font-semibold">{formattedDate}</td>
+                                    <td className="py-3.5 font-mono text-[11px] text-text-secondary">{block.startTime} - {block.endTime}</td>
+                                    <td className="py-3.5">
+                                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold border ${badgeColor}`}>
+                                        {block.reason}
+                                      </span>
+                                    </td>
+                                    <td className="py-3.5 text-right">
+                                      <button
+                                        onClick={() => {
+                                          setBlockToDelete({
+                                            id: block.id,
+                                            date: formattedDate,
+                                            reason: block.reason,
+                                            startTime: block.startTime,
+                                            endTime: block.endTime
+                                          });
+                                        }}
+                                        className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Blocks list panel */}
-                <div className="md:col-span-7 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-4 text-left">
-                  <div>
-                    <h3 className="font-serif text-base text-white font-bold tracking-wide">Bloqueos Activos</h3>
-                    <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
-                      Historial de franjas horarias bloqueadas para el profesional seleccionado.
-                    </p>
-                  </div>
-
-                  <div className="overflow-x-auto w-full">
-                    {timeBlocks.filter(b => b.specialistId === selectedScheduleStaffId).length === 0 ? (
-                      <div className="text-center py-12 border border-dashed border-white/5 rounded-2xl bg-black/20">
-                        <Clock size={20} className="mx-auto text-text-secondary/35 mb-2" />
-                        <p className="text-xs text-text-secondary font-light">No hay bloqueos activos para este profesional.</p>
-                      </div>
-                    ) : (
-                      <table className="w-full text-left text-xs text-white border-collapse">
-                        <thead>
-                          <tr className="border-b border-white/5 text-[9px] uppercase tracking-wider text-text-secondary">
-                            <th className="pb-3 font-semibold font-serif">Fecha</th>
-                            <th className="pb-3 font-semibold font-serif">Horario</th>
-                            <th className="pb-3 font-semibold font-serif">Motivo</th>
-                            <th className="pb-3 font-semibold font-serif text-right">Acción</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {timeBlocks
-                            .filter(b => b.specialistId === selectedScheduleStaffId)
-                            .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
-                            .map((block) => {
-                              // format YYYY-MM-DD to DD/MM/YYYY
-                              const [y, m, d] = block.date.split('-');
-                              const formattedDate = `${d}/${m}/${y}`;
-                              
-                              let badgeColor = 'bg-stone-500/10 text-stone-400 border-stone-500/20';
-                              if (block.reason === 'Permiso Médico') badgeColor = 'bg-red-500/10 text-red-400 border-red-500/20';
-                              else if (block.reason === 'Capacitación') badgeColor = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-                              else if (block.reason === 'Vacaciones') badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                              else if (block.reason === 'Almuerzo') badgeColor = 'bg-[#CD7F32]/10 text-[#CD7F32] border-[#CD7F32]/20';
-                              
-                              return (
-                                <tr key={block.id} className="hover:bg-white/[0.01]">
-                                  <td className="py-3.5 font-mono text-[11px] font-semibold">{formattedDate}</td>
-                                  <td className="py-3.5 font-mono text-[11px] text-text-secondary">{block.startTime} - {block.endTime}</td>
-                                  <td className="py-3.5">
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold border ${badgeColor}`}>
-                                      {block.reason}
-                                    </span>
-                                  </td>
-                                  <td className="py-3.5 text-right">
-                                    <button
-                                      onClick={() => {
-                                        deleteTimeBlock(block.id);
-                                        triggerNotification('Bloqueo eliminado correctamente.');
-                                      }}
-                                      className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-colors cursor-pointer"
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
@@ -5067,47 +7162,78 @@ export default function AdminPage() {
             </div>
             
             <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">URL del Recurso (Imagen o Video)</label>
-                <input
-                  type="text"
-                  value={editingAsset.currentValue}
-                  onChange={(e) => {
-                    const newVal = e.target.value;
-                    setEditingAsset(prev => prev ? { ...prev, currentValue: newVal } : null);
-                  }}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
-                />
-              </div>
-
-              {/* Curated Presets */}
-              <div className="space-y-1.5">
-                <span className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Galería de Ajustes Rápidos</span>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=300&q=80'
-                  ].map((presetUrl, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setEditingAsset(prev => prev ? { ...prev, currentValue: presetUrl } : null);
-                      }}
-                      className={`relative h-12 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
-                        editingAsset.currentValue === presetUrl ? 'border-gold scale-95 shadow-md shadow-gold/25' : 'border-white/5 hover:border-white/25'
-                      }`}
-                    >
-                      <img src={presetUrl} alt="" className="object-cover w-full h-full pointer-events-none" />
-                    </button>
-                  ))}
+              {/* Conditionally show URL input ONLY for video assets */}
+              {editingAsset.key.toLowerCase().includes('video') && (
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">URL del Video</label>
+                  <input
+                    type="text"
+                    value={editingAsset.currentValue}
+                    onChange={(e) => {
+                      const newVal = e.target.value;
+                      setEditingAsset(prev => prev ? { ...prev, currentValue: newVal } : null);
+                    }}
+                    className="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
+                  />
                 </div>
-              </div>
+              )}
+
+              {/* File Uploader */}
+              {!editingAsset.key.toLowerCase().includes('video') && (
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Seleccionar archivo desde el computador</label>
+                  <label className="flex items-center justify-center border border-dashed border-white/10 hover:border-gold/35 rounded-lg p-3.5 cursor-pointer transition-colors bg-white/[0.01]">
+                    {isUploadingAsset ? (
+                      <div className="flex items-center space-x-2 text-xs text-text-secondary py-1">
+                        <span className="w-3.5 h-3.5 border border-gold border-t-transparent rounded-full animate-spin" />
+                        <span>Optimizando y Subiendo...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center space-y-1 text-center py-1">
+                        <UploadCloud size={16} className="text-text-secondary hover:text-gold transition-colors" />
+                        <span className="text-[10px] text-white font-semibold">Seleccionar archivo</span>
+                        <span className="text-[8px] text-text-secondary">Se optimizará automáticamente</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={isUploadingAsset}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIsUploadingAsset(true);
+                          try {
+                            const publicUrl = await optimizeAndUploadImage(file);
+                            setEditingAsset(prev => prev ? { ...prev, currentValue: publicUrl } : null);
+                            triggerNotification('Imagen subida y optimizada con éxito.');
+                          } catch (err: any) {
+                            console.error(err);
+                            triggerNotification('Error al subir/optimizar la imagen.');
+                          } finally {
+                            setIsUploadingAsset(false);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* Previsualización de la Imagen Cargada */}
+              {!editingAsset.key.toLowerCase().includes('video') && editingAsset.currentValue && (
+                <div className="space-y-1.5">
+                  <span className="block text-[9px] uppercase tracking-wider text-gold font-bold">Imagen Previsualizada</span>
+                  <div className="relative w-full h-44 rounded-2xl overflow-hidden border border-white/10 bg-black/50 flex items-center justify-center p-2">
+                    <img 
+                      src={editingAsset.currentValue} 
+                      alt="Vista previa" 
+                      className="object-contain max-h-40 rounded-xl"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-3 pt-3 border-t border-white/5">
@@ -5136,6 +7262,713 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* DELETE PROFESSIONAL CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {staffToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setStaffToDelete(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 shadow-2xl z-10 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setStaffToDelete(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+
+              <div className="space-y-4">
+                {/* Warning Icon & Title */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[8px] uppercase tracking-widest text-red-400 font-bold">Confirmar Eliminación</span>
+                    <h3 className="font-serif text-sm font-medium text-white">¿Eliminar Profesional?</h3>
+                  </div>
+                </div>
+
+                {/* Message */}
+                <p className="text-xs text-text-secondary leading-relaxed font-light">
+                  ¿Estás seguro de que deseas eliminar al profesional <strong className="text-white font-medium">{staffToDelete.name}</strong>?
+                  Esta acción es permanente, se borrarán todos sus turnos configurados y no se podrá deshacer.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setStaffToDelete(null)}
+                  className="flex-1 py-3.5 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (staffToDelete) {
+                      await deleteSpecialist(staffToDelete.category, staffToDelete.id);
+                      triggerNotification(`Profesional "${staffToDelete.name}" eliminado con éxito.`);
+                      setStaffToDelete(null);
+                    }
+                  }}
+                  className="flex-1 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Trash2 size={12} />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE CLIENT CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {clientToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setClientToDelete(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 shadow-2xl z-10 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setClientToDelete(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+
+              <div className="space-y-4">
+                {/* Warning Icon & Title */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[8px] uppercase tracking-widest text-red-400 font-bold">Confirmar Eliminación</span>
+                    <h3 className="font-serif text-sm font-medium text-white">¿Eliminar Cliente?</h3>
+                  </div>
+                </div>
+
+                {/* Message */}
+                <p className="text-xs text-text-secondary leading-relaxed font-light">
+                  ¿Estás seguro de que deseas eliminar al cliente <strong className="text-white font-medium">{clientToDelete.name}</strong>?
+                  Esta acción eliminará el perfil del cliente de la base de datos de forma permanente y no se podrá deshacer.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setClientToDelete(null)}
+                  className="flex-1 py-3.5 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (clientToDelete) {
+                      await deleteClient(clientToDelete.phone);
+                      triggerNotification(`Cliente "${clientToDelete.name}" eliminado con éxito.`);
+                      if (selectedClient?.phone === clientToDelete.phone) {
+                        setSelectedClient(null);
+                      }
+                      setClientToDelete(null);
+                    }
+                  }}
+                  className="flex-1 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Trash2 size={12} />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EDIT CLIENT MODAL */}
+      <AnimatePresence>
+        {isEditingClient && clientToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditingClient(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl z-10 text-left space-y-6 max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setIsEditingClient(false)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              <div>
+                <span className="text-[8px] uppercase tracking-widest text-gold font-bold">Gestión de Clientes</span>
+                <h3 className="font-serif text-xl text-white font-semibold">Editar Datos de Cliente</h3>
+                <p className="text-xs text-text-secondary font-light mt-1">
+                  Modifica los datos del perfil de <strong className="text-white font-medium">{clientToEdit.name}</strong>.
+                </p>
+              </div>
+
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  
+                  if (!editClientName.trim()) {
+                    triggerNotification('El nombre es obligatorio.');
+                    return;
+                  }
+
+                  if (editClientPhone.length !== 9) {
+                    setPhoneError('El teléfono debe tener exactamente 9 dígitos.');
+                    triggerNotification('Corrige los errores antes de guardar.');
+                    return;
+                  }
+                  
+                  const finalPhone = countryCode + editClientPhone.trim();
+                  
+                  await updateClient(clientToEdit.phone, {
+                    name: editClientName.trim(),
+                    phone: finalPhone,
+                    email: editClientEmail.trim() || ''
+                  });
+                  
+                  if (selectedClient?.phone === clientToEdit.phone) {
+                    setSelectedClient({
+                      ...selectedClient,
+                      name: editClientName.trim(),
+                      phone: finalPhone,
+                      email: editClientEmail.trim() || ''
+                    });
+                  }
+                  
+                  triggerNotification(`Cliente "${editClientName.trim()}" actualizado con éxito.`);
+                  setIsEditingClient(false);
+                }} 
+                className="space-y-4"
+              >
+                <div className="space-y-1.5">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={editClientName}
+                    onChange={(e) => setEditClientName(e.target.value)}
+                    className="w-full bg-[#141414] border border-white/5 focus:border-gold/30 rounded-2xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none transition-colors"
+                    placeholder="Ej. Juan Pérez"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Teléfono de Contacto</label>
+                  
+                  <div className="flex space-x-2 relative">
+                    {/* Custom Country Dropdown */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditCountryDropdownOpen(!isEditCountryDropdownOpen)}
+                        className="h-11 bg-[#141414] border border-white/5 focus:border-gold/30 rounded-2xl px-3 text-xs text-white flex items-center justify-between space-x-2 focus:outline-none transition-colors cursor-pointer min-w-[75px]"
+                      >
+                        <span>{countryCode}</span>
+                        <ChevronDown size={12} className="text-white/40" />
+                      </button>
+                      
+                      {isEditCountryDropdownOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-45"
+                            onClick={() => setIsEditCountryDropdownOpen(false)}
+                          />
+                          <div className="absolute left-0 mt-1.5 w-48 bg-[#111] border border-white/10 rounded-2xl shadow-2xl py-1 z-50 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 font-sans">
+                            {[
+                              { code: '+56', label: 'Chile (+56)' },
+                              { code: '+54', label: 'Argentina (+54)' },
+                              { code: '+51', label: 'Perú (+51)' },
+                              { code: '+57', label: 'Colombia (+57)' },
+                              { code: '+34', label: 'España (+34)' },
+                              { code: '+52', label: 'México (+52)' },
+                              { code: '+598', label: 'Uruguay (+598)' },
+                            ].map((c) => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => {
+                                  setCountryCode(c.code);
+                                  setIsEditCountryDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/5 ${
+                                  countryCode === c.code ? 'text-gold font-medium bg-gold/5' : 'text-white/70'
+                                }`}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        required
+                        value={editClientPhone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          if (val.length <= 9) {
+                            setEditClientPhone(val);
+                            if (val.length > 0 && val.length !== 9) {
+                              setPhoneError('El teléfono debe tener exactamente 9 dígitos.');
+                            } else {
+                              setPhoneError('');
+                            }
+                          }
+                        }}
+                        className={`w-full h-11 bg-[#141414] border ${
+                          phoneError ? 'border-red-500/50 focus:border-red-500' : 'border-white/5 focus:border-gold/30'
+                        } rounded-2xl px-4 text-xs text-white placeholder-white/20 focus:outline-none transition-colors font-mono`}
+                        placeholder="Ej. 966118844"
+                      />
+                    </div>
+                  </div>
+
+                  {phoneError && (
+                    <p className="text-[10px] text-red-400 font-light flex items-center gap-1 mt-1">
+                      <AlertCircle size={10} className="text-red-400" />
+                      <span>{phoneError}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Correo Electrónico</label>
+                  <input
+                    type="email"
+                    value={editClientEmail}
+                    onChange={(e) => setEditClientEmail(e.target.value)}
+                    className="w-full bg-[#141414] border border-white/5 focus:border-gold/30 rounded-2xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none transition-colors"
+                    placeholder="Ej. juan.perez@email.com"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingClient(false)}
+                    className="flex-1 py-3 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                  >
+                    <Save size={12} />
+                    <span>Guardar Cambios</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
+
+      {/* DELETE SERVICE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {serviceToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setServiceToDelete(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 shadow-2xl z-10 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setServiceToDelete(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+
+              <div className="space-y-4">
+                {/* Warning Icon & Title */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[8px] uppercase tracking-widest text-red-400 font-bold">Confirmar Eliminación</span>
+                    <h3 className="font-serif text-sm font-medium text-white">¿Eliminar Servicio?</h3>
+                  </div>
+                </div>
+
+                {/* Message */}
+                <p className="text-xs text-text-secondary leading-relaxed font-light">
+                  ¿Estás seguro de que deseas eliminar el servicio <strong className="text-white font-medium">{serviceToDelete.name}</strong>?
+                  Esta acción es permanente, se eliminará del catálogo de servicios y no se podrá deshacer.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setServiceToDelete(null)}
+                  className="flex-1 py-3.5 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (serviceToDelete) {
+                      await deleteService(serviceToDelete.category, serviceToDelete.id);
+                      triggerNotification(`Servicio "${serviceToDelete.name}" eliminado con éxito.`);
+                      setServiceToDelete(null);
+                    }
+                  }}
+                  className="flex-1 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Trash2 size={12} />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {blockToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setBlockToDelete(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 shadow-2xl z-10 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setBlockToDelete(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+
+              <div className="space-y-4">
+                {/* Warning Icon & Title */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                    <Trash2 size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[8px] uppercase tracking-widest text-red-400 font-bold">Confirmar Eliminación</span>
+                    <h3 className="font-serif text-sm font-medium text-white">¿Eliminar Bloqueo?</h3>
+                  </div>
+                </div>
+
+                {/* Message */}
+                <p className="text-xs text-text-secondary leading-relaxed font-light">
+                  ¿Estás seguro de que deseas eliminar el bloqueo del día <strong className="text-white font-medium">{blockToDelete.date}</strong> ({blockToDelete.startTime} - {blockToDelete.endTime})?
+                  El motivo registrado es <span className="text-white">"{blockToDelete.reason}"</span>. Esta acción volverá a habilitar el horario para reservas.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setBlockToDelete(null)}
+                  className="flex-1 py-3.5 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (blockToDelete) {
+                      await deleteTimeBlock(blockToDelete.id);
+                      triggerNotification('Bloqueo eliminado correctamente.');
+                      setBlockToDelete(null);
+                    }
+                  }}
+                  className="flex-1 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Trash2 size={12} />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ACCESS REQUEST APPROVAL MODAL */}
+      <AnimatePresence>
+        {requestToApprove && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setRequestToApprove(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl z-10 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setRequestToApprove(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="space-y-2">
+                <span className="text-[8px] uppercase tracking-widest text-gold font-bold">Aprobación de Acceso</span>
+                <h3 className="font-serif text-lg text-white font-medium">Configurar Colaborador</h3>
+                <p className="text-xs text-text-secondary font-light">
+                  Configura el perfil de acceso y las agendas autorizadas para <strong className="text-white font-medium">{requestToApprove.first_name} {requestToApprove.last_name}</strong>.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Profile Type */}
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Perfil de Acceso *</label>
+                  <CustomSelect
+                    value={approveProfileType}
+                    onChange={(val) => {
+                      const type = val as any;
+                      setApproveProfileType(type);
+                      if (type === 'barber') setApproveAgendas(['barberia']);
+                      else if (type === 'estilista') setApproveAgendas(['peluqueria']);
+                      else if (type === 'terapeuta') setApproveAgendas(['terapias']);
+                      else if (type === 'admin') setApproveAgendas(['barberia', 'peluqueria', 'terapias']);
+                    }}
+                    options={[
+                      { value: 'barber', label: 'Barber (Solo Barbería)' },
+                      { value: 'estilista', label: 'Estilista (Solo Peluquería)' },
+                      { value: 'terapeuta', label: 'Terapeuta (Solo Terapias Holísticas)' },
+                      { value: 'mixto', label: 'Mixto (Múltiples Agendas)' },
+                      { value: 'admin', label: 'Administrador (Acceso Total)' }
+                    ]}
+                    buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                  />
+                </div>
+
+
+
+                {/* Agendas checkboxes */}
+                <div className="space-y-2.5">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Agendas Autorizadas *</label>
+                  <div className="flex flex-col space-y-2">
+                    {[
+                      { id: 'barberia', label: 'Barbería Tradicional' },
+                      { id: 'peluqueria', label: 'Peluquería de Autor' },
+                      { id: 'terapias', label: 'Terapias Holísticas' }
+                    ].map((ag) => {
+                      const isChecked = approveAgendas.includes(ag.id as any);
+                      const isDisabled = approveProfileType !== 'mixto';
+
+                      return (
+                        <label
+                          key={ag.id}
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                            isDisabled ? 'opacity-50 bg-black/10 border-white/5 cursor-not-allowed' : 'cursor-pointer hover:bg-white/[0.01]'
+                          } ${isChecked ? 'bg-gold/5 border-gold/30' : 'border-white/5'}`}
+                        >
+                          <span className={`text-xs transition-colors ${isChecked ? 'text-white' : 'text-white/60'}`}>{ag.label}</span>
+                          <input
+                            type="checkbox"
+                            disabled={isDisabled}
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isDisabled) return;
+                              if (isChecked) {
+                                setApproveAgendas(prev => prev.filter(id => id !== ag.id));
+                              } else {
+                                setApproveAgendas(prev => [...prev, ag.id as any]);
+                              }
+                            }}
+                            className="sr-only"
+                          />
+                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${
+                            isChecked 
+                              ? 'bg-gold border-gold text-black shadow-[0_0_8px_rgba(198,155,60,0.25)]' 
+                              : 'border-white/20 bg-black/40'
+                          }`}>
+                            {isChecked && <Check size={12} className="stroke-[3]" />}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setRequestToApprove(null)}
+                  disabled={approvalLoading}
+                  className="flex-1 py-3.5 rounded-full border border-white/10 text-white font-bold uppercase tracking-widest text-[9px] hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleApproveRequest}
+                  disabled={approvalLoading || approveAgendas.length === 0}
+                  className="flex-1 py-3.5 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  {approvalLoading ? 'Creando...' : 'Confirmar Acceso'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* GENERATED CREDENTIALS POPUP */}
+      <AnimatePresence>
+        {approvedCredentials && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setApprovedCredentials(null)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl z-10 text-left space-y-6"
+            >
+              <div className="space-y-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold mx-auto shadow-[0_4px_15px_rgba(198,155,60,0.15)]">
+                  <UserCheck size={20} />
+                </div>
+                <h3 className="font-serif text-lg text-white font-medium">Credenciales Generadas</h3>
+                <p className="text-xs text-text-secondary font-light">
+                  Se ha generado un acceso administrativo temporal para el usuario. Copia estas credenciales para entregárselas de forma segura.
+                </p>
+              </div>
+
+              <div className="space-y-3 bg-black/40 border border-white/5 rounded-2xl p-4 font-mono text-[11px] text-white">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-white/40 uppercase text-[9px] tracking-wider font-sans">Email:</span>
+                  <span className="select-all">{approvedCredentials.email}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-t border-white/5">
+                  <span className="text-white/40 uppercase text-[9px] tracking-wider font-sans">Contraseña:</span>
+                  <span className="text-gold select-all font-bold">{approvedCredentials.tempPass}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  const text = `Credenciales Santuario de Bienestar\nEmail: ${approvedCredentials.email}\nContraseña Temporal: ${approvedCredentials.tempPass}\nNota: Al ingresar por primera vez, el sistema te solicitará cambiar esta contraseña por seguridad.`;
+                  
+                  try {
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                      navigator.clipboard.writeText(text);
+                      triggerNotification('Credenciales copiadas al portapapeles.');
+                    } else {
+                      const textArea = document.createElement('textarea');
+                      textArea.value = text;
+                      textArea.style.top = '0';
+                      textArea.style.left = '0';
+                      textArea.style.position = 'fixed';
+                      document.body.appendChild(textArea);
+                      textArea.focus();
+                      textArea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textArea);
+                      triggerNotification('Credenciales copiadas al portapapeles.');
+                    }
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch (err) {
+                    console.error('Error copying text:', err);
+                    triggerNotification('No se pudo copiar automáticamente. Por favor copia manualmente.');
+                  }
+                }}
+                className="w-full py-3.5 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer flex items-center justify-center space-x-2 shadow-lg shadow-gold/5"
+              >
+                <span>{copied ? '¡Copiado!' : 'Copiar Datos'}</span>
+              </button>
+
+              <button
+                onClick={() => setApprovedCredentials(null)}
+                className="w-full py-3 text-center text-xs text-white/50 hover:text-white transition-colors cursor-pointer"
+              >
+                Cerrar Ventana
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <ManualBookingModal 
         isOpen={isManualBookingOpen} 
         onClose={() => setIsManualBookingOpen(false)} 
@@ -5145,6 +7978,155 @@ export default function AdminPage() {
         defaultTime={prefillTime}
         onBookingCreated={(code) => triggerNotification(`Reserva ${code} creada con éxito.`)}
       />
+
+      {/* CHANGE PASSWORD OVERLAY */}
+      {requirePasswordChange && (
+        <div className="fixed inset-0 z-50 bg-[#070707] text-[#F0F0F0] flex items-center justify-center p-4">
+          {/* Toast Notification */}
+          <AnimatePresence>
+            {notification && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, x: '-50%' }}
+                animate={{ opacity: 1, y: 0, x: '-50%' }}
+                exit={{ opacity: 0, y: -20, x: '-50%' }}
+                className="fixed top-6 left-1/2 z-50 bg-[#121212] border border-gold/40 text-gold text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md"
+              >
+                <Sparkles size={14} className="animate-pulse" />
+                <span>{notification}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="w-full max-w-md bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl space-y-6 text-left relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gold/5 rounded-full blur-3xl" />
+            
+            <div className="space-y-2">
+              <span className="text-[8px] uppercase tracking-[0.4em] text-gold font-bold block">Consola Administrativa</span>
+              <h2 className="font-serif text-2xl font-bold tracking-[0.1em] text-white">Cambiar Contraseña</h2>
+              <p className="text-xs text-text-secondary font-light leading-relaxed">
+                Por razones de seguridad, debes actualizar la contraseña temporal asignada en tu primer inicio de sesión antes de continuar.
+              </p>
+            </div>
+
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (forceNewPassword.length < 6) {
+                  triggerNotification('La contraseña debe tener al menos 6 caracteres.');
+                  return;
+                }
+                if (forceNewPassword !== forceConfirmPassword) {
+                  triggerNotification('Las contraseñas no coinciden.');
+                  return;
+                }
+                
+                try {
+                  setForcePasswordLoading(true);
+                  const { error } = await supabase.auth.updateUser({
+                    password: forceNewPassword,
+                    data: { require_password_change: false }
+                  });
+
+                  if (error) {
+                    triggerNotification(`Error: ${error.message}`);
+                  } else {
+                    triggerNotification('Contraseña actualizada con éxito.');
+                    setRequirePasswordChange(false);
+                  }
+                } catch (err) {
+                  triggerNotification('Error al conectar con el servidor.');
+                } finally {
+                  setForcePasswordLoading(false);
+                }
+              }} 
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Nueva Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Mínimo 6 caracteres"
+                  value={forceNewPassword}
+                  onChange={(e) => setForceNewPassword(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-sans"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Confirmar Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Repite la nueva contraseña"
+                  value={forceConfirmPassword}
+                  onChange={(e) => setForceConfirmPassword(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-sans"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={forcePasswordLoading}
+                className="w-full mt-6 py-4 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[10px] transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-gold/5 flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+              >
+                {forcePasswordLoading ? 'Actualizando...' : 'Guardar y Continuar'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 shadow-2xl text-center z-10 overflow-hidden"
+            >
+              {/* Gold Top Glow */}
+              <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+
+              <h3 className="font-serif text-base text-white mb-2 tracking-wide font-bold">
+                {confirmModal.title}
+              </h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-6 px-2">
+                {confirmModal.message}
+              </p>
+              
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-5 py-2.5 rounded-full border border-white/10 text-white hover:bg-white/5 text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  }}
+                  className={`px-5 py-2.5 rounded-full text-white text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer shadow-lg ${confirmModal.confirmBtnClass}`}
+                >
+                  {confirmModal.confirmText || 'Confirmar'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

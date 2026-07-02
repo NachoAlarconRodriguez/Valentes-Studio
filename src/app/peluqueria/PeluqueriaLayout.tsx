@@ -529,18 +529,30 @@ export default function PeluqueriaLayout() {
                     onClick={() => {
                       setIsGalleryOpen(false);
                       const selectedItem = currentItem;
-                      // Match styling service id based on stylist/type
-                      let sId = 'p1'; // default
-                      if (selectedItem.title.includes('Coloración')) sId = 'p2';
-                      else if (selectedItem.title.includes('Tratamiento')) sId = 'p3';
-                      else if (selectedItem.title.includes('Peinado')) sId = 'p4';
+                      let serviceObj = null;
 
-                      const serviceObj = servicesData.peluqueria.services.find(s => s.id === sId) || servicesData.peluqueria.services[0];
-                      openBooking({
-                        id: serviceObj.id,
-                        name: serviceObj.name,
-                        price: serviceObj.price
-                      });
+                      // 1. Try to find the service by linked serviceId across all categories
+                      if (selectedItem.serviceId) {
+                        const allServices = Object.values(servicesData).flatMap(section => section.services || []);
+                        serviceObj = allServices.find(s => s.id === selectedItem.serviceId);
+                      }
+
+                      // 2. Fallback to keyword matching if not found or not linked
+                      if (!serviceObj) {
+                        let sId = 'p1'; // default
+                        if (selectedItem.title.includes('Coloración')) sId = 'p2';
+                        else if (selectedItem.title.includes('Tratamiento')) sId = 'p3';
+                        else if (selectedItem.title.includes('Peinado')) sId = 'p4';
+                        serviceObj = servicesData.peluqueria.services.find(s => s.id === sId) || servicesData.peluqueria.services[0];
+                      }
+
+                      if (serviceObj) {
+                        openBooking({
+                          id: serviceObj.id,
+                          name: serviceObj.name,
+                          price: serviceObj.price
+                        });
+                      }
                     }}
                     className="w-full py-3.5 rounded-full bg-gold hover:bg-gold/90 text-black text-xs uppercase tracking-widest font-bold transition-all hover:scale-[1.02] active:scale-95 shimmer-button"
                   >

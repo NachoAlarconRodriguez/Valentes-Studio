@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createClient } from '@/utils/supabase/client';
 
 export interface GalleryItem {
   id: string;
@@ -8,6 +9,7 @@ export interface GalleryItem {
   duration: string;
   price: string;
   imageUrl: string;
+  serviceId?: string;
 }
 
 export interface PageContent {
@@ -31,6 +33,12 @@ export interface PageContent {
     imageCompleto: string;
     pageTitle: string;
     pageDescription: string;
+    titleCabello?: string;
+    priceCabello?: string;
+    titleBarba?: string;
+    priceBarba?: string;
+    titleCompleto?: string;
+    priceCompleto?: string;
   };
   peluqueria: {
     overlayLine1: string;
@@ -49,9 +57,15 @@ export interface PageContent {
 
 interface ContentStore {
   content: PageContent;
-  updateContent: (section: keyof PageContent, fields: Partial<PageContent[keyof PageContent]>) => void;
-  resetToDefault: () => void;
+  loading: boolean;
+  
+  // Actions
+  fetchContent: () => Promise<void>;
+  updateContent: (section: keyof PageContent, fields: Partial<PageContent[keyof PageContent]>) => Promise<void>;
+  resetToDefault: () => Promise<void>;
 }
+
+const supabase = createClient();
 
 const defaultContent: PageContent = {
   home: {
@@ -73,7 +87,13 @@ const defaultContent: PageContent = {
     imageBarba: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80',
     imageCompleto: 'https://images.unsplash.com/photo-1512864084360-7c0c4d0a0845?auto=format&fit=crop&w=800&q=80',
     pageTitle: 'Barbería Tradicional',
-    pageDescription: 'Cortes de autor, afeitados con navaja libre y rituales de toallas calientes diseñados para el caballero contemporáneo en un ambiente de calma absoluta.'
+    pageDescription: 'Cortes de autor, afeitados con navaja libre y rituales de toallas calientes diseñados para el caballero contemporáneo en un ambiente de calma absoluta.',
+    titleCabello: 'Ritual de Cabello',
+    priceCabello: 'Desde $12.000',
+    titleBarba: 'Ritual de Barba',
+    priceBarba: 'Desde $12.000',
+    titleCompleto: 'Ritual Completo',
+    priceCompleto: 'Desde $20.000'
   },
   peluqueria: {
     overlayLine1: 'ALMA',
@@ -145,17 +165,80 @@ const defaultContent: PageContent = {
   }
 };
 
-export const useContentStore = create<ContentStore>((set) => ({
+export const useContentStore = create<ContentStore>((set, get) => ({
   content: defaultContent,
-  updateContent: (section, fields) => set((state) => ({
-    content: {
-      ...state.content,
-      [section]: {
-        ...state.content[section],
-        ...fields
+  loading: false,
+
+  fetchContent: async () => {
+    set({ loading: true });
+    try {
+      const { data: dbContent, error } = await supabase
+        .from('page_content')
+        .select('*');
+
+      if (error) throw error;
+
+      if (dbContent && dbContent.length > 0) {
+        const content: PageContent = { ...defaultContent };
+        dbContent.forEach((row) => {
+          const key = row.key as keyof PageContent;
+          if (content[key]) {
+            content[key] = { ...content[key], ...row.content };
+          }
+        });
+        set({ content, loading: false });
+      } else {
+        // No contents in DB yet, load defaults
+        set({ content: defaultContent, loading: false });
       }
+    } catch (error) {
+      console.error('Error fetching page content:', error);
+      set({ loading: false });
     }
-  })),
-  resetToDefault: () => set({ content: defaultContent })
+  },
+
+  updateContent: async (section, fields) => {
+    const updatedSection = {
+      ...get().content[section],
+      ...fields
+    };
+
+    try {
+      const { error } = await supabase
+        .from('page_content')
+        .upsert({
+          key: section,
+          content: updatedSection
+        });
+
+      if (error) throw error;
+
+      set((state) => ({
+        content: {
+          ...state.content,
+          [section]: updatedSection
+        }
+      }));
+    } catch (err) {
+      console.error('Error updating page content:', err);
+    }
+  },
+
+  resetToDefault: async () => {
+    try {
+      for (const section of Object.keys(defaultContent)) {
+        await supabase
+          .from('page_content')
+          .upsert({
+            key: section,
+            content: defaultContent[section as keyof PageContent]
+          });
+      }
+      set({ content: defaultContent });
+    } catch (err) {
+      console.error('Error resetting page content:', err);
+    }
+  }
 }));
+
 export default useContentStore;

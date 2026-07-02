@@ -250,7 +250,7 @@ export default function BarberiaLayout() {
                       Ritual 01
                     </span>
                     <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
-                      Ritual de Cabello
+                      {content.barberia.titleCabello || 'Ritual de Cabello'}
                     </h3>
                     
                     {activePanel !== 1 && (
@@ -259,7 +259,7 @@ export default function BarberiaLayout() {
                         animate={{ opacity: 1 }}
                         className="mt-2 text-xs text-text-secondary font-light"
                       >
-                        Desde $12.000 • 45 min
+                        {content.barberia.priceCabello || 'Desde $12.000'} • 45 min
                       </motion.div>
                     )}
                   </div>
@@ -395,7 +395,7 @@ export default function BarberiaLayout() {
                       Ritual 02
                     </span>
                     <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
-                      Ritual de Barba
+                      {content.barberia.titleBarba || 'Ritual de Barba'}
                     </h3>
                     
                     {activePanel !== 2 && (
@@ -404,7 +404,7 @@ export default function BarberiaLayout() {
                         animate={{ opacity: 1 }}
                         className="mt-2 text-xs text-text-secondary font-light"
                       >
-                        Desde $12.000 • 30-45 min
+                        {content.barberia.priceBarba || 'Desde $12.000'} • 30-45 min
                       </motion.div>
                     )}
                   </div>
@@ -533,7 +533,7 @@ export default function BarberiaLayout() {
                       Ritual 03
                     </span>
                     <h3 className="font-serif text-2xl lg:text-3xl text-white tracking-wide font-medium">
-                      Ritual Completo
+                      {content.barberia.titleCompleto || 'Ritual Completo'}
                     </h3>
                     
                     {activePanel !== 3 && (
@@ -542,7 +542,7 @@ export default function BarberiaLayout() {
                         animate={{ opacity: 1 }}
                         className="mt-2 text-xs text-text-secondary font-light"
                       >
-                        Desde $20.000 • 60-80 min
+                        {content.barberia.priceCompleto || 'Desde $20.000'} • 60-80 min
                       </motion.div>
                     )}
                   </div>

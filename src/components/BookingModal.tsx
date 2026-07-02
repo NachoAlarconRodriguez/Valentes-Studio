@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
-import { useScheduleStore } from '@/store/useScheduleStore';
+import { useScheduleStore, parseDurationToMinutes } from '@/store/useScheduleStore';
 import Image from 'next/image';
 
 const specialistPhotos: Record<string, string> = {
@@ -30,45 +30,25 @@ export function BookingModal() {
   
   // Form states
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('+56 9 ');
+  const [countryCode, setCountryCode] = useState('+56');
+  const [phoneNumOnly, setPhoneNumOnly] = useState('');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value;
-    
-    if (!val.startsWith('+56 9')) {
-      const cleanDigits = val.replace(/\D/g, '');
-      let suffix = '';
-      if (cleanDigits.length > 3) {
-        if (cleanDigits.startsWith('569')) {
-          suffix = cleanDigits.substring(3);
-        } else if (cleanDigits.startsWith('9') && cleanDigits.length === 9) {
-          suffix = cleanDigits.substring(1);
-        } else {
-          suffix = cleanDigits;
-        }
-      }
-      val = '+56 9 ' + suffix;
-    }
+  const handlePhoneNumChange = (val: string) => {
+    const cleaned = val.replace(/\D/g, '').substring(0, 9);
+    setPhoneNumOnly(cleaned);
+    validatePhone(cleaned, countryCode);
+  };
 
-    const suffix = val.substring(5).replace(/\D/g, '').substring(0, 8);
-    
-    let formatted = '+56 9 ';
-    if (suffix.length > 0) {
-      if (suffix.length <= 4) {
-        formatted += suffix;
-      } else {
-        formatted += `${suffix.substring(0, 4)} ${suffix.substring(4)}`;
-      }
-    }
-    
-    setPhone(formatted);
-
-    if (suffix.length > 0 && suffix.length < 8) {
-      setPhoneError('Faltan dígitos (deben ser 8 números)');
-    } else if (suffix.length === 8) {
-      setPhoneError(null);
+  const validatePhone = (num: string, prefix: string) => {
+    if (num.length === 0) {
+      setPhoneError('Por favor ingresa tu número de WhatsApp');
+    } else if (num.length < 9) {
+      setPhoneError('El número de WhatsApp debe tener exactamente 9 dígitos.');
+    } else if (num.length > 9) {
+      setPhoneError('El número de WhatsApp no puede tener más de 9 dígitos.');
     } else {
       setPhoneError(null);
     }
@@ -78,6 +58,7 @@ export function BookingModal() {
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [dateType, setDateType] = useState<'hoy' | 'manana' | 'semana' | 'mes' | null>(null);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(() => new Date());
   const [time, setTime] = useState('');
   
   // Gift Card states
@@ -159,38 +140,61 @@ export function BookingModal() {
 
   const checkTimeSlotAvailability = (slotTime: string): { available: boolean; reason?: string } => {
     if (!date) return { available: true };
+    
+    // Check if slot is in the past based on system date and time
+    const isPast = (() => {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${y}-${m}-${d}`;
+      
+      if (date < todayStr) return true;
+      if (date > todayStr) return false;
+      
+      const timeToMinutes = (tStr: string) => {
+        const [h, min] = tStr.split(':').map(Number);
+        return h * 60 + min;
+      };
+      
+      const slotMins = timeToMinutes(slotTime);
+      const currentMins = today.getHours() * 60 + today.getMinutes();
+      return slotMins < currentMins;
+    })();
+
+    if (isPast) {
+      return { available: false, reason: 'El horario ya pasó' };
+    }
+
+    const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
     if (specialistId) {
-      return isSpecialistAvailable(specialistId, date, slotTime);
+      return isSpecialistAvailable(specialistId, date, slotTime, dur);
     }
     if (specialistsList.length === 0) return { available: true };
-    const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime).available);
+    const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime, dur).available);
     if (availableSpecs.length > 0) {
       return { available: true };
     }
     return { available: false, reason: 'No hay profesionales disponibles' };
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !serviceId || !date || !time) return;
+    if (!name || !phoneNumOnly || !serviceId || !date || !time) return;
 
-    const digitsOnly = phone.substring(5).replace(/\D/g, '');
-    if (digitsOnly.length !== 8) {
-      setPhoneError('El número de teléfono debe tener exactamente 8 dígitos.');
+    if (phoneNumOnly.length !== 9) {
+      setPhoneError('El número de WhatsApp debe tener exactamente 9 dígitos.');
       return;
     }
     setPhoneError(null);
 
     setIsSubmitting(true);
     
-    // Simulate API request
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSuccess(true);
-      
-      const newBookingId = useBookingStore.getState().addBooking({
+    try {
+      const fullPhone = `${countryCode} ${phoneNumOnly}`;
+      const newBookingId = await useBookingStore.getState().addBooking({
         clientName: name,
-        clientPhone: phone,
+        clientPhone: fullPhone,
         clientEmail: email,
         category: category as 'barberia' | 'peluqueria' | 'terapias',
         serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
@@ -203,16 +207,22 @@ export function BookingModal() {
 
       // Deduct balance from Gift Card if applied
       if (appliedGiftCard && discountAmount > 0) {
-        useGiftCardStore.getState().redeemGiftCard(appliedGiftCard.code, discountAmount);
+        await useGiftCardStore.getState().redeemGiftCard(appliedGiftCard.code, discountAmount);
       }
       
       setBookingCode(newBookingId);
-    }, 1500);
+      setIsSuccess(true);
+    } catch (err) {
+      console.error('Error creating booking:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
     setName('');
-    setPhone('+56 9 ');
+    setCountryCode('+56');
+    setPhoneNumOnly('');
     setPhoneError(null);
     setEmail('');
     setCategory('barberia');
@@ -294,7 +304,14 @@ export function BookingModal() {
   const inputClass = `w-full bg-transparent border-b border-white/10 text-white py-2.5 px-1 text-sm ${themeBorderFocus} focus:outline-none transition-colors`;
   const subSectionTitleClass = `block text-[10px] uppercase tracking-[0.25em] ${themeText90} font-bold mb-2 border-b border-white/5 pb-1`;
   
-  const submitButtonClass = `w-full mt-6 py-4 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all duration-300 disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer shadow-lg ${themeShadow}`;
+  const isFormValid = name.trim() !== '' && 
+                      phoneNumOnly.length === 9 && 
+                      !phoneError && 
+                      serviceId !== '' && 
+                      date !== '' && 
+                      time !== '';
+
+  const submitButtonClass = `w-full mt-6 py-4 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center space-x-2 cursor-pointer shadow-lg ${themeShadow}`;
   
   const summaryBoxClass = "w-full bg-white/5 border border-white/5 rounded-2xl p-5 mb-6 text-left space-y-3";
   const summaryBorderClass = "flex justify-between border-b border-white/5 pb-2";
@@ -722,22 +739,251 @@ export function BookingModal() {
                         </div>
 
                         {/* Conditional Date Picker for Semana and Mes */}
-                        {(dateType === 'semana' || dateType === 'mes') && (
+                        {dateType === 'semana' && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="relative mt-2"
+                            className="space-y-1.5 pt-1"
                           >
-                            <input
-                              type="date"
-                              value={date}
-                              onChange={(e) => setDate(e.target.value)}
-                              required
-                              min={getFormattedDate(0)}
-                              max={dateType === 'semana' ? getFormattedDate(7) : getFormattedDate(30)}
-                              className={inputClass}
-                            />
+                            <span className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Selecciona el día:</span>
+                            <div className="flex space-x-2 overflow-x-auto scrollbar-none snap-x snap-mandatory py-1">
+                              {(() => {
+                                const days = [];
+                                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                                const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                                
+                                for (let i = 0; i < 7; i++) {
+                                  const d = new Date();
+                                  d.setDate(d.getDate() + i);
+                                  const dayOfWeek = daysOfWeek[d.getDay()];
+                                  const dayOfMonth = d.getDate();
+                                  const month = monthNames[d.getMonth()];
+                                  
+                                  const yyyy = d.getFullYear();
+                                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                  const dd = String(d.getDate()).padStart(2, '0');
+                                  const dateStr = `${yyyy}-${mm}-${dd}`;
+                                  
+                                  days.push({
+                                    date: dateStr,
+                                    dayName: i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : dayOfWeek,
+                                    displayDate: `${dayOfMonth} ${month}`,
+                                  });
+                                }
+
+                                const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
+                                  if (!checkDate) return { available: true };
+                                  const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+                                  if (specialistId) {
+                                    return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
+                                  }
+                                  if (specialistsList.length === 0) return { available: true };
+                                  const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
+                                  if (availableSpecs.length > 0) {
+                                    return { available: true };
+                                  }
+                                  return { available: false, reason: 'No hay profesionales disponibles' };
+                                };
+
+                                const countAvailableSlots = (checkDate: string) => {
+                                  const slots = [
+                                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+                                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                  ];
+                                  return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
+                                };
+                                
+                                return days.map((d) => {
+                                  const isSelected = date === d.date;
+                                  const availableCount = countAvailableSlots(d.date);
+                                  const isFullyBooked = availableCount === 0;
+
+                                  return (
+                                    <button
+                                      key={d.date}
+                                      type="button"
+                                      disabled={isFullyBooked}
+                                      onClick={() => {
+                                        setDate(d.date);
+                                        setTime(''); // Clear selected slot when date changes
+                                      }}
+                                      className={`flex-shrink-0 w-[72px] h-[78px] rounded-2xl border flex flex-col justify-center items-center transition-all duration-300 snap-start ${
+                                        isFullyBooked
+                                          ? 'border-white/5 bg-black/20 text-white/20 opacity-30 cursor-not-allowed'
+                                          : isSelected
+                                            ? isTerapias
+                                              ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
+                                              : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20 text-white/70 hover:text-white cursor-pointer'
+                                      }`}
+                                    >
+                                      <span className="text-[9px] font-semibold uppercase tracking-wider">{d.dayName}</span>
+                                      <span className="text-[11px] font-bold mt-1 font-mono">{d.displayDate}</span>
+                                      <span className={`text-[8px] mt-1 font-medium ${
+                                        isFullyBooked
+                                          ? 'text-red-400/70 font-semibold'
+                                          : isSelected
+                                            ? isTerapias ? 'text-platinum/80' : 'text-gold/80'
+                                            : 'text-text-secondary/60'
+                                      }`}>
+                                        {isFullyBooked ? 'Agotado' : `${availableCount} disp.`}
+                                      </span>
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {dateType === 'mes' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-black/40 border border-white/10 rounded-2xl p-4 space-y-3 mt-2"
+                          >
+                            {/* Month Navigator Header */}
+                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const prev = new Date(currentCalendarDate);
+                                  prev.setMonth(prev.getMonth() - 1);
+                                  setCurrentCalendarDate(prev);
+                                }}
+                                className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                              >
+                                <ChevronLeft size={16} />
+                              </button>
+                              <span className="text-[11px] font-serif font-bold text-white uppercase tracking-wider">
+                                {currentCalendarDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = new Date(currentCalendarDate);
+                                  next.setMonth(next.getMonth() + 1);
+                                  setCurrentCalendarDate(next);
+                                }}
+                                className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                              >
+                                <ChevronRight size={16} />
+                              </button>
+                            </div>
+
+                            {/* Weekday Labels */}
+                            <div className="grid grid-cols-7 gap-1 text-center text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                              {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((day) => (
+                                <div key={day} className="py-1">{day}</div>
+                              ))}
+                            </div>
+
+                            {/* Days Grid */}
+                            <div className="grid grid-cols-7 gap-1">
+                              {(() => {
+                                const year = currentCalendarDate.getFullYear();
+                                const month = currentCalendarDate.getMonth();
+                                
+                                const firstDay = new Date(year, month, 1);
+                                const lastDay = new Date(year, month + 1, 0);
+                                
+                                let firstDayOfWeek = firstDay.getDay();
+                                firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+                                
+                                const grid = [];
+                                for (let i = 0; i < firstDayOfWeek; i++) {
+                                  grid.push(null);
+                                }
+                                for (let d = 1; d <= lastDay.getDate(); d++) {
+                                  grid.push(new Date(year, month, d));
+                                }
+
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const maxDate = new Date();
+                                maxDate.setDate(maxDate.getDate() + 30);
+                                maxDate.setHours(23, 59, 59, 999);
+
+                                const isDateDisabled = (d: Date | null) => {
+                                  if (!d) return true;
+                                  const checkD = new Date(d);
+                                  checkD.setHours(0, 0, 0, 0);
+                                  return checkD < today || checkD > maxDate;
+                                };
+
+                                const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
+                                  if (!checkDate) return { available: true };
+                                  const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+                                  if (specialistId) {
+                                    return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
+                                  }
+                                  if (specialistsList.length === 0) return { available: true };
+                                  const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
+                                  if (availableSpecs.length > 0) {
+                                    return { available: true };
+                                  }
+                                  return { available: false, reason: 'No hay profesionales disponibles' };
+                                };
+
+                                const countAvailableSlots = (checkDate: string) => {
+                                  const slots = [
+                                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+                                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                  ];
+                                  return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
+                                };
+
+                                return grid.map((d, index) => {
+                                  if (!d) {
+                                    return <div key={`empty-${index}`} />;
+                                  }
+
+                                  const yyyy = d.getFullYear();
+                                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                  const dd = String(d.getDate()).padStart(2, '0');
+                                  const dateStr = `${yyyy}-${mm}-${dd}`;
+                                  
+                                  const isSelected = date === dateStr;
+                                  const isDisabled = isDateDisabled(d);
+                                  const availableCount = isDisabled ? 0 : countAvailableSlots(dateStr);
+                                  const isFullyBooked = !isDisabled && availableCount === 0;
+
+                                  return (
+                                    <button
+                                      key={dateStr}
+                                      type="button"
+                                      disabled={isDisabled || isFullyBooked}
+                                      onClick={() => {
+                                        setDate(dateStr);
+                                        setTime('');
+                                      }}
+                                      className={`h-9 rounded-xl flex flex-col justify-center items-center text-[11px] font-mono transition-all duration-300 relative ${
+                                        isDisabled || isFullyBooked
+                                          ? 'text-white/20 bg-black/20 opacity-30 cursor-not-allowed'
+                                          : isSelected
+                                            ? isTerapias
+                                              ? 'border border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.25)] font-bold'
+                                              : 'border border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.25)] font-bold'
+                                            : 'border border-transparent bg-white/[0.02] hover:border-white/20 text-white/80 hover:text-white cursor-pointer'
+                                      }`}
+                                    >
+                                      <span>{d.getDate()}</span>
+                                      {!isDisabled && !isFullyBooked && (
+                                        <span className={`w-1 h-1 rounded-full absolute bottom-1 ${
+                                          isSelected
+                                            ? isTerapias ? 'bg-platinum' : 'bg-gold'
+                                            : 'bg-emerald-400/50'
+                                        }`} />
+                                      )}
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
                           </motion.div>
                         )}
                       </div>
@@ -753,14 +999,32 @@ export function BookingModal() {
                         <label className={labelClass}>Hora *</label>
                         <div className="grid grid-cols-4 gap-2">
                           {[
+                            { value: '08:00', label: '08:00 AM' },
+                            { value: '08:30', label: '08:30 AM' },
                             { value: '09:00', label: '09:00 AM' },
+                            { value: '09:30', label: '09:30 AM' },
+                            { value: '10:00', label: '10:00 AM' },
                             { value: '10:30', label: '10:30 AM' },
+                            { value: '11:00', label: '11:00 AM' },
+                            { value: '11:30', label: '11:30 AM' },
                             { value: '12:00', label: '12:00 PM' },
+                            { value: '12:30', label: '12:30 PM' },
+                            { value: '13:00', label: '01:00 PM' },
                             { value: '13:30', label: '01:30 PM' },
+                            { value: '14:00', label: '02:00 PM' },
+                            { value: '14:30', label: '02:30 PM' },
                             { value: '15:00', label: '03:00 PM' },
+                            { value: '15:30', label: '03:30 PM' },
+                            { value: '16:00', label: '04:00 PM' },
                             { value: '16:30', label: '04:30 PM' },
+                            { value: '17:00', label: '05:00 PM' },
+                            { value: '17:30', label: '05:30 PM' },
                             { value: '18:00', label: '06:00 PM' },
-                            { value: '19:30', label: '07:30 PM' }
+                            { value: '18:30', label: '06:30 PM' },
+                            { value: '19:00', label: '07:00 PM' },
+                            { value: '19:30', label: '07:30 PM' },
+                            { value: '20:00', label: '08:00 PM' },
+                            { value: '20:30', label: '08:30 PM' }
                           ].map((slot) => {
                             const isSelected = time === slot.value;
                             const availability = checkTimeSlotAvailability(slot.value);
@@ -807,15 +1071,71 @@ export function BookingModal() {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className={labelClass}>Teléfono/WhatsApp *</label>
-                          <input
-                            type="tel"
-                            placeholder="+56 9 1111 2222"
-                            value={phone}
-                            onChange={handlePhoneChange}
-                            required
-                            className={`${inputClass} ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                          />
+                          <label className={labelClass}>WhatsApp *</label>
+                          <div className="flex space-x-2 relative">
+                            {/* Country Prefix Dropdown */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                                className="h-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 rounded-xl px-3 text-[11px] text-white flex items-center space-x-1.5 focus:outline-none min-w-[70px] justify-between cursor-pointer"
+                              >
+                                <span className="font-mono">{countryCode}</span>
+                                <ChevronDown size={10} className="text-text-secondary" />
+                              </button>
+                              
+                              <AnimatePresence>
+                                {isCountryDropdownOpen && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -5 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -5 }}
+                                      className="absolute left-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 w-28 max-h-40 overflow-y-auto"
+                                    >
+                                      {[
+                                        { code: '+56', label: 'Chile' },
+                                        { code: '+54', label: 'Argentina' },
+                                        { code: '+51', label: 'Perú' },
+                                        { code: '+57', label: 'Colombia' },
+                                        { code: '+52', label: 'México' },
+                                        { code: '+598', label: 'Uruguay' },
+                                        { code: '+1', label: 'USA' },
+                                        { code: '+34', label: 'España' }
+                                      ].map((item) => (
+                                        <button
+                                          key={item.code}
+                                          type="button"
+                                          onClick={() => {
+                                            setCountryCode(item.code);
+                                            setIsCountryDropdownOpen(false);
+                                            validatePhone(phoneNumOnly, item.code);
+                                          }}
+                                          className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
+                                            countryCode === item.code ? 'text-gold font-bold' : 'text-white/80'
+                                          }`}
+                                        >
+                                          <span className="font-mono">{item.code}</span>
+                                          <span className="text-[9px] text-text-secondary">{item.label}</span>
+                                        </button>
+                                      ))}
+                                    </motion.div>
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* Phone number input */}
+                            <input
+                              type="tel"
+                              placeholder="912345678"
+                              value={phoneNumOnly}
+                              onChange={(e) => handlePhoneNumChange(e.target.value)}
+                              required
+                              className={`${inputClass} flex-1 ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                            />
+                          </div>
                           {phoneError && (
                             <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
                           )}
@@ -913,7 +1233,7 @@ export function BookingModal() {
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isFormValid}
                       className={submitButtonClass}
                     >
                       {isSubmitting ? (
