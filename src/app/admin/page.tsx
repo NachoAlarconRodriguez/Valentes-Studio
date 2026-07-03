@@ -149,6 +149,7 @@ export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
 
   const [nowState, setNowState] = useState<Date | null>(null);
+  const [hoveredBookingId, setHoveredBookingId] = useState<string | null>(null);
 
   useEffect(() => {
     setNowState(new Date());
@@ -3007,7 +3008,16 @@ export default function AdminPage() {
                             const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
                             if (isContinuation) {
                               rowElement = (
-                                <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[30%]' : 'opacity-40 select-none grayscale-[10%]'}`}>
+                                <tr
+                                  key={rowKey}
+                                  onMouseEnter={() => setHoveredBookingId(booking.id)}
+                                  onMouseLeave={() => setHoveredBookingId(null)}
+                                  className={`transition-all duration-200 group border-y ${
+                                    hoveredBookingId === booking.id
+                                      ? 'bg-gold/[0.03] border-gold/30'
+                                      : 'border-transparent hover:bg-white/[0.01]'
+                                  } ${isPast ? 'opacity-40 select-none grayscale-[30%]' : 'opacity-40 select-none grayscale-[10%]'}`}
+                                >
                                   <td className="py-4.5 px-6 space-y-1">
                                     <div className="flex items-center space-x-1.5 font-bold text-white/50">
                                       <Clock size={11} className="text-white/20" />
@@ -3037,7 +3047,16 @@ export default function AdminPage() {
                               );
                             } else {
                               rowElement = (
-                                <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-50 select-none grayscale-[30%]' : ''}`}>
+                                <tr
+                                  key={rowKey}
+                                  onMouseEnter={() => setHoveredBookingId(booking.id)}
+                                  onMouseLeave={() => setHoveredBookingId(null)}
+                                  className={`transition-all duration-200 group border-y ${
+                                    hoveredBookingId === booking.id
+                                      ? 'bg-gold/[0.03] border-gold/30'
+                                      : 'border-transparent hover:bg-white/[0.01]'
+                                  } ${isPast ? 'opacity-50 select-none grayscale-[30%]' : ''}`}
+                                >
                                   <td className="py-4.5 px-6 space-y-1">
                                     <div className="flex items-center space-x-1.5 font-bold text-white">
                                       <Clock size={11} className="text-gold" />
