@@ -143,7 +143,43 @@ export function BookingModal() {
   const { servicesData } = useServicesStore();
   // Get current options based on category
   const servicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
+  const selectedServiceObj = servicesList.find(s => s.id === serviceId);
   const specialistsList = servicesData[category]?.specialists || [];
+
+  // Filter specialists based on business type and eligible services
+  const filteredSpecialistsList = React.useMemo(() => {
+    let list = specialistsList;
+
+    // 1. Filter by business type (profileType)
+    list = list.filter(spec => {
+      const profileMap: Record<string, string[]> = {
+        barberia: ['barber', 'mixto', 'admin'],
+        peluqueria: ['estilista', 'mixto', 'admin'],
+        terapias: ['terapeuta', 'mixto', 'admin']
+      };
+      const allowed = profileMap[category] || [];
+      return allowed.includes(spec.profileType) && spec.assignedAgendas.includes(category as any);
+    });
+
+    // 2. Filter by service capability (specialistIds) if a service is selected
+    if (serviceId && selectedServiceObj) {
+      if (selectedServiceObj.specialistIds && selectedServiceObj.specialistIds.length > 0) {
+        list = list.filter(spec => selectedServiceObj.specialistIds?.includes(spec.id));
+      }
+    }
+
+    return list;
+  }, [category, serviceId, selectedServiceObj, specialistsList]);
+
+  // Reset selected specialist if they are not in the filtered list for the selected service
+  useEffect(() => {
+    if (specialistId && filteredSpecialistsList.length > 0) {
+      const isStillAvailable = filteredSpecialistsList.some(sp => sp.id === specialistId);
+      if (!isStillAvailable) {
+        setSpecialistId('');
+      }
+    }
+  }, [serviceId, filteredSpecialistsList, specialistId]);
 
   const isSpecialistAvailable = useScheduleStore(state => state.isSpecialistAvailable);
 
@@ -179,8 +215,8 @@ export function BookingModal() {
     if (specialistId) {
       return isSpecialistAvailable(specialistId, date, slotTime, dur);
     }
-    if (specialistsList.length === 0) return { available: true };
-    const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime, dur).available);
+    if (filteredSpecialistsList.length === 0) return { available: true };
+    const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime, dur).available);
     if (availableSpecs.length > 0) {
       return { available: true };
     }
@@ -255,7 +291,6 @@ export function BookingModal() {
     setTimeout(resetForm, 300); // Wait for exit animation to clear states
   };
 
-  const selectedServiceObj = (servicesData[category]?.services || []).find(s => s.id === serviceId);
   const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
 
   const originalPriceNumber = parsePrice(selectedServiceObj?.price);
@@ -668,7 +703,7 @@ export function BookingModal() {
                         </button>
 
                         {/* Real specialists */}
-                        {specialistsList.map((specialist) => {
+                        {filteredSpecialistsList.map((specialist) => {
                           const photo = specialist.imageUrl || specialistPhotos[specialist.id];
                           const isSelected = specialistId === specialist.id;
                           return (
@@ -787,8 +822,8 @@ export function BookingModal() {
                                   if (specialistId) {
                                     return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
                                   }
-                                  if (specialistsList.length === 0) return { available: true };
-                                  const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
+                                  if (filteredSpecialistsList.length === 0) return { available: true };
+                                  const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
                                   if (availableSpecs.length > 0) {
                                     return { available: true };
                                   }
@@ -929,8 +964,8 @@ export function BookingModal() {
                                   if (specialistId) {
                                     return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
                                   }
-                                  if (specialistsList.length === 0) return { available: true };
-                                  const availableSpecs = specialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
+                                  if (filteredSpecialistsList.length === 0) return { available: true };
+                                  const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
                                   if (availableSpecs.length > 0) {
                                     return { available: true };
                                   }
