@@ -1447,10 +1447,18 @@ export default function AdminPage() {
     });
 
     bookings.forEach(b => {
-      if (b.category === activeBusinessTab && b.date === targetDate) {
-        const bookingMins = localTimeToMinutes(b.time);
-        if (bookingMins < minMins) minMins = bookingMins;
-        if (bookingMins + 60 > maxMins) maxMins = bookingMins + 60;
+      if (b.date === targetDate) {
+        const matchesSpecialist = specialistsForView.some(sp => sp.name.trim().toLowerCase() === b.specialistName.trim().toLowerCase());
+        if (matchesSpecialist) {
+          const bookingMins = localTimeToMinutes(b.time);
+          if (bookingMins < minMins) minMins = bookingMins;
+          const allServices = Object.keys(servicesData).flatMap(
+            cat => servicesData[cat].services || []
+          );
+          const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
+          const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+          if (bookingMins + bookingDuration > maxMins) maxMins = bookingMins + bookingDuration;
+        }
       }
     });
 
@@ -1478,13 +1486,12 @@ export default function AdminPage() {
 
       specialistsForView.forEach(sp => {
         const matchedBooking = bookings.find(b => {
-          if (b.category !== activeBusinessTab) return false;
           if (b.date !== targetDate) return false;
           if (b.specialistName.trim().toLowerCase() !== sp.name.trim().toLowerCase()) return false;
           
           const bookingMin = localTimeToMinutes(b.time);
-          const allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
-            cat => useServicesStore.getState().servicesData[cat].services || []
+          const allServices = Object.keys(servicesData).flatMap(
+            cat => servicesData[cat].services || []
           );
           const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
           const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
@@ -3045,11 +3052,22 @@ export default function AdminPage() {
                                       <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full font-bold text-gold/60">
                                         {specialist.avatar}
                                       </span>
-                                      <span className="flex items-center space-x-1.5">
+                                      <span className="flex items-center space-x-1.5 flex-wrap">
                                         <span>↳ Continuación de cita de las {booking.time} hrs:</span>
                                         <span className="font-semibold text-white/70">{booking.clientName}</span>
                                         <span className="text-white/30">•</span>
                                         <span className="text-white/60">{booking.serviceName}</span>
+                                        {booking.category !== activeBusinessTab && (
+                                           <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                             booking.category === 'barberia' 
+                                               ? 'bg-gold/10 text-gold/60 border border-gold/25' 
+                                               : booking.category === 'peluqueria'
+                                               ? 'bg-[#CD7F32]/10 text-[#CD7F32]/60 border border-[#CD7F32]/25'
+                                               : 'bg-[#E2E0D8]/10 text-[#E2E0D8]/60 border border-[#E2E0D8]/25'
+                                           }`}>
+                                             {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                           </span>
+                                         )}
                                       </span>
                                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] bg-zinc-700/5 border border-zinc-700/35 text-zinc-400 uppercase tracking-widest font-bold">
                                         En Curso
@@ -3096,8 +3114,19 @@ export default function AdminPage() {
                                       );
                                     })()}
                                   </td>
-                                  <td className="py-4.5 px-6 font-medium text-white/90">
-                                    {booking.serviceName}
+                                  <td className="py-4.5 px-6 font-medium text-white/90 space-y-1.5">
+                                    <div>{booking.serviceName}</div>
+                                    {booking.category !== activeBusinessTab && (
+                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-bold ${
+                                        booking.category === 'barberia' 
+                                          ? 'bg-gold/10 text-gold border border-gold/20' 
+                                          : booking.category === 'peluqueria'
+                                          ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
+                                          : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
+                                      }`}>
+                                        {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="py-4.5 px-6">
                                     <div className="flex items-center space-x-2">
