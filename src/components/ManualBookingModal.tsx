@@ -201,7 +201,6 @@ export function ManualBookingModal({
     setServiceId('');
     setSpecialistId('');
     setTime('');
-    setCustomTime('');
   };
 
   const parsePhoneToPrefixAndDigits = (phoneStr: string) => {

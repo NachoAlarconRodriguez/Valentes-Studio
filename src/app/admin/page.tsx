@@ -20,6 +20,7 @@ import {
   Globe, 
   UserCheck, 
   UserX,
+  MessageSquare,
   Mail,
   Eye,
   EyeOff,
@@ -2942,7 +2943,7 @@ export default function AdminPage() {
                                 <span className={`text-[8px] font-bold font-mono px-2 py-0.5 rounded bg-black/95 border ${
                                   activeBusinessTab === 'barberia' ? 'border-gold/30 text-gold' : activeBusinessTab === 'peluqueria' ? 'border-[#CD7F32]/30 text-[#CD7F32]' : 'border-[#E2E0D8]/30 text-[#E2E0D8]'
                                 } mr-8 uppercase tracking-widest shadow-2xl`}>
-                                  Hora Actual: {nowState.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                  Hora Actual: {nowState ? nowState.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : ''}
                                 </span>
                               </div>
                             </td>
