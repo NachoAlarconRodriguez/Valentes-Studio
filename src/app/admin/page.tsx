@@ -3005,95 +3005,116 @@ export default function AdminPage() {
                           } else {
                             const isContinuation = booking.time !== time;
                             const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
-                            rowElement = (
-                              <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast || isContinuation ? 'opacity-50 select-none grayscale-[30%]' : ''}`}>
-                                <td className="py-4.5 px-6 space-y-1">
-                                  <div className="flex items-center space-x-1.5 font-bold text-white">
-                                    <Clock size={11} className={isContinuation ? "text-white/20" : "text-gold"} />
-                                    <span>{time} hrs</span>
-                                  </div>
-                                  <div className="text-[8px] font-mono text-text-secondary">
-                                    {isContinuation ? "Ocupado por cita previa" : booking.id}
-                                  </div>
-                                </td>
-                                <td className="py-4.5 px-6 space-y-0.5">
-                                  <div className="font-semibold text-white">{booking.clientName}</div>
-                                  {!isContinuation && (() => {
-                                    const cleanPhone = booking.clientPhone.replace(/\D/g, '');
-                                    return (
-                                      <a
-                                        href={`https://wa.me/${cleanPhone}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer w-fit font-mono"
-                                      >
-                                        <Smartphone size={10} className="text-emerald-500/80" />
-                                        <span>{booking.clientPhone}</span>
-                                      </a>
-                                    );
-                                  })()}
-                                </td>
-                                <td className="py-4.5 px-6 font-medium text-white/90">
-                                  {booking.serviceName}
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-gold">
-                                      {specialist.avatar}
-                                    </span>
-                                    <span>{specialist.name}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
-                                    {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
-                                    {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
-                                    {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
-                                    <span>{booking.channel}</span>
-                                  </span>
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
-                                    isContinuation
-                                      ? 'bg-zinc-700/5 border-zinc-700/35 text-zinc-400'
-                                      : computedStatus === 'En Proceso'
-                                      ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
-                                      : computedStatus === 'Espera'
-                                      ? 'bg-amber-500/5 border-amber-500/35 text-amber-400 animate-pulse'
-                                      : computedStatus === 'proximo'
-                                      ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
-                                      : computedStatus === 'reservado'
-                                      ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
-                                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                  }`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${
-                                      isContinuation
-                                        ? 'bg-zinc-400'
-                                        : computedStatus === 'En Proceso'
-                                        ? 'bg-emerald-400'
-                                        : computedStatus === 'Espera'
-                                        ? 'bg-amber-400'
-                                        : computedStatus === 'proximo'
-                                        ? 'bg-amber-400'
-                                        : computedStatus === 'reservado'
-                                        ? 'bg-blue-400'
-                                        : 'bg-emerald-400'
-                                    }`} />
-                                    <span>
-                                      {isContinuation ? 'En Curso' : 
-                                       computedStatus === 'Finalizado' ? 'Pagado' : 
-                                       computedStatus === 'Espera' ? 'En Espera' : 
-                                       computedStatus}
-                                    </span>
-                                  </span>
-                                </td>
-                                <td className="py-4.5 px-6 text-right">
-                                  <div className="flex items-center justify-end space-x-2">
-                                    {isContinuation ? (
-                                      <span className="text-[10px] text-white/35 italic select-none">
-                                        Horario ocupado
+                            if (isContinuation) {
+                              rowElement = (
+                                <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[30%]' : 'opacity-40 select-none grayscale-[10%]'}`}>
+                                  <td className="py-4.5 px-6 space-y-1">
+                                    <div className="flex items-center space-x-1.5 font-bold text-white/50">
+                                      <Clock size={11} className="text-white/20" />
+                                      <span>{time} hrs</span>
+                                    </div>
+                                    <div className="text-[8px] font-mono text-text-secondary/60">
+                                      Bloqueado
+                                    </div>
+                                  </td>
+                                  <td colSpan={6} className="py-4.5 px-6">
+                                    <div className="flex items-center space-x-2.5 text-[10px] text-white/45 font-medium">
+                                      <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full font-bold text-gold/60">
+                                        {specialist.avatar}
                                       </span>
-                                    ) : (
+                                      <span className="flex items-center space-x-1.5">
+                                        <span>↳ Continuación de cita de las {booking.time} hrs:</span>
+                                        <span className="font-semibold text-white/70">{booking.clientName}</span>
+                                        <span className="text-white/30">•</span>
+                                        <span className="text-white/60">{booking.serviceName}</span>
+                                      </span>
+                                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] bg-zinc-700/5 border border-zinc-700/35 text-zinc-400 uppercase tracking-widest font-bold">
+                                        En Curso
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            } else {
+                              rowElement = (
+                                <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-50 select-none grayscale-[30%]' : ''}`}>
+                                  <td className="py-4.5 px-6 space-y-1">
+                                    <div className="flex items-center space-x-1.5 font-bold text-white">
+                                      <Clock size={11} className="text-gold" />
+                                      <span>{time} hrs</span>
+                                    </div>
+                                    <div className="text-[8px] font-mono text-text-secondary">
+                                      {booking.id}
+                                    </div>
+                                  </td>
+                                  <td className="py-4.5 px-6 space-y-0.5">
+                                    <div className="font-semibold text-white">{booking.clientName}</div>
+                                    {(() => {
+                                      const cleanPhone = booking.clientPhone.replace(/\D/g, '');
+                                      return (
+                                        <a
+                                          href={`https://wa.me/${cleanPhone}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-[10px] text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer w-fit font-mono"
+                                        >
+                                          <Smartphone size={10} className="text-emerald-500/80" />
+                                          <span>{booking.clientPhone}</span>
+                                        </a>
+                                      );
+                                    })()}
+                                  </td>
+                                  <td className="py-4.5 px-6 font-medium text-white/90">
+                                    {booking.serviceName}
+                                  </td>
+                                  <td className="py-4.5 px-6">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-gold">
+                                        {specialist.avatar}
+                                      </span>
+                                      <span>{specialist.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-4.5 px-6">
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
+                                      {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
+                                      {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
+                                      {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
+                                      <span>{booking.channel}</span>
+                                    </span>
+                                  </td>
+                                  <td className="py-4.5 px-6">
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
+                                      computedStatus === 'En Proceso'
+                                        ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
+                                        : computedStatus === 'Espera'
+                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400 animate-pulse'
+                                        : computedStatus === 'proximo'
+                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
+                                        : computedStatus === 'reservado'
+                                        ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
+                                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                    }`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${
+                                        computedStatus === 'En Proceso'
+                                          ? 'bg-emerald-400'
+                                          : computedStatus === 'Espera'
+                                          ? 'bg-amber-400'
+                                          : computedStatus === 'proximo'
+                                          ? 'bg-amber-400'
+                                          : computedStatus === 'reservado'
+                                          ? 'bg-blue-400'
+                                          : 'bg-emerald-400'
+                                      }`} />
+                                      <span>
+                                        {computedStatus === 'Finalizado' ? 'Pagado' : 
+                                         computedStatus === 'Espera' ? 'En Espera' : 
+                                         computedStatus}
+                                      </span>
+                                    </span>
+                                  </td>
+                                  <td className="py-4.5 px-6 text-right">
+                                    <div className="flex items-center justify-end space-x-2">
                                       <>
                                         {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
                                           <button
@@ -3187,13 +3208,12 @@ export default function AdminPage() {
                                           </button>
                                         )}
                                       </>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
                           }
-                        } else {
                           const isWithinShift = isSlotWithinWorkShift(specialist.id, targetDate, time);
                           if (isWithinShift) {
                             rowElement = (
