@@ -3214,6 +3214,7 @@ export default function AdminPage() {
                               );
                             }
                           }
+                        } else {
                           const isWithinShift = isSlotWithinWorkShift(specialist.id, targetDate, time);
                           if (isWithinShift) {
                             rowElement = (
