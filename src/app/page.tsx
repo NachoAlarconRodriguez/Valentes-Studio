@@ -18,7 +18,7 @@ export default function HomePage() {
       path: '/barberia',
       imageUrl: content.home.panel1Image,
       number: '01',
-      logoUrl: '/hands-logo-transparent.png',
+      logoUrl: '/hands-logo-v3.png',
       businessName: 'Valentes Studio'
     },
     {
@@ -28,7 +28,7 @@ export default function HomePage() {
       path: '/peluqueria',
       imageUrl: content.home.panel2Image,
       number: '02',
-      logoUrl: '/peluqueria-logo.png',
+      logoUrl: '/peluqueria-logo-v3.png',
       businessName: 'Alma Bela Studio'
     },
     {

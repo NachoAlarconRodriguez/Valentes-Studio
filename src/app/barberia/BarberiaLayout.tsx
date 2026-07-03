@@ -147,7 +147,7 @@ export default function BarberiaLayout() {
                     {/* Premium Client Logo */}
                     <div className="relative w-28 h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
                       <Image
-                        src="/hands-logo-transparent.png"
+                        src="/hands-logo-v3.png"
                         alt="Valentes Studio Logo"
                         fill
                         sizes="112px"

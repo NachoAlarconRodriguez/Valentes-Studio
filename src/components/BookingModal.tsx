@@ -379,7 +379,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/hands-logo-transparent.png"
+                        src="/hands-logo-v3.png"
                         alt="Valentes Studio Logo"
                         fill
                         sizes="64px"
@@ -398,7 +398,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/peluqueria-logo.png"
+                        src="/peluqueria-logo-v3.png"
                         alt="Alma Bela Studio Logo"
                         fill
                         sizes="64px"

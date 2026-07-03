@@ -221,6 +221,18 @@ export default function PeluqueriaLayout() {
                 transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full flex flex-col items-center justify-center space-y-8"
               >
+                {/* Premium Logo */}
+                <div className="relative w-28 h-28 hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
+                  <Image
+                    src="/peluqueria-logo-v3.png"
+                    alt="Alma Bela Studio Logo"
+                    fill
+                    sizes="112px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
                 {/* Normal Stacked Text (Horizontal) */}
                 <div className="flex flex-col items-center justify-center space-y-2 select-none text-center">
                   <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
