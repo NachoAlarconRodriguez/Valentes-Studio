@@ -9,6 +9,7 @@ import { useBookingStore } from '@/store/useBookingStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useScheduleStore, parseDurationToMinutes } from '@/store/useScheduleStore';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 
 const specialistPhotos: Record<string, string> = {
   sp1: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80', // Sofia Valente
@@ -27,6 +28,7 @@ const specialistPhotos: Record<string, string> = {
 
 export function BookingModal() {
   const { isBookingOpen, closeBooking, selectedServiceForBooking } = useUIStore();
+  const pathname = usePathname();
   
   // Form states
   const [name, setName] = useState('');
@@ -97,8 +99,15 @@ export function BookingModal() {
       setServiceId(selectedServiceForBooking.id);
     } else {
       setServiceId('');
+      if (pathname.includes('/peluqueria')) {
+        setCategory('peluqueria');
+      } else if (pathname.includes('/terapias')) {
+        setCategory('terapias');
+      } else {
+        setCategory('barberia');
+      }
     }
-  }, [selectedServiceForBooking, isBookingOpen]);
+  }, [selectedServiceForBooking, isBookingOpen, pathname]);
 
   // Helper to format date with offset in YYYY-MM-DD
   const getFormattedDate = (daysOffset = 0) => {
