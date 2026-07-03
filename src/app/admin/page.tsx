@@ -2880,39 +2880,30 @@ export default function AdminPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
-                      <th className="py-4 px-6">Hora / Código</th>
-                      <th className="py-4 px-6">Cliente</th>
-                      <th className="py-4 px-6">Servicio</th>
-                      <th className="py-4 px-6">Especialista</th>
-                      <th className="py-4 px-6">Canal</th>
-                      <th className="py-4 px-6">Estado</th>
-                      <th className="py-4 px-6 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-xs font-light">
-                    {isSingleDayMode ? (
-                      gridRows.map(({ time, specialist, booking }, idx) => {
-                        const rowKey = `${targetDate}-${time}-${specialist.id}`;
-                        
-                        const isPast = (() => {
-                          if (!nowState) return false;
-                          const today = new Date();
-                          const y = today.getFullYear();
-                          const m = String(today.getMonth() + 1).padStart(2, '0');
-                          const d = String(today.getDate()).padStart(2, '0');
-                          const todayStr = `${y}-${m}-${d}`;
-                          
-                          if (targetDate < todayStr) return true;
-                          if (targetDate > todayStr) return false;
-                          
-                          const slotMins = localTimeToMinutes(time);
-                          const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
-                          return slotMins < currentMins;
-                        })();
-
+                {isSingleDayMode ? (
+                  <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
+                        <th className="py-4 px-6 w-[100px] text-center font-bold">Hora</th>
+                        {specialistsForView.map(sp => (
+                          <th key={sp.id} className="py-4 px-6 min-w-[220px]">
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-[9px] bg-white/5 border border-white/10 px-2 py-1 rounded-full font-bold ${
+                                activeBusinessTab === 'barberia' ? 'text-gold' : activeBusinessTab === 'peluqueria' ? 'text-[#CD7F32]' : 'text-[#E2E0D8]'
+                              }`}>
+                                {sp.avatar}
+                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-white text-[10px] normal-case">{sp.name}</span>
+                                <span className="text-[8px] text-text-secondary lowercase font-normal">{sp.role || sp.specialty}</span>
+                              </div>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs font-light">
+                      {timeSlots.map((time, slotIndex) => {
                         const isToday = targetDate === (() => {
                           const today = new Date();
                           const y = today.getFullYear();
@@ -2920,20 +2911,17 @@ export default function AdminPage() {
                           const d = String(today.getDate()).padStart(2, '0');
                           return `${y}-${m}-${d}`;
                         })();
-                        
+
                         const currentMins = nowState ? (nowState.getHours() * 60 + nowState.getMinutes()) : 0;
-                        const isLastSpecialistForSlot = idx % specialistsForView.length === specialistsForView.length - 1;
-                        const slotIndex = timeSlots.indexOf(time);
-                        
-                        const showLineAfterThisSlot = isToday && nowState && isLastSpecialistForSlot && slotIndex !== -1 &&
+                        const showLineAfterThisSlot = isToday && nowState && slotIndex !== -1 &&
                           currentMins >= localTimeToMinutes(time) &&
                           (slotIndex === timeSlots.length - 1 || currentMins < localTimeToMinutes(timeSlots[slotIndex + 1]));
 
-                        const showLineBeforeFirstSlot = isToday && nowState && idx === 0 && currentMins < localTimeToMinutes(timeSlots[0]);
+                        const showLineBeforeFirstSlot = isToday && nowState && slotIndex === 0 && currentMins < localTimeToMinutes(timeSlots[0]);
 
                         const timeIndicatorRow = (
-                          <tr key={`indicator-${time}-${idx}`} className="relative h-0">
-                            <td colSpan={7} className="py-0 px-0 relative">
+                          <tr key={`indicator-${time}`} className="relative h-0">
+                            <td colSpan={1 + specialistsForView.length} className="py-0 px-0 relative">
                               <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none w-full">
                                 <div className={`w-2.5 h-2.5 rounded-full ${
                                   activeBusinessTab === 'barberia' ? 'bg-gold' : activeBusinessTab === 'peluqueria' ? 'bg-[#CD7F32]' : 'bg-[#E2E0D8]'
@@ -2958,472 +2946,464 @@ export default function AdminPage() {
                           </tr>
                         );
 
-                        let rowElement = null;
+                        return (
+                          <React.Fragment key={`row-${time}`}>
+                            {showLineBeforeFirstSlot && timeIndicatorRow}
+                            <tr className="hover:bg-white/[0.005] border-b border-white/5 transition-all">
+                              <td className="py-4.5 px-6 font-bold text-white/60 text-center w-[100px] border-r border-white/5 bg-black/20">
+                                <div className="flex flex-col items-center justify-center space-y-1">
+                                  <Clock size={11} className={
+                                    activeBusinessTab === 'barberia' ? 'text-gold' : activeBusinessTab === 'peluqueria' ? 'text-[#CD7F32]' : 'text-[#E2E0D8]'
+                                  } />
+                                  <span className="font-mono">{time}</span>
+                                </div>
+                              </td>
+                              
+                              {specialistsForView.map(specialist => {
+                                const currentSlotMin = localTimeToMinutes(time);
+                                const nextSlotMin = slotIndex < timeSlots.length - 1 
+                                  ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
+                                  : currentSlotMin + 30;
 
-                        if (booking) {
-                          if (booking.status === 'bloqueado') {
-                            rowElement = (
-                              <tr key={rowKey} className={`hover:bg-red-500/[0.01] bg-red-950/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
-                                <td className="py-4.5 px-6 space-y-1">
-                                  <div className="flex items-center space-x-1.5 font-bold text-red-400">
-                                    <Clock size={11} />
-                                    <span>{time} hrs</span>
-                                  </div>
-                                  <div className="text-[8px] font-mono text-red-500/70">BLOQUEADO</div>
-                                </td>
-                                <td className="py-4.5 px-6 font-semibold text-red-400/80">
-                                  Horario Bloqueado
-                                </td>
-                                <td className="py-4.5 px-6 font-medium text-text-secondary italic">
-                                  Bloqueo Administrativo
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-text-secondary">
-                                      {specialist.avatar}
-                                    </span>
-                                    <span className="text-white/60">{specialist.name}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4.5 px-6 text-text-secondary">-</td>
-                                <td className="py-4.5 px-6">
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border bg-red-500/5 border-red-500/35 text-red-400">
-                                    Bloqueado
-                                  </span>
-                                </td>
-                                <td className="py-4.5 px-6 text-right">
-                                  <button
-                                    disabled={isPast}
-                                    onClick={() => {
-                                      deleteBooking(booking.id);
-                                      triggerNotification(`Horario ${time} desbloqueado.`);
-                                    }}
-                                    className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg border transition-all inline-flex items-center space-x-1 ${
-                                      isPast 
-                                        ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50' 
-                                        : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer'
-                                    }`}
-                                    title={isPast ? "No se puede desbloquear un horario pasado" : "Desbloquear"}
-                                  >
-                                    <span>Desbloquear</span>
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          } else {
-                            const isContinuation = booking.time !== time;
-                            const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
-                            const isStartSlot = booking.time === time;
-                            const isEndSlot = (() => {
-                              const bookingMin = localTimeToMinutes(booking.time);
-                              const allServices = Object.keys(servicesData).flatMap(
-                                cat => servicesData[cat].services || []
-                              );
-                              const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-                              const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
-                              const bookingEnd = bookingMin + bookingDuration;
-                              const slotMins = localTimeToMinutes(time);
-                              return slotMins + 30 >= bookingEnd;
-                            })();
+                                const booking = bookings.find(b => {
+                                  if (b.date !== targetDate) return false;
+                                  if (b.specialistName.trim().toLowerCase() !== specialist.name.trim().toLowerCase()) return false;
+                                  
+                                  const bookingMin = localTimeToMinutes(b.time);
+                                  const allServices = Object.keys(servicesData).flatMap(
+                                    cat => servicesData[cat].services || []
+                                  );
+                                  const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
+                                  const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+                                  const bookingEnd = bookingMin + bookingDuration;
 
-                            if (isContinuation) {
-                              rowElement = (
-                                <tr
-                                  key={rowKey}
-                                  onMouseEnter={() => setHoveredBookingId(booking.id)}
-                                  onMouseLeave={() => setHoveredBookingId(null)}
-                                  className={`transition-all duration-200 group border-t border-b ${
-                                    hoveredBookingId === booking.id
-                                      ? `bg-gold/[0.03] ${isStartSlot ? 'border-t-gold/30' : 'border-t-transparent'} ${isEndSlot ? 'border-b-gold/30' : 'border-b-transparent'}`
-                                      : 'border-t-white/5 border-b-transparent hover:bg-white/[0.01]'
-                                  } ${isPast ? 'opacity-40 select-none grayscale-[30%]' : 'opacity-40 select-none grayscale-[10%]'}`}
-                                >
-                                  <td className="py-4.5 px-6 space-y-1">
-                                    <div className="flex items-center space-x-1.5 font-bold text-white/50">
-                                      <Clock size={11} className="text-white/20" />
-                                      <span>{time} hrs</span>
-                                    </div>
-                                    <div className="text-[8px] font-mono text-text-secondary/60">
-                                      Bloqueado
-                                    </div>
-                                  </td>
-                                  <td colSpan={6} className="py-4.5 px-6">
-                                    <div className="flex items-center space-x-2.5 text-[10px] text-white/45 font-medium">
-                                      <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full font-bold text-gold/60">
-                                        {specialist.avatar}
-                                      </span>
-                                      <span className="flex items-center space-x-1.5 flex-wrap">
-                                        <span>↳ Continuación de cita de las {booking.time} hrs:</span>
-                                        <span className="font-semibold text-white/70">{booking.clientName}</span>
-                                        <span className="text-white/30">•</span>
-                                        <span className="text-white/60">{booking.serviceName}</span>
-                                        {booking.category !== activeBusinessTab && (
-                                           <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
-                                             booking.category === 'barberia' 
-                                               ? 'bg-gold/10 text-gold/60 border border-gold/25' 
-                                               : booking.category === 'peluqueria'
-                                               ? 'bg-[#CD7F32]/10 text-[#CD7F32]/60 border border-[#CD7F32]/25'
-                                               : 'bg-[#E2E0D8]/10 text-[#E2E0D8]/60 border border-[#E2E0D8]/25'
-                                           }`}>
-                                             {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
-                                           </span>
-                                         )}
-                                      </span>
-                                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] bg-zinc-700/5 border border-zinc-700/35 text-zinc-400 uppercase tracking-widest font-bold">
-                                        En Curso
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            } else {
-                              rowElement = (
-                                <tr
-                                  key={rowKey}
-                                  onMouseEnter={() => setHoveredBookingId(booking.id)}
-                                  onMouseLeave={() => setHoveredBookingId(null)}
-                                  className={`transition-all duration-200 group border-t border-b ${
-                                    hoveredBookingId === booking.id
-                                      ? `bg-gold/[0.03] ${isStartSlot ? 'border-t-gold/30' : 'border-t-transparent'} ${isEndSlot ? 'border-b-gold/30' : 'border-b-transparent'}`
-                                      : 'border-t-white/5 border-b-transparent hover:bg-white/[0.01]'
-                                  } ${isPast ? 'opacity-50 select-none grayscale-[30%]' : ''}`}
-                                >
-                                  <td className="py-4.5 px-6 space-y-1">
-                                    <div className="flex items-center space-x-1.5 font-bold text-white">
-                                      <Clock size={11} className="text-gold" />
-                                      <span>{time} hrs</span>
-                                    </div>
-                                    <div className="text-[8px] font-mono text-text-secondary">
-                                      {booking.id}
-                                    </div>
-                                  </td>
-                                  <td className="py-4.5 px-6 space-y-0.5">
-                                    <div className="font-semibold text-white">{booking.clientName}</div>
-                                    {(() => {
-                                      const cleanPhone = booking.clientPhone.replace(/\D/g, '');
-                                      return (
-                                        <a
-                                          href={`https://wa.me/${cleanPhone}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-[10px] text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer w-fit font-mono"
-                                        >
-                                          <Smartphone size={10} className="text-emerald-500/80" />
-                                          <span>{booking.clientPhone}</span>
-                                        </a>
-                                      );
-                                    })()}
-                                  </td>
-                                  <td className="py-4.5 px-6 font-medium text-white/90 space-y-1.5">
-                                    <div>{booking.serviceName}</div>
-                                    {booking.category !== activeBusinessTab && (
-                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-bold ${
-                                        booking.category === 'barberia' 
-                                          ? 'bg-gold/10 text-gold border border-gold/20' 
-                                          : booking.category === 'peluqueria'
-                                          ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
-                                          : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
-                                      }`}>
-                                        {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="py-4.5 px-6">
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold text-gold">
-                                        {specialist.avatar}
-                                      </span>
-                                      <span>{specialist.name}</span>
-                                    </div>
-                                  </td>
-                                  <td className="py-4.5 px-6">
-                                    <span className="inline-flex items-center gap-1 text-[10px] text-white/70">
-                                      {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
-                                      {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
-                                      {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
-                                      <span>{booking.channel}</span>
-                                    </span>
-                                  </td>
-                                  <td className="py-4.5 px-6">
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border ${
-                                      computedStatus === 'En Proceso'
-                                        ? 'bg-emerald-500/5 border-emerald-500/35 text-emerald-400'
-                                        : computedStatus === 'Espera'
-                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400 animate-pulse'
-                                        : computedStatus === 'proximo'
-                                        ? 'bg-amber-500/5 border-amber-500/35 text-amber-400'
-                                        : computedStatus === 'reservado'
-                                        ? 'bg-blue-500/5 border-blue-500/35 text-blue-400'
-                                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                    }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${
-                                        computedStatus === 'En Proceso'
-                                          ? 'bg-emerald-400'
-                                          : computedStatus === 'Espera'
-                                          ? 'bg-amber-400'
-                                          : computedStatus === 'proximo'
-                                          ? 'bg-amber-400'
-                                          : computedStatus === 'reservado'
-                                          ? 'bg-blue-400'
-                                          : 'bg-emerald-400'
-                                      }`} />
-                                      <span>
-                                        {computedStatus === 'Finalizado' ? 'Pagado' : 
-                                         computedStatus === 'Espera' ? 'En Espera' : 
-                                         computedStatus}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td className="py-4.5 px-6 text-right">
-                                    <div className="flex items-center justify-end space-x-2">
-                                      <>
-                                        {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
-                                          <button
-                                            disabled={isPast}
-                                            onClick={() => {
-                                              updateBookingStatus(booking.id, 'en_proceso');
-                                              triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
-                                            }}
-                                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
-                                              isPast
-                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                : activeBusinessTab === 'barberia'
-                                                ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
-                                                : activeBusinessTab === 'peluqueria'
-                                                ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
-                                                : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
-                                            }`}
-                                          >
-                                            <span>Iniciar</span>
-                                          </button>
-                                        )}
-                                        {computedStatus === 'Espera' && (
-                                          <button
-                                            disabled={true}
-                                            title="Debe finalizar el servicio en curso de este especialista primero"
-                                            className="px-2.5 py-1 text-[10px] font-bold rounded-lg border bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50 flex items-center space-x-1"
-                                          >
-                                            <span>Iniciar</span>
-                                          </button>
-                                        )}
-                                        {computedStatus === 'En Proceso' && (
-                                          <button
-                                            disabled={isPast}
-                                            onClick={() => {
-                                              updateBookingStatus(booking.id, 'completado');
-                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
-                                            }}
-                                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
-                                              isPast
-                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
-                                            }`}
-                                          >
-                                            <span>Cobrar</span>
-                                          </button>
-                                        )}
-                                        {computedStatus === 'Finalizado' && (() => {
-                                          const clientObj = clients.find(c => c.phone === booking.clientPhone);
-                                          const isBad = clientObj?.notSoGoodClient;
-                                          if (isBad) {
-                                            return (
-                                              <span className="text-[10px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2.5 py-1 rounded-lg select-none">
-                                                No asistió (Registrado)
-                                              </span>
-                                            );
-                                          }
-                                          return (
+                                  return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
+                                });
+
+                                const isPast = (() => {
+                                  if (!nowState) return false;
+                                  const today = new Date();
+                                  const y = today.getFullYear();
+                                  const m = String(today.getMonth() + 1).padStart(2, '0');
+                                  const d = String(today.getDate()).padStart(2, '0');
+                                  const todayStr = `${y}-${m}-${d}`;
+                                  
+                                  if (targetDate < todayStr) return true;
+                                  if (targetDate > todayStr) return false;
+                                  
+                                  const slotMins = localTimeToMinutes(time);
+                                  const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
+                                  return slotMins < currentMins;
+                                })();
+
+                                if (booking) {
+                                  if (booking.status === 'bloqueado') {
+                                    return (
+                                      <td key={`${specialist.id}-${time}`} className={`py-4 px-4 w-[250px] align-top ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
+                                        <div className="bg-red-950/15 border border-red-500/20 rounded-2xl p-3 space-y-2 group transition-all hover:bg-red-950/20">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[8px] font-mono font-bold text-red-400 tracking-wider">BLOQUEADO</span>
+                                            <span className="text-[8px] font-mono text-red-500/50">{booking.id}</span>
+                                          </div>
+                                          <div className="font-semibold text-red-300 text-[11px]">Horario Bloqueado</div>
+                                          <div className="text-[9px] text-red-400/70 italic">Bloqueo Administrativo</div>
+                                          <div className="flex justify-end pt-1">
                                             <button
                                               disabled={isPast}
                                               onClick={() => {
-                                                markAsNotGoodClient(booking.clientPhone);
-                                                triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
+                                                deleteBooking(booking.id);
+                                                triggerNotification(`Horario ${time} desbloqueado.`);
                                               }}
-                                              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                                isPast 
+                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50' 
+                                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer shadow-sm'
+                                              }`}
+                                            >
+                                              Desbloquear
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    );
+                                  }
+
+                                  const isContinuation = booking.time !== time;
+                                  if (isContinuation) {
+                                    return (
+                                      <td
+                                        key={`${specialist.id}-${time}`}
+                                        onMouseEnter={() => setHoveredBookingId(booking.id)}
+                                        onMouseLeave={() => setHoveredBookingId(null)}
+                                        className={`py-3 px-4 w-[250px] align-middle ${
+                                          isPast ? 'opacity-40 select-none' : ''
+                                        }`}
+                                      >
+                                        <div className={`border-l-2 pl-3 py-1.5 transition-all duration-200 ${
+                                          hoveredBookingId === booking.id
+                                            ? 'border-gold bg-gold/[0.02]'
+                                            : 'border-white/10 hover:bg-white/[0.01]'
+                                        }`}>
+                                          <div className="flex flex-col space-y-0.5">
+                                            <div className="text-[8px] text-text-secondary flex items-center space-x-1">
+                                              <span>↳ En Curso (cita {booking.time})</span>
+                                              {booking.category !== activeBusinessTab && (
+                                                <span className={`inline-flex items-center px-1 py-0.2 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                                  booking.category === 'barberia' 
+                                                    ? 'bg-gold/10 text-gold/60 border border-gold/25' 
+                                                    : booking.category === 'peluqueria'
+                                                    ? 'bg-[#CD7F32]/10 text-[#CD7F32]/60 border border-[#CD7F32]/25'
+                                                    : 'bg-[#E2E0D8]/10 text-[#E2E0D8]/60 border border-[#E2E0D8]/25'
+                                                }`}>
+                                                  {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="font-medium text-white/50 text-[10px] truncate">{booking.clientName}</div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    );
+                                  }
+
+                                  const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
+                                  const allServices = Object.keys(servicesData).flatMap(
+                                    cat => servicesData[cat].services || []
+                                  );
+                                  const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
+                                  const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+                                  const bookingEnd = localTimeToMinutes(booking.time) + bookingDuration;
+                                  const slotMins = localTimeToMinutes(time);
+                                  const isEndSlot = slotMins + 30 >= bookingEnd;
+
+                                  return (
+                                    <td
+                                      key={`${specialist.id}-${time}`}
+                                      onMouseEnter={() => setHoveredBookingId(booking.id)}
+                                      onMouseLeave={() => setHoveredBookingId(null)}
+                                      className={`py-4 px-4 w-[250px] align-top transition-all duration-200 ${
+                                        isPast ? 'opacity-70 select-none' : ''
+                                      }`}
+                                    >
+                                      <div className={`bg-white/[0.02] border rounded-2xl p-4 space-y-3.5 transition-all duration-300 ${
+                                        hoveredBookingId === booking.id
+                                          ? 'border-gold/40 bg-gold/[0.03] shadow-lg shadow-gold/5 scale-[1.02]'
+                                          : 'border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
+                                      }`}>
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
+                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
+                                            computedStatus === 'En Proceso'
+                                              ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400'
+                                              : computedStatus === 'Espera'
+                                              ? 'bg-amber-500/5 border-amber-500/30 text-amber-400 animate-pulse'
+                                              : computedStatus === 'proximo'
+                                              ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
+                                              : computedStatus === 'reservado'
+                                              ? 'bg-blue-500/5 border-blue-500/30 text-blue-400'
+                                              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                          }`}>
+                                            <span className={`w-1 h-1 rounded-full ${
+                                              computedStatus === 'En Proceso'
+                                                ? 'bg-emerald-400'
+                                                : computedStatus === 'Espera'
+                                                ? 'bg-amber-400'
+                                                : computedStatus === 'proximo'
+                                                ? 'bg-amber-400'
+                                                : computedStatus === 'reservado'
+                                                ? 'bg-blue-400'
+                                                : 'bg-emerald-400'
+                                            }`} />
+                                            <span>
+                                              {computedStatus === 'Finalizado' ? 'Pagado' : 
+                                               computedStatus === 'Espera' ? 'En Espera' : 
+                                               computedStatus}
+                                            </span>
+                                          </span>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                          <div className="font-bold text-white text-[11px] leading-tight">{booking.clientName}</div>
+                                          {(() => {
+                                            const cleanPhone = booking.clientPhone.replace(/\D/g, '');
+                                            return (
+                                              <a
+                                                href={`https://wa.me/${cleanPhone}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[9px] text-text-secondary hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
+                                              >
+                                                <Smartphone size={9} className="text-emerald-500/80" />
+                                                <span>{booking.clientPhone}</span>
+                                              </a>
+                                            );
+                                          })()}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                          <div className="text-[10px] text-white/80 font-medium leading-tight">{booking.serviceName}</div>
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="inline-flex items-center gap-0.5 text-[7px] text-white/50 bg-white/5 px-1 py-0.5 rounded uppercase font-mono">
+                                              {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
+                                              {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
+                                              {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
+                                              <span>{booking.channel}</span>
+                                            </span>
+                                            {booking.category !== activeBusinessTab && (
+                                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                                booking.category === 'barberia' 
+                                                  ? 'bg-gold/10 text-gold border border-gold/20' 
+                                                  : booking.category === 'peluqueria'
+                                                  ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
+                                                  : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
+                                              }`}>
+                                                {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-white/5">
+                                          {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
+                                            <button
+                                              disabled={isPast}
+                                              onClick={() => {
+                                                updateBookingStatus(booking.id, 'en_proceso');
+                                                triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
+                                              }}
+                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
                                                 isPast
                                                   ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
+                                                  : activeBusinessTab === 'barberia'
+                                                  ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
+                                                  : activeBusinessTab === 'peluqueria'
+                                                  ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
+                                                  : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
                                               }`}
-                                              title={isPast ? "No se puede marcar una cita pasada" : "Marcar Inasistencia (No-show)"}
                                             >
-                                              <UserX size={10} />
-                                              <span>No asistió</span>
+                                              Iniciar
                                             </button>
-                                          );
-                                        })()}
-                                        {computedStatus !== 'Finalizado' && (
+                                          )}
+                                          {computedStatus === 'Espera' && (
+                                            <button
+                                              disabled={true}
+                                              title="Debe finalizar el servicio en curso de este especialista primero"
+                                              className="px-2 py-1 text-[9px] font-bold rounded-lg border bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50"
+                                            >
+                                              Iniciar
+                                            </button>
+                                          )}
+                                          {computedStatus === 'En Proceso' && (
+                                            <button
+                                              disabled={isPast}
+                                              onClick={() => {
+                                                updateBookingStatus(booking.id, 'completado');
+                                                triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
+                                              }}
+                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                                isPast
+                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                  : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
+                                              }`}
+                                            >
+                                              Cobrar
+                                            </button>
+                                          )}
+                                          {computedStatus === 'Finalizado' && (() => {
+                                            const clientObj = clients.find(c => c.phone === booking.clientPhone);
+                                            const isBad = clientObj?.notSoGoodClient;
+                                            if (isBad) {
+                                              return (
+                                                <span className="text-[8px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2 py-0.5 rounded-lg select-none">
+                                                  No asistió
+                                                </span>
+                                              );
+                                            }
+                                            return (
+                                              <button
+                                                disabled={isPast}
+                                                onClick={() => {
+                                                  markAsNotGoodClient(booking.clientPhone);
+                                                  triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
+                                                }}
+                                                className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                                  isPast
+                                                    ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
+                                                }`}
+                                                title={isPast ? "No se puede marcar una cita pasada" : "Marcar Inasistencia"}
+                                              >
+                                                <UserX size={9} className="inline mr-0.5" />
+                                                <span>No asistió</span>
+                                              </button>
+                                            );
+                                          })()}
+                                          {computedStatus !== 'Finalizado' && (
+                                            <button
+                                              disabled={isPast}
+                                              onClick={() => {
+                                                deleteBooking(booking.id);
+                                                triggerNotification(`Reserva ${booking.id} eliminada.`);
+                                              }}
+                                              className={`p-1 text-text-secondary hover:text-red-400 border border-transparent hover:border-red-500/10 hover:bg-red-500/5 rounded-lg transition-all ${
+                                                isPast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                              }`}
+                                            >
+                                              <Trash2 size={10} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  );
+                                }
+
+                                const specialistShifts = workShifts[specialist.id];
+                                let isShift = true;
+                                let isLunchBreak = false;
+                                
+                                if (specialistShifts) {
+                                  const dayNum = new Date(targetDate + 'T00:00:00').getDay();
+                                  const dayShift = specialistShifts.find((s: any) => s.dayOfWeek === dayNum);
+                                  if (!dayShift || !dayShift.isActive) {
+                                    isShift = false;
+                                  } else {
+                                    const slotMin = localTimeToMinutes(time);
+                                    const startMin = localTimeToMinutes(dayShift.startTime);
+                                    const endMin = localTimeToMinutes(dayShift.endTime);
+                                    isShift = slotMin >= startMin && slotMin < endMin;
+                                    
+                                    if (isShift && dayShift.hasBreak && dayShift.breakStartTime && dayShift.breakEndTime) {
+                                      const breakStartMin = localTimeToMinutes(dayShift.breakStartTime);
+                                      const breakEndMin = localTimeToMinutes(dayShift.breakEndTime);
+                                      isLunchBreak = slotMin >= breakStartMin && slotMin < breakEndMin;
+                                    }
+                                  }
+                                }
+
+                                if (isLunchBreak) {
+                                  return (
+                                    <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top opacity-50">
+                                      <div className="bg-white/[0.01] border border-white/5 border-dashed rounded-2xl p-3 flex flex-col items-center justify-center min-h-[85px] text-center">
+                                        <div className="text-[8px] font-mono text-text-secondary/60">ALMUERZO</div>
+                                        <div className="text-[9px] text-white/30 font-medium mt-1">Receso laboral</div>
+                                      </div>
+                                    </td>
+                                  );
+                                }
+
+                                if (!isShift) {
+                                  return (
+                                    <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top">
+                                      <div className="bg-[#0c0c0c]/40 border border-white/5 border-dashed rounded-2xl p-3 flex flex-col justify-between min-h-[85px] group hover:border-amber-500/20 hover:bg-amber-500/[0.01] transition-all">
+                                        <div className="flex flex-col">
+                                          <span className="text-[8px] font-mono text-amber-500/40 tracking-wider">FUERA JORNADA</span>
+                                          <span className="text-[10px] text-white/20 font-medium mt-1">Disponible (Sobrecupo)</span>
+                                        </div>
+                                        <div className="flex justify-end pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button
                                             disabled={isPast}
                                             onClick={() => {
-                                              deleteBooking(booking.id);
-                                              triggerNotification(`Reserva ${booking.id} eliminada.`);
+                                              setPrefillSpecialistId(specialist.id);
+                                              setPrefillDate(targetDate);
+                                              setPrefillTime(time);
+                                              setIsManualBookingOpen(true);
                                             }}
-                                            className={`p-1.5 rounded border transition-all ${
-                                              isPast 
-                                                ? 'text-text-secondary/30 cursor-not-allowed border-transparent opacity-30' 
-                                                : 'hover:bg-red-500/10 text-red-400 hover:text-red-300 border-transparent hover:border-red-500/20 cursor-pointer opacity-0 group-hover:opacity-100'
+                                            className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                              isPast
+                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20 cursor-pointer shadow-sm shadow-amber-500/5'
                                             }`}
-                                            title={isPast ? "No se puede eliminar una cita pasada" : "Eliminar Reserva"}
                                           >
-                                            <Trash2 size={14} />
+                                            <span>Sobrecupo</span>
                                           </button>
-                                        )}
-                                      </>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  );
+                                }
+
+                                return (
+                                  <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top">
+                                    <div className="bg-transparent border border-white/[0.03] border-dashed rounded-2xl p-3 flex flex-col justify-between min-h-[85px] group hover:border-gold/25 hover:bg-white/[0.01] transition-all">
+                                      <div className="flex flex-col">
+                                        <span className="text-[8px] font-mono text-text-secondary/50 tracking-wider">DISPONIBLE</span>
+                                        <span className="text-[10px] text-white/40 font-medium mt-1">Sin agendar</span>
+                                      </div>
+                                      <div className="flex items-center justify-end gap-1.5 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          disabled={isPast}
+                                          onClick={() => {
+                                            setPrefillSpecialistId(specialist.id);
+                                            setPrefillDate(targetDate);
+                                            setPrefillTime(time);
+                                            setIsManualBookingOpen(true);
+                                          }}
+                                          className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                            isPast
+                                              ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                              : activeBusinessTab === 'barberia'
+                                              ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
+                                              : activeBusinessTab === 'peluqueria'
+                                              ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
+                                              : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
+                                          }`}
+                                        >
+                                          Agendar
+                                        </button>
+                                        <button
+                                          disabled={isPast}
+                                          onClick={() => {
+                                            addBooking({
+                                              clientName: 'Bloqueo Administrativo',
+                                              clientPhone: '-',
+                                              clientEmail: '',
+                                              category: activeBusinessTab,
+                                              serviceName: 'Bloqueo Administrativo',
+                                              price: '-',
+                                              specialistName: specialist.name,
+                                              date: targetDate,
+                                              time: time,
+                                              channel: 'Presencial',
+                                              status: 'bloqueado'
+                                            });
+                                            triggerNotification(`Horario ${time} bloqueado.`);
+                                          }}
+                                          className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                            isPast
+                                              ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                              : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer'
+                                          }`}
+                                        >
+                                          Bloquear
+                                        </button>
+                                      </div>
                                     </div>
                                   </td>
-                                </tr>
-                              );
-                            }
-                          }
-                        } else {
-                          const isWithinShift = isSlotWithinWorkShift(specialist.id, targetDate, time);
-                          if (isWithinShift) {
-                            rowElement = (
-                              <tr key={rowKey} className={`hover:bg-white/[0.01] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
-                                <td className="py-4.5 px-6 space-y-1">
-                                  <div className="flex items-center space-x-1.5 font-bold text-white/35">
-                                    <Clock size={11} />
-                                    <span>{time} hrs</span>
-                                  </div>
-                                  <div className="text-[8px] font-mono text-white/20">DISPONIBLE</div>
-                                </td>
-                                <td className="py-4.5 px-6 text-white/30 italic font-light">
-                                  Disponible
-                                </td>
-                                <td className="py-4.5 px-6 text-white/20 font-light italic">
-                                  Sin agendar
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <div className="flex items-center space-x-2 text-white/40">
-                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold">
-                                      {specialist.avatar}
-                                    </span>
-                                    <span>{specialist.name}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4.5 px-6 text-white/20">-</td>
-                                <td className="py-4.5 px-6">
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border border-dashed border-white/10 text-white/20">
-                                    Libre
-                                  </span>
-                                </td>
-                                <td className="py-4.5 px-6 text-right">
-                                  <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                      disabled={isPast}
-                                      onClick={() => {
-                                        setPrefillSpecialistId(specialist.id);
-                                        setPrefillDate(targetDate);
-                                        setPrefillTime(time);
-                                        setIsManualBookingOpen(true);
-                                      }}
-                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
-                                        isPast
-                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                          : activeBusinessTab === 'barberia'
-                                          ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
-                                          : activeBusinessTab === 'peluqueria'
-                                          ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
-                                          : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
-                                      }`}
-                                    >
-                                      <span>Agendar</span>
-                                    </button>
-                                    <button
-                                      disabled={isPast}
-                                      onClick={() => {
-                                        addBooking({
-                                          clientName: 'Horario Bloqueado',
-                                          clientPhone: '-',
-                                          clientEmail: '-',
-                                          category: activeBusinessTab,
-                                          serviceName: 'Bloqueo Administrativo',
-                                          price: '$0',
-                                          specialistName: specialist.name,
-                                          date: targetDate,
-                                          time: time,
-                                          channel: 'Presencial',
-                                          status: 'bloqueado'
-                                        });
-                                        triggerNotification(`Horario ${time} bloqueado con éxito.`);
-                                      }}
-                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
-                                        isPast
-                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                          : 'bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 border-white/5 hover:border-red-500/20 cursor-pointer'
-                                      }`}
-                                    >
-                                      <span>Bloquear</span>
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          } else {
-                            rowElement = (
-                              <tr key={rowKey} className={`hover:bg-amber-500/[0.01] bg-amber-950/[0.005] transition-all group ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
-                                <td className="py-4.5 px-6 space-y-1">
-                                  <div className="flex items-center space-x-1.5 font-bold text-amber-500/60">
-                                    <Clock size={11} />
-                                    <span>{time} hrs</span>
-                                  </div>
-                                  <div className="text-[8px] font-mono text-amber-500/50">NO LABORAL</div>
-                                </td>
-                                <td className="py-4.5 px-6 text-amber-500/70 font-semibold italic">
-                                  Disponible (Sobrecupo)
-                                </td>
-                                <td className="py-4.5 px-6 text-white/10 font-light italic">
-                                  Fuera de jornada
-                                </td>
-                                <td className="py-4.5 px-6">
-                                  <div className="flex items-center space-x-2 text-white/40">
-                                    <span className="text-[9px] bg-white/5 border border-white/5 px-2 py-1 rounded-full font-bold">
-                                      {specialist.avatar}
-                                    </span>
-                                    <span>{specialist.name}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4.5 px-6 text-white/10">-</td>
-                                <td className="py-4.5 px-6">
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] uppercase tracking-widest font-bold border border-dashed border-amber-500/35 text-amber-500/60 bg-amber-500/[0.01]">
-                                    Sobrecupo
-                                  </span>
-                                </td>
-                                <td className="py-4.5 px-6 text-right">
-                                  <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                      disabled={isPast}
-                                      onClick={() => {
-                                        setPrefillSpecialistId(specialist.id);
-                                        setPrefillDate(targetDate);
-                                        setPrefillTime(time);
-                                        setIsManualBookingOpen(true);
-                                      }}
-                                      className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
-                                        isPast
-                                          ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                          : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20 cursor-pointer shadow-sm shadow-amber-500/5'
-                                      }`}
-                                    >
-                                      <span>Sobrecupo</span>
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          }
-                        }
-
-                        return (
-                          <React.Fragment key={rowKey}>
-                            {showLineBeforeFirstSlot && timeIndicatorRow}
-                            {rowElement}
+                                );
+                              })}
+                            </tr>
                             {showLineAfterThisSlot && timeIndicatorRow}
                           </React.Fragment>
                         );
-                      })
-                    ) : (
-                      listBookings.length === 0 ? (
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
+                        <th className="py-4 px-6">Hora / Código</th>
+                        <th className="py-4 px-6">Cliente</th>
+                        <th className="py-4 px-6">Servicio</th>
+                        <th className="py-4 px-6">Especialista</th>
+                        <th className="py-4 px-6">Canal</th>
+                        <th className="py-4 px-6">Estado</th>
+                        <th className="py-4 px-6 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs font-light">
+                      {listBookings.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="py-12 text-center text-text-secondary/60 italic font-light">
                             No hay reservas ni bloqueos registrados en este período.
@@ -3647,10 +3627,10 @@ export default function AdminPage() {
                             </tr>
                           );
                         })
-                      )
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
