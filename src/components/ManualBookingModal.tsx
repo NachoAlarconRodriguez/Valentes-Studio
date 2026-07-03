@@ -78,6 +78,7 @@ export function ManualBookingModal({
   const [clientEmail, setClientEmail] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [timeError, setTimeError] = useState<string | null>(null);
@@ -117,6 +118,20 @@ export function ManualBookingModal({
   useEffect(() => {
     if (isOpen) {
       setCategory(defaultCategory);
+      setClientName('');
+      setPhoneDigits('');
+      setClientEmail('');
+      setNameError(null);
+      setPhoneError(null);
+      setEmailError(null);
+      setServiceError(null);
+      setDateError(null);
+      setTimeError(null);
+      setGiftCardCode('');
+      setAppliedGiftCard(null);
+      setGiftCardError('');
+      setGiftCardSuccess('');
+      setForceBooking(false);
       if (defaultSpecialistId) {
         setSpecialistId(defaultSpecialistId);
       } else {
@@ -392,6 +407,13 @@ export function ManualBookingModal({
       setPhoneError(null);
     }
 
+    if (clientEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+      setEmailError('El correo electrónico no es válido.');
+      hasError = true;
+    } else {
+      setEmailError(null);
+    }
+
     if (!serviceId) {
       setServiceError('Debes seleccionar un ritual o servicio.');
       hasError = true;
@@ -656,7 +678,7 @@ export function ManualBookingModal({
                     </p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6 text-left">
+                  <form onSubmit={handleSubmit} noValidate className="space-y-6 text-left">
                     
                     {/* SECTION 1: Client Information */}
                     <div className="space-y-4">
@@ -816,10 +838,18 @@ export function ManualBookingModal({
                             type="email"
                             placeholder="ejemplo@correo.com"
                             value={clientEmail}
-                            onChange={(e) => setClientEmail(e.target.value)}
-                            className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass}`}
+                            onChange={(e) => {
+                              setClientEmail(e.target.value);
+                              if (emailError) setEmailError(null);
+                            }}
+                            className={`w-full bg-[#0a0a0a] border hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass} ${
+                              emailError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10'
+                            }`}
                           />
                         </div>
+                        {emailError && (
+                          <p className="text-[10px] text-red-400 mt-1 font-light text-left">{emailError}</p>
+                        )}
                       </div>
                     </div>
 
