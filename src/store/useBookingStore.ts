@@ -69,7 +69,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
       if (cErr) throw cErr;
 
-      const bookings: Booking[] = (dbBookings || []).map((b) => ({
+      const bookings: Booking[] = (dbBookings || []).map((b: any) => ({
         id: b.id,
         clientName: b.client_name,
         clientPhone: b.client_phone,
@@ -86,7 +86,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         giftCardUsed: b.gift_card_used
       }));
 
-      const clients: ClientProfile[] = (dbClients || []).map((c) => ({
+      const clients: ClientProfile[] = (dbClients || []).map((c: any) => ({
         name: c.name,
         phone: c.phone,
         email: c.email || '',

@@ -138,7 +138,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
       // Group shifts by specialist_id
       const workShifts: Record<string, DailyShift[]> = {};
-      (dbShifts || []).forEach((row) => {
+      (dbShifts || []).forEach((row: any) => {
         const specId = row.specialist_id;
         if (!workShifts[specId]) {
           workShifts[specId] = [];
@@ -166,7 +166,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
       if (bErr) throw bErr;
 
-      const timeBlocks: TimeBlock[] = (dbBlocks || []).map((b) => ({
+      const timeBlocks: TimeBlock[] = (dbBlocks || []).map((b: any) => ({
         id: b.id,
         specialistId: b.specialist_id,
         date: b.date,

@@ -100,7 +100,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       if (specsErr) throw specsErr;
 
-      const specialistsList: Specialist[] = (dbSpecs || []).map((sp) => ({
+      const specialistsList: Specialist[] = (dbSpecs || []).map((sp: any) => ({
         id: sp.id,
         name: sp.name,
         role: sp.role,
@@ -121,7 +121,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       if (servErr) throw servErr;
 
-      const servicesList: ServiceItem[] = (dbServices || []).map((s) => ({
+      const servicesList: ServiceItem[] = (dbServices || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         price: s.price,
@@ -140,7 +140,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
           services: servicesList.filter((s: any) => {
             // Match category. In seed, id starts with b_ for barberia, or category column is set.
             // Let's rely on the 'category' column from DB.
-            const sDb = dbServices?.find((dbS) => dbS.id === s.id);
+            const sDb = dbServices?.find((dbS: any) => dbS.id === s.id);
             return sDb?.category === category;
           }),
           specialists: specialistsList.filter((sp) => sp.assignedAgendas.includes(category as any))

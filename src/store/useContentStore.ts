@@ -180,7 +180,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
 
       if (dbContent && dbContent.length > 0) {
         const content: PageContent = { ...defaultContent };
-        dbContent.forEach((row) => {
+        dbContent.forEach((row: any) => {
           const key = row.key as keyof PageContent;
           if (content[key]) {
             content[key] = { ...content[key], ...row.content };

@@ -42,7 +42,7 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
 
       if (error) throw error;
 
-      const giftCards: GiftCard[] = (dbCards || []).map((c) => ({
+      const giftCards: GiftCard[] = (dbCards || []).map((c: any) => ({
         code: c.code,
         originalAmount: c.original_amount,
         remainingBalance: c.remaining_balance,
