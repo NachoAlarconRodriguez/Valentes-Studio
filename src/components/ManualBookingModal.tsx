@@ -250,11 +250,20 @@ export function ManualBookingModal({
   };
 
   // Lists based on category
-  const servicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
-  const specialistsList = servicesData[category]?.specialists || [];
-  
-  const selectedServiceObj = servicesList.find(s => s.id === serviceId);
-  const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
+  const rawServicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
+  const rawSpecialistsList = servicesData[category]?.specialists || [];
+
+  const selectedServiceObj = rawServicesList.find(s => s.id === serviceId);
+  const selectedSpecialistObj = rawSpecialistsList.find(sp => sp.id === specialistId);
+
+  // Filtered lists to prevent mismatch errors
+  const servicesList = specialistId 
+    ? rawServicesList.filter(s => s.specialistIds?.includes(specialistId))
+    : rawServicesList;
+
+  const specialistsList = serviceId
+    ? rawSpecialistsList.filter(sp => selectedServiceObj?.specialistIds?.includes(sp.id))
+    : rawSpecialistsList;
 
   const getFormattedDate = (daysOffset = 0) => {
     const d = new Date();
@@ -919,6 +928,9 @@ export function ManualBookingModal({
                                         onClick={() => {
                                           setServiceId(srv.id);
                                           setIsServiceOpen(false);
+                                          if (specialistId && !srv.specialistIds?.includes(specialistId)) {
+                                            setSpecialistId('');
+                                          }
                                         }}
                                         className={`w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/5 border-b border-white/5 last:border-b-0 flex justify-between items-center ${
                                           isSel ? 'text-gold bg-white/[0.02] font-semibold' : 'text-white/80'
