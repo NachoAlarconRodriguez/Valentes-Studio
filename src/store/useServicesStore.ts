@@ -304,7 +304,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
     };
 
     try {
-      const { error } = await supabase.from('specialists').insert({
+      let { error } = await supabase.from('specialists').insert({
         id,
         name: specialist.name,
         role: specialist.role,
@@ -317,6 +317,23 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
         image_url: specialist.imageUrl || '',
         phone: specialist.phone || ''
       });
+
+      if (error && error.message && error.message.includes("phone")) {
+        console.warn("Retrying specialist insert without phone column...");
+        const { error: retryError } = await supabase.from('specialists').insert({
+          id,
+          name: specialist.name,
+          role: specialist.role,
+          specialty: specialist.specialty,
+          bio: specialist.bio,
+          avatar: specialist.avatar,
+          email: specialist.email,
+          profile_type: specialist.profileType,
+          assigned_agendas: specialist.assignedAgendas,
+          image_url: specialist.imageUrl || ''
+        });
+        error = retryError;
+      }
 
       if (error) throw error;
 
@@ -398,10 +415,21 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       if (updatedFields.imageUrl !== undefined) payload.image_url = updatedFields.imageUrl;
       if (updatedFields.phone !== undefined) payload.phone = updatedFields.phone;
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('specialists')
         .update(payload)
         .eq('id', specialistId);
+
+      if (error && error.message && error.message.includes("phone")) {
+        console.warn("Retrying specialist update without phone column...");
+        const retryPayload = { ...payload };
+        delete retryPayload.phone;
+        const { error: retryError } = await supabase
+          .from('specialists')
+          .update(retryPayload)
+          .eq('id', specialistId);
+        error = retryError;
+      }
 
       if (error) throw error;
 
