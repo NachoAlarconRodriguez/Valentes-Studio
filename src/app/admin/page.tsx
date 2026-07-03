@@ -3006,16 +3006,29 @@ export default function AdminPage() {
                           } else {
                             const isContinuation = booking.time !== time;
                             const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
+                            const isStartSlot = booking.time === time;
+                            const isEndSlot = (() => {
+                              const bookingMin = localTimeToMinutes(booking.time);
+                              const allServices = Object.keys(servicesData).flatMap(
+                                cat => servicesData[cat].services || []
+                              );
+                              const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
+                              const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+                              const bookingEnd = bookingMin + bookingDuration;
+                              const slotMins = localTimeToMinutes(time);
+                              return slotMins + 30 >= bookingEnd;
+                            })();
+
                             if (isContinuation) {
                               rowElement = (
                                 <tr
                                   key={rowKey}
                                   onMouseEnter={() => setHoveredBookingId(booking.id)}
                                   onMouseLeave={() => setHoveredBookingId(null)}
-                                  className={`transition-all duration-200 group border-y ${
+                                  className={`transition-all duration-200 group border-t border-b ${
                                     hoveredBookingId === booking.id
-                                      ? 'bg-gold/[0.03] border-gold/30'
-                                      : 'border-transparent hover:bg-white/[0.01]'
+                                      ? `bg-gold/[0.03] ${isStartSlot ? 'border-t-gold/30' : 'border-t-transparent'} ${isEndSlot ? 'border-b-gold/30' : 'border-b-transparent'}`
+                                      : 'border-t-white/5 border-b-transparent hover:bg-white/[0.01]'
                                   } ${isPast ? 'opacity-40 select-none grayscale-[30%]' : 'opacity-40 select-none grayscale-[10%]'}`}
                                 >
                                   <td className="py-4.5 px-6 space-y-1">
@@ -3051,10 +3064,10 @@ export default function AdminPage() {
                                   key={rowKey}
                                   onMouseEnter={() => setHoveredBookingId(booking.id)}
                                   onMouseLeave={() => setHoveredBookingId(null)}
-                                  className={`transition-all duration-200 group border-y ${
+                                  className={`transition-all duration-200 group border-t border-b ${
                                     hoveredBookingId === booking.id
-                                      ? 'bg-gold/[0.03] border-gold/30'
-                                      : 'border-transparent hover:bg-white/[0.01]'
+                                      ? `bg-gold/[0.03] ${isStartSlot ? 'border-t-gold/30' : 'border-t-transparent'} ${isEndSlot ? 'border-b-gold/30' : 'border-b-transparent'}`
+                                      : 'border-t-white/5 border-b-transparent hover:bg-white/[0.01]'
                                   } ${isPast ? 'opacity-50 select-none grayscale-[30%]' : ''}`}
                                 >
                                   <td className="py-4.5 px-6 space-y-1">
