@@ -725,7 +725,7 @@ export default function BarberiaLayout() {
                         <polygon
                           points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
                           fill="none"
-                          stroke="#C69B3C"
+                          stroke="#E5B842"
                           strokeWidth="0.8"
                           strokeOpacity="0.25"
                           className="group-hover:stroke-opacity-60 transition-all duration-500"

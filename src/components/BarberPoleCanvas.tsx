@@ -52,7 +52,7 @@ function BarberPoleModel() {
       drawBand(32, 32, '#fcfcfc');
 
       // Draw Gold band
-      drawBand(96, 16, '#C69B3C');
+      drawBand(96, 16, '#E5B842');
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -99,7 +99,7 @@ function BarberPoleModel() {
         {/* Base gold ring */}
         <mesh position={[0, 0.05, 0]}>
           <cylinderGeometry args={[0.40, 0.40, 0.1, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.9} roughness={0.15} />
+          <meshStandardMaterial color="#E5B842" metalness={0.9} roughness={0.15} />
         </mesh>
         {/* Chrome dome base */}
         <mesh position={[0, 0.15, 0]}>
@@ -114,12 +114,12 @@ function BarberPoleModel() {
         {/* Gold column stem */}
         <mesh position={[0, 0.42, 0]}>
           <cylinderGeometry args={[0.13, 0.13, 0.2, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.9} roughness={0.15} />
+          <meshStandardMaterial color="#E5B842" metalness={0.9} roughness={0.15} />
         </mesh>
         {/* Gold crown sphere */}
         <mesh position={[0, 0.60, 0]}>
           <sphereGeometry args={[0.16, 32, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.95} roughness={0.12} />
+          <meshStandardMaterial color="#E5B842" metalness={0.95} roughness={0.12} />
         </mesh>
       </group>
 
@@ -128,7 +128,7 @@ function BarberPoleModel() {
         {/* Base gold ring */}
         <mesh position={[0, 0.05, 0]}>
           <cylinderGeometry args={[0.40, 0.40, 0.1, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.9} roughness={0.15} />
+          <meshStandardMaterial color="#E5B842" metalness={0.9} roughness={0.15} />
         </mesh>
         {/* Chrome dome base */}
         <mesh position={[0, 0.15, 0]}>
@@ -143,12 +143,12 @@ function BarberPoleModel() {
         {/* Gold column stem */}
         <mesh position={[0, 0.42, 0]}>
           <cylinderGeometry args={[0.13, 0.13, 0.2, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.9} roughness={0.15} />
+          <meshStandardMaterial color="#E5B842" metalness={0.9} roughness={0.15} />
         </mesh>
         {/* Gold crown sphere */}
         <mesh position={[0, 0.60, 0]}>
           <sphereGeometry args={[0.16, 32, 32]} />
-          <meshStandardMaterial color="#C69B3C" metalness={0.95} roughness={0.12} />
+          <meshStandardMaterial color="#E5B842" metalness={0.95} roughness={0.12} />
         </mesh>
       </group>
     </group>
@@ -171,7 +171,7 @@ export default function BarberPoleCanvas() {
         <directionalLight position={[-5, 5, -5]} intensity={0.9} color="#ffffff" />
         
         {/* Lateral golden accent light */}
-        <pointLight position={[3, 1, 2]} intensity={1.3} color="#C69B3C" decay={2} />
+        <pointLight position={[3, 1, 2]} intensity={1.3} color="#E5B842" decay={2} />
         
         {/* The solid model */}
         <BarberPoleModel />

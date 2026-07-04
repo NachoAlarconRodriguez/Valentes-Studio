@@ -211,6 +211,21 @@ export function ManualBookingModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Autofill client name and email if phone number exists in DB
+  useEffect(() => {
+    if (phoneDigits.length === 9) {
+      const matchedClient = clients.find(c => {
+        const cleanDb = c.phone.replace(/\D/g, '');
+        return cleanDb.endsWith(phoneDigits);
+      });
+      if (matchedClient) {
+        setClientName(matchedClient.name);
+        setClientEmail(matchedClient.email || '');
+        setPhoneError(null);
+      }
+    }
+  }, [phoneDigits, clients]);
+
   const handleCategoryChange = (cat: 'barberia' | 'peluqueria' | 'terapias') => {
     setCategory(cat);
     setServiceId('');
@@ -510,7 +525,7 @@ export function ManualBookingModal({
 
   // Color styling helpers matching business themes
   const isTerapias = category === 'terapias';
-  const themeGold = isTerapias ? '#E2E0D8' : '#C69B3C';
+  const themeGold = isTerapias ? '#E2E0D8' : '#E5B842';
   const textGoldClass = isTerapias ? 'text-platinum' : 'text-gold';
   const borderFocusClass = isTerapias ? 'focus:border-platinum/50' : 'focus:border-gold/50';
   const bgThemeClass = isTerapias ? 'bg-platinum' : 'bg-gold';
@@ -687,56 +702,6 @@ export function ManualBookingModal({
                       </span>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Name (With autocomplete suggestions) */}
-                        <div className="relative" ref={nameInputRef}>
-                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-1.5">
-                            Nombre Completo *
-                          </label>
-                          <div className="relative flex items-center">
-                            <User size={13} className="absolute left-3.5 text-text-secondary" />
-                            <input
-                              type="text"
-                              required
-                              placeholder="Nombre del cliente"
-                              value={clientName}
-                              onChange={(e) => setClientName(e.target.value)}
-                              className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass}`}
-                            />
-                          </div>
-
-                          {/* Client search typeahead popup */}
-                          <AnimatePresence>
-                            {showSuggestions && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -5 }}
-                                className="absolute left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30 max-h-40 overflow-y-auto"
-                              >
-                                {filteredClients.map((client, idx) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => handleClientSelect(client)}
-                                    className="w-full text-left px-4 py-2 text-[11px] hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0 flex justify-between items-center"
-                                  >
-                                    <div>
-                                      <span className="font-semibold text-white">{client.name}</span>
-                                      <span className="text-text-secondary ml-2 font-mono">{client.phone}</span>
-                                    </div>
-                                    <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/10`}>
-                                      Autocompletar
-                                    </span>
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                          {nameError && (
-                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{nameError}</p>
-                          )}
-                        </div>
-
                         {/* WhatsApp (WhatsApp-only) */}
                         <div>
                           <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-1.5">
@@ -823,6 +788,56 @@ export function ManualBookingModal({
                           </div>
                           {phoneError && (
                             <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
+                          )}
+                        </div>
+
+                        {/* Name (With autocomplete suggestions) */}
+                        <div className="relative" ref={nameInputRef}>
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-1.5">
+                            Nombre Completo *
+                          </label>
+                          <div className="relative flex items-center">
+                            <User size={13} className="absolute left-3.5 text-text-secondary" />
+                            <input
+                              type="text"
+                              required
+                              placeholder="Nombre del cliente"
+                              value={clientName}
+                              onChange={(e) => setClientName(e.target.value)}
+                              className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass}`}
+                            />
+                          </div>
+
+                          {/* Client search typeahead popup */}
+                          <AnimatePresence>
+                            {showSuggestions && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                className="absolute left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30 max-h-40 overflow-y-auto"
+                              >
+                                {filteredClients.map((client, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => handleClientSelect(client)}
+                                    className="w-full text-left px-4 py-2 text-[11px] hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0 flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <span className="font-semibold text-white">{client.name}</span>
+                                      <span className="text-text-secondary ml-2 font-mono">{client.phone}</span>
+                                    </div>
+                                    <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/10`}>
+                                      Autocompletar
+                                    </span>
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          {nameError && (
+                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{nameError}</p>
                           )}
                         </div>
                       </div>

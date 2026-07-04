@@ -130,6 +130,154 @@ function CustomSelect({
   );
 }
 
+const formatDateLabel = (dateStr: string) => {
+  if (!dateStr) return 'Seleccionar';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+};
+
+interface CalendarPickerProps {
+  value: string;
+  onChange: (val: string) => void;
+  onClose: () => void;
+  minDate?: string;
+  maxDate?: string;
+}
+
+function CalendarPicker({ value, onChange, onClose, minDate, maxDate }: CalendarPickerProps) {
+  const currentDate = value ? new Date(value + 'T12:00:00') : new Date();
+  const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth());
+
+  const monthNames = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+
+  const daysOfWeek = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
+
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    return new Date(year, month, 1).getDay();
+  };
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) {
+    days.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(d);
+  }
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const handleDaySelect = (day: number) => {
+    const formattedMonth = (currentMonth + 1).toString().padStart(2, '0');
+    const formattedDay = day.toString().padStart(2, '0');
+    const selectedDateStr = `${currentYear}-${formattedMonth}-${formattedDay}`;
+    onChange(selectedDateStr);
+    onClose();
+  };
+
+  const isSelected = (day: number) => {
+    if (!value) return false;
+    const dStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    return value === dStr;
+  };
+
+  return (
+    <div className="absolute top-full mt-2 left-0 z-50 w-64 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white select-none">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white cursor-pointer transition-colors"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span className="font-serif text-xs font-semibold text-white tracking-wide">
+          {monthNames[currentMonth]} {currentYear}
+        </span>
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          className="p-1.5 rounded-lg hover:bg-white/5 text-text-secondary hover:text-white cursor-pointer transition-colors"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Week Header */}
+      <div className="grid grid-cols-7 gap-1 text-center mb-1">
+        {daysOfWeek.map((day) => (
+          <span key={day} className="text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+            {day}
+          </span>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day, idx) => {
+          if (day === null) {
+            return <div key={`empty-${idx}`} />;
+          }
+
+          const dayDateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          
+          let isDisabled = false;
+          if (minDate && dayDateStr < minDate) isDisabled = true;
+          if (maxDate && dayDateStr > maxDate) isDisabled = true;
+
+          const selected = isSelected(day);
+
+          return (
+            <button
+              key={`day-${day}`}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => handleDaySelect(day)}
+              className={`h-7 w-7 text-[10px] rounded-lg flex items-center justify-center transition-all focus:outline-none ${
+                selected
+                  ? 'bg-gold text-black font-bold shadow-[0_0_8px_rgba(229,184,66,0.4)]'
+                  : isDisabled
+                  ? 'text-white/10 cursor-not-allowed'
+                  : 'text-white/80 hover:bg-white/5 cursor-pointer'
+              }`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { 
     servicesData, 
@@ -176,6 +324,7 @@ export default function AdminPage() {
   const [serviceFormDuration, setServiceFormDuration] = useState('30 min');
   const [serviceFormDescription, setServiceFormDescription] = useState('');
   const [serviceFormSpecialists, setServiceFormSpecialists] = useState<string[]>([]);
+  const [serviceFormGroup, setServiceFormGroup] = useState<'cabello' | 'barba' | 'completo'>('cabello');
 
   // Staff Configuration State
   const [activeStaffCategoryFilter, setActiveStaffCategoryFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
@@ -354,12 +503,27 @@ export default function AdminPage() {
     }
   };
 
+  const getServiceGroup = (service: any) => {
+    if (!service || !service.id) return 'cabello';
+    const id = service.id.toLowerCase();
+    const name = (service.name || '').toLowerCase();
+    
+    if (id.includes('combo') || name.includes('+') || name.includes('y barba') || name.includes('& barba')) {
+      return 'completo';
+    }
+    if (id.includes('barba') || id.includes('rasurado') || id.includes('perfilado') || name.includes('barba') || name.includes('afeitado') || name.includes('perfilado')) {
+      return 'barba';
+    }
+    return 'cabello';
+  };
+
   const resetServiceForm = () => {
     setServiceFormName('');
     setServiceFormPrice('');
     setServiceFormDuration('30 min');
     setServiceFormDescription('');
     setServiceFormSpecialists([]);
+    setServiceFormGroup('cabello');
     setEditingService(null);
   };
 
@@ -370,6 +534,7 @@ export default function AdminPage() {
     setServiceFormDuration(service.duration);
     setServiceFormDescription(service.description);
     setServiceFormSpecialists(service.specialistIds || []);
+    setServiceFormGroup(getServiceGroup(service));
     setIsServiceDrawerOpen(true);
   };
 
@@ -386,12 +551,34 @@ export default function AdminPage() {
       formattedPrice = '$' + formattedPrice;
     }
 
+    // Compute prefix for barberia group
+    let customId: string | undefined = undefined;
+    if (activeServiceCategory === 'barberia') {
+      const prefix = serviceFormGroup === 'barba' 
+        ? 'b_barba_' 
+        : serviceFormGroup === 'completo' 
+        ? 'b_combo_' 
+        : 'b_corte_';
+      
+      if (editingService) {
+        const currentGroup = getServiceGroup(editingService);
+        if (currentGroup !== serviceFormGroup) {
+          // Group changed, generate new primary key ID
+          customId = `${prefix}${Date.now()}`;
+        }
+      } else {
+        // New service, generate new primary key ID
+        customId = `${prefix}${Date.now()}`;
+      }
+    }
+
     const serviceDataPayload = {
       name: serviceFormName.trim(),
       price: formattedPrice,
       duration: serviceFormDuration,
       description: serviceFormDescription.trim(),
-      specialistIds: serviceFormSpecialists
+      specialistIds: serviceFormSpecialists,
+      ...(customId ? { id: customId } : {})
     };
 
     if (editingService) {
@@ -614,6 +801,8 @@ export default function AdminPage() {
   const [dbEndDate, setDbEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+  const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   const [dbBusinessFilter, setDbBusinessFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
   const [dbServiceFilter, setDbServiceFilter] = useState<string>('todos');
   
@@ -708,6 +897,9 @@ export default function AdminPage() {
   // Stores
   const { bookings, clients, addBooking, updateBookingStatus, deleteBooking, updateClientNotes, markAsNotGoodClient, deleteClient, updateClient } = useBookingStore();
   const { content, updateContent } = useContentStore();
+
+  // Filter Bookings by active business tab
+  const filteredBookings = bookings.filter(b => b.category === activeBusinessTab);
 
   // Temporary local VSM form state (initialized to content values)
   const [vsmForm, setVsmForm] = useState(content);
@@ -1485,7 +1677,7 @@ export default function AdminPage() {
         : currentSlotMin + 30;
 
       specialistsForView.forEach(sp => {
-        const matchedBooking = bookings.find(b => {
+        const matchedBooking = filteredBookings.find(b => {
           if (b.date !== targetDate) return false;
           if (b.specialistName.trim().toLowerCase() !== sp.name.trim().toLowerCase()) return false;
           
@@ -1545,9 +1737,6 @@ export default function AdminPage() {
       return 'border-[#E2E0D8] text-[#E2E0D8] bg-[#E2E0D8]/10 shadow-[0_0_15px_rgba(226,224,216,0.08)] font-bold';
     }
   };
-
-  // Filter Bookings by active business tab
-  const filteredBookings = bookings.filter(b => b.category === activeBusinessTab);
 
   // Filter CRM Clients
   const filteredClients = clients.filter(c => {
@@ -2419,24 +2608,59 @@ export default function AdminPage() {
 
               {/* Custom Date Range Picker */}
               {dbDateFilter === 'personalizado' && (
-                <div className="flex items-center space-x-3 flex-1 min-w-[220px]">
-                  <div className="flex-1 flex flex-col space-y-1.5">
+                <div className="flex items-center space-x-3 flex-1 min-w-[240px]">
+                  {/* Desde Date Picker */}
+                  <div className="flex-1 flex flex-col space-y-1.5 relative">
                     <span className="text-[9px] uppercase tracking-wider text-text-secondary">Desde</span>
-                    <input
-                      type="date"
-                      value={dbStartDate}
-                      onChange={(e) => setDbStartDate(e.target.value)}
-                      className="bg-black border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsStartDatePickerOpen(!isStartDatePickerOpen);
+                        setIsEndDatePickerOpen(false);
+                      }}
+                      className="w-full bg-black border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none hover:border-gold/30 transition-all flex items-center justify-between font-mono cursor-pointer h-[38px]"
+                    >
+                      <span>{formatDateLabel(dbStartDate)}</span>
+                      <Calendar size={12} className="text-gold" />
+                    </button>
+                    {isStartDatePickerOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsStartDatePickerOpen(false)} />
+                        <CalendarPicker
+                          value={dbStartDate}
+                          onChange={(val) => setDbStartDate(val)}
+                          onClose={() => setIsStartDatePickerOpen(false)}
+                          maxDate={dbEndDate}
+                        />
+                      </>
+                    )}
                   </div>
-                  <div className="flex-1 flex flex-col space-y-1.5">
+
+                  {/* Hasta Date Picker */}
+                  <div className="flex-1 flex flex-col space-y-1.5 relative">
                     <span className="text-[9px] uppercase tracking-wider text-text-secondary">Hasta</span>
-                    <input
-                      type="date"
-                      value={dbEndDate}
-                      onChange={(e) => setDbEndDate(e.target.value)}
-                      className="bg-black border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEndDatePickerOpen(!isEndDatePickerOpen);
+                        setIsStartDatePickerOpen(false);
+                      }}
+                      className="w-full bg-black border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none hover:border-gold/30 transition-all flex items-center justify-between font-mono cursor-pointer h-[38px]"
+                    >
+                      <span>{formatDateLabel(dbEndDate)}</span>
+                      <Calendar size={12} className="text-gold" />
+                    </button>
+                    {isEndDatePickerOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsEndDatePickerOpen(false)} />
+                        <CalendarPicker
+                          value={dbEndDate}
+                          onChange={(val) => setDbEndDate(val)}
+                          onClose={() => setIsEndDatePickerOpen(false)}
+                          minDate={dbStartDate}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -2537,8 +2761,8 @@ export default function AdminPage() {
                   <svg viewBox="0 0 500 150" className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#C69B3C" stopOpacity="0.15" />
-                        <stop offset="100%" stopColor="#C69B3C" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="#E5B842" stopOpacity="0.15" />
+                        <stop offset="100%" stopColor="#E5B842" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
                     
@@ -2555,7 +2779,7 @@ export default function AdminPage() {
                     <path
                       d={pathD}
                       fill="none"
-                      stroke="#C69B3C"
+                      stroke="#E5B842"
                       strokeWidth="2.5"
                     />
 
@@ -2566,7 +2790,7 @@ export default function AdminPage() {
                           cx={p.x} 
                           cy={p.y} 
                           r="4" 
-                          fill="#C69B3C" 
+                          fill="#E5B842" 
                           stroke="#070707" 
                           strokeWidth="1.5" 
                           className="hover:scale-125 transition-transform cursor-pointer"
@@ -2598,7 +2822,7 @@ export default function AdminPage() {
                     <circle cx="18" cy="18" r="15.91" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="3" />
                     
                     {/* Web Segment (gold) */}
-                    <circle cx="18" cy="18" r="15.91" fill="none" stroke="#C69B3C" strokeWidth="3" 
+                    <circle cx="18" cy="18" r="15.91" fill="none" stroke="#E5B842" strokeWidth="3" 
                       strokeDasharray={`${webPct} ${100 - webPct}`} 
                       strokeDashoffset="0" 
                     />
@@ -2965,7 +3189,7 @@ export default function AdminPage() {
                                   ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
                                   : currentSlotMin + 30;
 
-                                const booking = bookings.find(b => {
+                                const booking = filteredBookings.find(b => {
                                   if (b.date !== targetDate) return false;
                                   if (b.specialistName.trim().toLowerCase() !== specialist.name.trim().toLowerCase()) return false;
                                   
@@ -3030,40 +3254,7 @@ export default function AdminPage() {
 
                                   const isContinuation = booking.time !== time;
                                   if (isContinuation) {
-                                    return (
-                                      <td
-                                        key={`${specialist.id}-${time}`}
-                                        onMouseEnter={() => setHoveredBookingId(booking.id)}
-                                        onMouseLeave={() => setHoveredBookingId(null)}
-                                        className={`py-3 px-4 w-[250px] align-middle ${
-                                          isPast ? 'opacity-40 select-none' : ''
-                                        }`}
-                                      >
-                                        <div className={`border-l-2 pl-3 py-1.5 transition-all duration-200 ${
-                                          hoveredBookingId === booking.id
-                                            ? 'border-gold bg-gold/[0.02]'
-                                            : 'border-white/10 hover:bg-white/[0.01]'
-                                        }`}>
-                                          <div className="flex flex-col space-y-0.5">
-                                            <div className="text-[8px] text-text-secondary flex items-center space-x-1">
-                                              <span>↳ En Curso (cita {booking.time})</span>
-                                              {booking.category !== activeBusinessTab && (
-                                                <span className={`inline-flex items-center px-1 py-0.2 rounded text-[7px] uppercase tracking-wider font-bold ${
-                                                  booking.category === 'barberia' 
-                                                    ? 'bg-gold/10 text-gold/60 border border-gold/25' 
-                                                    : booking.category === 'peluqueria'
-                                                    ? 'bg-[#CD7F32]/10 text-[#CD7F32]/60 border border-[#CD7F32]/25'
-                                                    : 'bg-[#E2E0D8]/10 text-[#E2E0D8]/60 border border-[#E2E0D8]/25'
-                                                }`}>
-                                                  {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="font-medium text-white/50 text-[10px] truncate">{booking.clientName}</div>
-                                          </div>
-                                        </div>
-                                      </td>
-                                    );
+                                    return null;
                                   }
 
                                   const computedStatus = getCurrentBookingStatus(targetDate, booking.time, booking.status, specialist.name);
@@ -3076,94 +3267,111 @@ export default function AdminPage() {
                                   const slotMins = localTimeToMinutes(time);
                                   const isEndSlot = slotMins + 30 >= bookingEnd;
 
+                                  const bookingMin = localTimeToMinutes(booking.time);
+                                  let rowSpan = 1;
+                                  let checkIdx = slotIndex + 1;
+                                  while (checkIdx < timeSlots.length) {
+                                    const nextSlotMinVal = localTimeToMinutes(timeSlots[checkIdx]);
+                                    if (nextSlotMinVal < bookingMin + bookingDuration) {
+                                      rowSpan++;
+                                      checkIdx++;
+                                    } else {
+                                      break;
+                                    }
+                                  }
+
                                   return (
                                     <td
                                       key={`${specialist.id}-${time}`}
+                                      rowSpan={rowSpan}
+                                      style={{ height: '1px' }}
                                       onMouseEnter={() => setHoveredBookingId(booking.id)}
                                       onMouseLeave={() => setHoveredBookingId(null)}
-                                      className={`py-4 px-4 w-[250px] align-top transition-all duration-200 ${
+                                      className={`py-4 px-4 w-[250px] align-top transition-all duration-200 h-full ${
                                         isPast ? 'opacity-70 select-none' : ''
                                       }`}
                                     >
-                                      <div className={`bg-white/[0.02] border rounded-2xl p-4 space-y-3.5 transition-all duration-300 ${
+                                      <div className={`h-full flex flex-col justify-between bg-white/[0.02] border rounded-2xl p-4 transition-all duration-300 ${
                                         hoveredBookingId === booking.id
                                           ? 'border-gold/40 bg-gold/[0.03] shadow-lg shadow-gold/5 scale-[1.02]'
                                           : 'border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
                                       }`}>
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
-                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
-                                            computedStatus === 'En Proceso'
-                                              ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400'
-                                              : computedStatus === 'Espera'
-                                              ? 'bg-amber-500/5 border-amber-500/30 text-amber-400 animate-pulse'
-                                              : computedStatus === 'proximo'
-                                              ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
-                                              : computedStatus === 'reservado'
-                                              ? 'bg-blue-500/5 border-blue-500/30 text-blue-400'
-                                              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                          }`}>
-                                            <span className={`w-1 h-1 rounded-full ${
+                                        <div className="space-y-3.5 flex-grow">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
                                               computedStatus === 'En Proceso'
-                                                ? 'bg-emerald-400'
+                                                ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400'
                                                 : computedStatus === 'Espera'
-                                                ? 'bg-amber-400'
+                                                ? 'bg-amber-500/5 border-amber-500/30 text-amber-400 animate-pulse'
                                                 : computedStatus === 'proximo'
-                                                ? 'bg-amber-400'
+                                                ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
                                                 : computedStatus === 'reservado'
-                                                ? 'bg-blue-400'
-                                                : 'bg-emerald-400'
-                                            }`} />
-                                            <span>
-                                              {computedStatus === 'Finalizado' ? 'Pagado' : 
-                                               computedStatus === 'Espera' ? 'En Espera' : 
-                                               computedStatus}
-                                            </span>
-                                          </span>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                          <div className="font-bold text-white text-[11px] leading-tight">{booking.clientName}</div>
-                                          {(() => {
-                                            const cleanPhone = booking.clientPhone.replace(/\D/g, '');
-                                            return (
-                                              <a
-                                                href={`https://wa.me/${cleanPhone}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[9px] text-text-secondary hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
-                                              >
-                                                <Smartphone size={9} className="text-emerald-500/80" />
-                                                <span>{booking.clientPhone}</span>
-                                              </a>
-                                            );
-                                          })()}
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                          <div className="text-[10px] text-white/80 font-medium leading-tight">{booking.serviceName}</div>
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="inline-flex items-center gap-0.5 text-[7px] text-white/50 bg-white/5 px-1 py-0.5 rounded uppercase font-mono">
-                                              {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
-                                              {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
-                                              {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
-                                              <span>{booking.channel}</span>
-                                            </span>
-                                            {booking.category !== activeBusinessTab && (
-                                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
-                                                booking.category === 'barberia' 
-                                                  ? 'bg-gold/10 text-gold border border-gold/20' 
-                                                  : booking.category === 'peluqueria'
-                                                  ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
-                                                  : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
-                                              }`}>
-                                                {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                                ? 'bg-blue-500/5 border-blue-500/30 text-blue-400'
+                                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            }`}>
+                                              <span className={`w-1 h-1 rounded-full ${
+                                                computedStatus === 'En Proceso'
+                                                  ? 'bg-emerald-400'
+                                                  : computedStatus === 'Espera'
+                                                  ? 'bg-amber-400'
+                                                  : computedStatus === 'proximo'
+                                                  ? 'bg-amber-400'
+                                                  : computedStatus === 'reservado'
+                                                  ? 'bg-blue-400'
+                                                  : 'bg-emerald-400'
+                                              }`} />
+                                              <span>
+                                                {computedStatus === 'Finalizado' ? 'Pagado' : 
+                                                 computedStatus === 'Espera' ? 'En Espera' : 
+                                                 computedStatus}
                                               </span>
-                                            )}
+                                            </span>
+                                          </div>
+
+                                          <div className="space-y-1">
+                                            <div className="font-bold text-white text-[11px] leading-tight">{booking.clientName}</div>
+                                            {(() => {
+                                              const cleanPhone = booking.clientPhone.replace(/\D/g, '');
+                                              return (
+                                                <a
+                                                  href={`https://wa.me/${cleanPhone}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-[9px] text-text-secondary hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
+                                                >
+                                                  <Smartphone size={9} className="text-emerald-500/80" />
+                                                  <span>{booking.clientPhone}</span>
+                                                </a>
+                                              );
+                                            })()}
+                                          </div>
+
+                                          <div className="space-y-1.5">
+                                            <div className="text-[10px] text-white/80 font-medium leading-tight">{booking.serviceName}</div>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className="inline-flex items-center gap-0.5 text-[7px] text-white/50 bg-white/5 px-1 py-0.5 rounded uppercase font-mono">
+                                                {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
+                                                {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
+                                                {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
+                                                <span>{booking.channel}</span>
+                                              </span>
+                                              {booking.category !== activeBusinessTab && (
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                                  booking.category === 'barberia' 
+                                                    ? 'bg-gold/10 text-gold border border-gold/20' 
+                                                    : booking.category === 'peluqueria'
+                                                    ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
+                                                    : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
+                                                }`}>
+                                                  {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                                </span>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
 
-                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-white/5">
+                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-white/5 mt-4">
                                           {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
                                             <button
                                               disabled={isPast}
@@ -5591,7 +5799,7 @@ export default function AdminPage() {
                 }
 
                 return (
-                  <div key={service.id} className="w-full h-[215px]" style={{ perspective: '1000px' }}>
+                  <div key={service.id} className="w-full h-[245px]" style={{ perspective: '1000px' }}>
                     <motion.div
                       layout
                       animate={{ rotateY: isInactive ? 180 : 0 }}
@@ -5819,6 +6027,25 @@ export default function AdminPage() {
                           />
                         </div>
 
+                        {/* Group Selection (Only for Barbería) */}
+                        {activeServiceCategory === 'barberia' && (
+                          <div className="space-y-1">
+                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                              Grupo de Barbería *
+                            </label>
+                            <CustomSelect
+                              value={serviceFormGroup}
+                              onChange={(val) => setServiceFormGroup(val as any)}
+                              options={[
+                                { value: 'cabello', label: 'Ritual 01: Ritual de Cabello' },
+                                { value: 'barba', label: 'Ritual 02: Ritual de Barba' },
+                                { value: 'completo', label: 'Ritual 03: Ritual Completo' }
+                              ]}
+                              buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                            />
+                          </div>
+                        )}
+
                         {/* Price & Duration */}
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
@@ -5867,44 +6094,100 @@ export default function AdminPage() {
 
                         {/* Specialists Assignment */}
                         <div className="space-y-2.5">
-                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                            Personal Asignado
-                          </label>
-                          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                            {(servicesData[activeServiceCategory]?.specialists || []).map((sp) => {
-                              const isChecked = serviceFormSpecialists.includes(sp.id);
-                              return (
-                                <label
-                                  key={sp.id}
-                                  className={`flex items-center justify-between p-3 rounded-xl border border-white/5 transition-all cursor-pointer ${
-                                    isChecked ? 'bg-white/[0.02] border-white/15' : 'hover:bg-white/[0.01]'
-                                  }`}
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-xs font-bold text-gold">
-                                      {sp.name.split(' ').map(n => n[0]).join('')}
-                                    </div>
-                                    <div className="text-left leading-tight">
-                                      <span className="block text-xs font-medium text-white">{sp.name}</span>
-                                      <span className="block text-[9px] text-text-secondary">{sp.role}</span>
-                                    </div>
-                                  </div>
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => {
-                                      if (isChecked) {
-                                        setServiceFormSpecialists(prev => prev.filter(id => id !== sp.id));
-                                      } else {
-                                        setServiceFormSpecialists(prev => [...prev, sp.id]);
-                                      }
-                                    }}
-                                    className="rounded border-white/10 text-gold focus:ring-0 focus:ring-offset-0 bg-black"
-                                  />
-                                </label>
-                              );
-                            })}
-                          </div>
+                          {(() => {
+                            const displayedSpecialists = (servicesData[activeServiceCategory]?.specialists || []).filter(sp => {
+                              if (activeServiceCategory === 'barberia') return sp.profileType === 'barber' || sp.profileType === 'mixto';
+                              if (activeServiceCategory === 'peluqueria') return sp.profileType === 'estilista' || sp.profileType === 'mixto';
+                              if (activeServiceCategory === 'terapias') return sp.profileType === 'terapeuta' || sp.profileType === 'mixto';
+                              return true;
+                            });
+
+                            const isAllSelected = displayedSpecialists.length > 0 && 
+                              displayedSpecialists.every(sp => serviceFormSpecialists.includes(sp.id));
+
+                            const handleSelectAll = () => {
+                              if (isAllSelected) {
+                                const displayedIds = displayedSpecialists.map(sp => sp.id);
+                                setServiceFormSpecialists(prev => prev.filter(id => !displayedIds.includes(id)));
+                              } else {
+                                const displayedIds = displayedSpecialists.map(sp => sp.id);
+                                setServiceFormSpecialists(prev => Array.from(new Set([...prev, ...displayedIds])));
+                              }
+                            };
+
+                            return (
+                              <>
+                                <div className="flex justify-between items-center">
+                                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                                    Personal Asignado
+                                  </label>
+                                  {displayedSpecialists.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={handleSelectAll}
+                                      className="text-[9px] uppercase tracking-wider text-gold hover:text-gold/80 transition-colors font-bold cursor-pointer"
+                                    >
+                                      {isAllSelected ? 'Desmarcar todos' : 'Seleccionar todos'}
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                  {displayedSpecialists.length === 0 ? (
+                                    <p className="text-[10px] text-text-secondary italic text-left py-2">
+                                      No hay profesionales registrados para esta unidad de negocio.
+                                    </p>
+                                  ) : (
+                                    displayedSpecialists.map((sp) => {
+                                      const isChecked = serviceFormSpecialists.includes(sp.id);
+                                      return (
+                                        <label
+                                          key={sp.id}
+                                          className={`flex items-center justify-between p-3 rounded-xl border border-white/5 transition-all cursor-pointer ${
+                                            isChecked ? 'bg-white/[0.02] border-white/15' : 'hover:bg-white/[0.01]'
+                                          }`}
+                                        >
+                                          <div className="flex items-center space-x-3">
+                                            <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-xs font-bold text-gold">
+                                              {sp.name.split(' ').map(n => n[0]).join('')}
+                                            </div>
+                                            <div className="text-left leading-tight">
+                                              <span className="block text-xs font-medium text-white">{sp.name}</span>
+                                              <span className="block text-[9px] text-text-secondary">{sp.role}</span>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center">
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => {
+                                                if (isChecked) {
+                                                  setServiceFormSpecialists(prev => prev.filter(id => id !== sp.id));
+                                                } else {
+                                                  setServiceFormSpecialists(prev => [...prev, sp.id]);
+                                                }
+                                              }}
+                                              className="sr-only"
+                                            />
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all duration-300 ${
+                                              isChecked 
+                                                ? activeServiceCategory === 'barberia' 
+                                                  ? 'bg-gold border-gold text-black shadow-[0_0_8px_rgba(229,184,66,0.4)] scale-105'
+                                                  : activeServiceCategory === 'peluqueria'
+                                                  ? 'bg-[#CD7F32] border-[#CD7F32] text-black shadow-[0_0_8px_rgba(205,127,50,0.4)] scale-105'
+                                                  : 'bg-[#E2E0D8] border-[#E2E0D8] text-black shadow-[0_0_8px_rgba(226,224,216,0.4)] scale-105'
+                                                : 'border-white/20 bg-black/40 hover:border-white/40'
+                                            }`}>
+                                              {isChecked && <Check size={10} strokeWidth={3} className="text-black font-bold" />}
+                                            </div>
+                                          </div>
+                                        </label>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </form>
                     </div>
@@ -6122,6 +6405,18 @@ export default function AdminPage() {
                     }));
                   };
 
+                  // Calculate specialist stats
+                  const staffBookings = bookings.filter(
+                    b => b.specialistName === staff.name && b.status !== 'bloqueado' && b.status !== 'cancelado'
+                  );
+                  const totalCitas = staffBookings.length;
+                  const totalRevenue = staffBookings.reduce((sum, b) => {
+                    const priceStr = b.price.replace(/[^0-9]/g, '');
+                    const priceNum = parseInt(priceStr, 10) || 0;
+                    return sum + priceNum;
+                  }, 0);
+                  const averageRevenue = totalCitas > 0 ? Math.round(totalRevenue / totalCitas) : 0;
+
                   return (
                     <div key={staff.id} className="w-full h-[350px]" style={{ perspective: '1000px' }}>
                       <motion.div
@@ -6258,9 +6553,31 @@ export default function AdminPage() {
                             </div>
 
                             {/* Bio preview */}
-                            <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-4 text-left">
+                            <p className="text-[11px] text-text-secondary leading-relaxed font-light line-clamp-2 text-left">
                               {staff.bio || 'Sin biografía ingresada.'}
                             </p>
+
+                            {/* Stats Summary Grid */}
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5">
+                              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2 text-center flex flex-col justify-center">
+                                <span className="text-[8px] uppercase tracking-widest text-text-secondary font-semibold block mb-0.5">Total</span>
+                                <span className="font-mono text-[10px] font-bold text-gold truncate">
+                                  {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(totalRevenue)}
+                                </span>
+                              </div>
+                              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2 text-center flex flex-col justify-center">
+                                <span className="text-[8px] uppercase tracking-widest text-text-secondary font-semibold block mb-0.5">Promedio</span>
+                                <span className="font-mono text-[10px] font-bold text-white truncate">
+                                  {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(averageRevenue)}
+                                </span>
+                              </div>
+                              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2 text-center flex flex-col justify-center">
+                                <span className="text-[8px] uppercase tracking-widest text-text-secondary font-semibold block mb-0.5">Citas</span>
+                                <span className="font-mono text-[10px] font-bold text-white truncate">
+                                  {totalCitas}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Footer: Agendas badges & Actions */}

@@ -42,8 +42,8 @@ interface ServicesStore {
   
   // Actions
   fetchServicesAndSpecialists: () => Promise<void>;
-  addService: (category: string, service: Omit<ServiceItem, 'id'>) => Promise<void>;
-  updateService: (category: string, serviceId: string, updatedFields: Partial<ServiceItem>) => Promise<void>;
+  addService: (category: string, service: Omit<ServiceItem, 'id'> & { id?: string }) => Promise<void>;
+  updateService: (category: string, serviceId: string, updatedFields: Partial<ServiceItem> & { id?: string }) => Promise<void>;
   deleteService: (category: string, serviceId: string) => Promise<void>;
   toggleServiceActive: (category: string, serviceId: string) => Promise<void>;
   
@@ -60,7 +60,7 @@ const defaultServicesData: Record<string, Omit<ServiceSection, 'specialists'> & 
     title: "Barbería Tradicional",
     description: "Cortes de autor, afeitados con navaja libre y rituales de toallas calientes diseñados para el caballero contemporáneo en un ambiente de calma absoluta.",
     path: "/barberia",
-    color: "#C69B3C",
+    color: "#E5B842",
     accentColor: "#CD7F32",
     services: [],
     specialists: []
@@ -70,7 +70,7 @@ const defaultServicesData: Record<string, Omit<ServiceSection, 'specialists'> & 
     description: "Un espacio de empatía, técnica y cuidado donde transformamos vidas. Entendemos que la belleza es mucho más que apariencia: es identidad, expresión, confianza y, sobre todo, tu autoestima.",
     path: "/peluqueria",
     color: "#CD7F32",
-    accentColor: "#C69B3C",
+    accentColor: "#E5B842",
     services: [],
     specialists: []
   },
@@ -155,10 +155,10 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
   },
 
   addService: async (category, service) => {
-    const prefix = category.substring(0, 2);
-    const id = `${prefix}_${Date.now()}`;
+    const id = service.id || `${category.substring(0, 2)}_${Date.now()}`;
+    const { id: passedId, ...serviceFields } = service;
     const newService: ServiceItem = {
-      ...service,
+      ...serviceFields,
       id,
       isActive: true
     };
@@ -167,11 +167,11 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       const { error } = await supabase.from('services').insert({
         id,
         category,
-        name: service.name,
-        price: service.price,
-        duration: service.duration,
-        description: service.description,
-        specialist_ids: service.specialistIds || [],
+        name: serviceFields.name,
+        price: serviceFields.price,
+        duration: serviceFields.duration,
+        description: serviceFields.description,
+        specialist_ids: serviceFields.specialistIds || [],
         is_active: true
       });
 
@@ -198,20 +198,46 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
   updateService: async (category, serviceId, updatedFields) => {
     try {
+      const { id: newId, ...fieldsToUpdate } = updatedFields;
       const payload: any = {};
-      if (updatedFields.name !== undefined) payload.name = updatedFields.name;
-      if (updatedFields.price !== undefined) payload.price = updatedFields.price;
-      if (updatedFields.duration !== undefined) payload.duration = updatedFields.duration;
-      if (updatedFields.description !== undefined) payload.description = updatedFields.description;
-      if (updatedFields.specialistIds !== undefined) payload.specialist_ids = updatedFields.specialistIds;
-      if (updatedFields.isActive !== undefined) payload.is_active = updatedFields.isActive;
+      if (fieldsToUpdate.name !== undefined) payload.name = fieldsToUpdate.name;
+      if (fieldsToUpdate.price !== undefined) payload.price = fieldsToUpdate.price;
+      if (fieldsToUpdate.duration !== undefined) payload.duration = fieldsToUpdate.duration;
+      if (fieldsToUpdate.description !== undefined) payload.description = fieldsToUpdate.description;
+      if (fieldsToUpdate.specialistIds !== undefined) payload.specialist_ids = fieldsToUpdate.specialistIds;
+      if (fieldsToUpdate.isActive !== undefined) payload.is_active = fieldsToUpdate.isActive;
 
-      const { error } = await supabase
-        .from('services')
-        .update(payload)
-        .eq('id', serviceId);
+      if (newId !== undefined && newId !== serviceId) {
+        // Fetch full current service row from Supabase
+        const { data: currentRow } = await supabase
+          .from('services')
+          .select('*')
+          .eq('id', serviceId)
+          .single();
+          
+        if (currentRow) {
+          const newRow = {
+            ...currentRow,
+            ...payload,
+            id: newId
+          };
+          
+          // Insert new row
+          const { error: insertErr } = await supabase.from('services').insert(newRow);
+          if (insertErr) throw insertErr;
+          
+          // Delete old row
+          const { error: deleteErr } = await supabase.from('services').delete().eq('id', serviceId);
+          if (deleteErr) throw deleteErr;
+        }
+      } else {
+        const { error } = await supabase
+          .from('services')
+          .update(payload)
+          .eq('id', serviceId);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       set((state) => {
         const section = state.servicesData[category];
