@@ -1464,6 +1464,216 @@ export default function AdminPage() {
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
   };
 
+  const renderClientDetailContent = (client: any) => {
+    const clientBookings = bookings.filter(
+      b => b.clientPhone === client.phone && (b.status as string) !== 'bloqueado'
+    ).sort((a, b) => {
+      const dateDiff = b.date.localeCompare(a.date);
+      if (dateDiff !== 0) return dateDiff;
+      return b.time.localeCompare(a.time);
+    });
+
+    return (
+      <div className="space-y-6 text-left pt-2">
+        {/* Avatar & Basic Info */}
+        <div className="text-center space-y-3 pb-6 border-b border-white/5 relative group/detail">
+          <div className="absolute right-0 top-0 flex items-center space-x-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setClientToEdit(client);
+                setEditClientName(client.name || '');
+                const rawPhone = client.phone || '';
+                let parsedCountryCode = '+56';
+                let parsedPhone = rawPhone.replace(/\s+/g, '');
+                const countries = [
+                  { code: '+56', label: 'Chile (+56)' },
+                  { code: '+54', label: 'Argentina (+54)' },
+                  { code: '+51', label: 'Perú (+51)' },
+                  { code: '+57', label: 'Colombia (+57)' },
+                  { code: '+34', label: 'España (+34)' },
+                  { code: '+52', label: 'México (+52)' },
+                  { code: '+598', label: 'Uruguay (+598)' },
+                ];
+                const matchedCountry = countries.find(c => parsedPhone.startsWith(c.code));
+                if (matchedCountry) {
+                  parsedCountryCode = matchedCountry.code;
+                  parsedPhone = parsedPhone.substring(matchedCountry.code.length);
+                } else if (parsedPhone.startsWith('+')) {
+                  if (parsedPhone.length > 9) {
+                    parsedCountryCode = parsedPhone.substring(0, parsedPhone.length - 9);
+                    parsedPhone = parsedPhone.substring(parsedPhone.length - 9);
+                  }
+                }
+                setCountryCode(parsedCountryCode);
+                setEditClientPhone(parsedPhone.replace(/\D/g, ''));
+                setPhoneError('');
+                setEditClientEmail(client.email || '');
+                setIsEditingClient(true);
+              }}
+              className="p-2 text-white/30 hover:text-gold hover:bg-gold/10 rounded-xl transition-all cursor-pointer"
+              title="Editar Cliente"
+            >
+              <Edit3 size={15} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setClientToDelete({ phone: client.phone, name: client.name });
+              }}
+              className="p-2 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+              title="Eliminar Cliente"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+          <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-2xl font-bold text-gold mx-auto shadow-[inset_0_2px_12px_rgba(198,155,60,0.15)]">
+            {client.name.split(' ').map((n: string) => n[0]).join('')}
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <h3 className="font-serif text-lg text-white font-medium">{client.name}</h3>
+              {client.notSoGoodClient && (
+                <span className="text-[8px] uppercase font-bold tracking-widest bg-red-500/10 border border-red-500/35 text-red-400 px-2 py-0.5 rounded-full select-none animate-pulse">
+                  No tan buen cliente
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-center space-x-3 pt-1">
+              <a 
+                href={`https://wa.me/${client.phone.replace(/\D/g, '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                onClick={(e) => e.stopPropagation()}
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                title={`WhatsApp: ${client.phone}`}
+              >
+                <svg fill="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.16 5.348 5.507 0 12.008 0c3.148.002 6.11 1.228 8.332 3.454a11.758 11.758 0 0 1 3.451 8.35c-.006 6.525-5.352 11.87-11.85 11.87-.193-.001-.387-.006-.579-.017l-5.61 1.472A1.03 1.03 0 0 1 .057 24zm6.59-4.846c1.6.95 3.6 1.455 5.362 1.456 5.4 0 9.8-4.4 9.8-9.8 0-2.613-1.018-5.07-2.868-6.92C17.09 2.038 14.63 1.02 12.01 1.02c-5.4 0-9.8 4.4-9.8 9.8.001 1.95.586 3.86 1.694 5.485l.1.15-.99 3.62 3.7-.97.14.09zm10.158-6.685c-.247-.123-1.463-.722-1.69-.804-.226-.082-.39-.123-.555.124-.165.247-.638.804-.783.969-.144.165-.29.185-.536.062-.247-.124-1.042-.384-1.986-1.226-.733-.653-1.228-1.46-1.372-1.707-.144-.247-.015-.38.109-.503.111-.11.247-.288.37-.433.124-.144.165-.247.248-.412.082-.165.04-.309-.02-.433-.062-.124-.555-1.339-.76-1.833-.2-.482-.401-.416-.554-.424-.144-.007-.31-.008-.474-.008-.165 0-.433.062-.66.309-.226.247-.865.845-.865 2.06 0 1.215.886 2.39 1.009 2.555.124.165 1.744 2.662 4.225 3.731.59.254 1.05.405 1.41.519.593.189 1.132.162 1.558.098.475-.072 1.463-.598 1.669-1.175.206-.577.206-1.071.144-1.175-.062-.103-.226-.165-.473-.288z" />
+                </svg>
+              </a>
+              {client.email ? (
+                <a 
+                  href={`mailto:${client.email}`}
+                  className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-gold hover:bg-gold/5 hover:border-gold/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                  title={`Email: ${client.email}`}
+                >
+                  <Mail size={13} />
+                </a>
+              ) : (
+                <div 
+                  className="w-8 h-8 rounded-full bg-white/5 border border-white/5 text-white/20 flex items-center justify-center select-none"
+                  title="Sin correo"
+                >
+                  <Mail size={13} className="opacity-40" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Metrics */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl text-center space-y-1">
+            <span className="text-[8px] uppercase tracking-widest text-text-secondary block">Última Visita</span>
+            <span className="text-xs font-semibold text-white">{formatDateToDMY(client.lastVisit)}</span>
+          </div>
+          <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl text-center space-y-1">
+            <span className="text-[8px] uppercase tracking-widest text-text-secondary block">Inversión Total</span>
+            <span className="text-xs font-semibold text-gold">${client.totalSpent.toLocaleString('es-CL')}</span>
+          </div>
+        </div>
+
+        {/* Booking History */}
+        <div className="space-y-3 flex flex-col flex-1">
+          <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">Historial de Reservas</span>
+          <div className="max-h-[200px] overflow-y-auto pr-1 space-y-2 scrollbar-thin">
+            {clientBookings.length === 0 ? (
+              <p className="text-xs text-text-secondary italic">Sin reservas registradas.</p>
+            ) : (
+              clientBookings.map((b) => {
+                const status = getCurrentBookingStatus(b.date, b.time, b.status, b.specialistName);
+                let statusStyles = '';
+                if (status === 'Finalizado') {
+                  statusStyles = 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+                } else if (status === 'En Proceso') {
+                  statusStyles = 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400';
+                } else if (status === 'Espera') {
+                  statusStyles = 'bg-amber-500/10 border-amber-500/25 text-amber-400 animate-pulse';
+                } else if (status === 'proximo') {
+                  statusStyles = 'bg-blue-500/10 border-blue-500/25 text-blue-400';
+                } else {
+                  statusStyles = 'bg-gold/10 border-gold/25 text-gold';
+                }
+
+                return (
+                  <div 
+                    key={b.id} 
+                    className="bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-xl p-3 space-y-2 transition-all"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <h4 className="font-semibold text-white text-[11px] leading-snug">{b.serviceName}</h4>
+                        <p className="text-[9px] text-text-secondary">{b.specialistName}</p>
+                      </div>
+                      <span className={`text-[8px] uppercase tracking-wider font-bold border px-2 py-0.5 rounded-full whitespace-nowrap ${statusStyles}`}>
+                        {status === 'Finalizado' ? 'Pagado' : status === 'Espera' ? 'Espera' : status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] text-text-secondary border-t border-white/5 pt-1.5 font-mono">
+                      <span>{formatDateToDMY(b.date)} • {b.time} hrs</span>
+                      <span className="font-semibold text-white">{b.price}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Creative Cross-Selling Campaign trigger */}
+        <div className="bg-gold/5 border border-gold/15 rounded-2xl p-4.5 space-y-3.5">
+          <div className="flex items-center space-x-2 text-gold">
+            <Sparkles size={13} className="animate-pulse" />
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold">Campaña de Venta Cruzada (CRM)</span>
+          </div>
+          
+          {client.businesses.length === 3 ? (
+            <p className="text-[11px] text-emerald-400 font-light leading-relaxed">
+              ¡Este cliente es un embajador unificado! Ya ha completado rituales en Barbería, Peluquería y Terapias.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[11px] text-text-secondary leading-relaxed font-light">
+                {client.name} aún no ha experimentado{' '}
+                <span className="text-white font-semibold">
+                  {!client.businesses.includes('terapias') && 'nuestras Terapias Holísticas'}
+                  {client.businesses.includes('terapias') && !client.businesses.includes('peluqueria') && 'nuestra Peluquería de Autor'}
+                  {client.businesses.includes('terapias') && client.businesses.includes('peluqueria') && !client.businesses.includes('barberia') && 'nuestra Barbería Tradicional'}
+                </span>.
+              </p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  let promo = '';
+                  if (!client.businesses.includes('terapias')) promo = 'Masaje con Piedras Calientes Obsidiana con 15% DCTO';
+                  else if (!client.businesses.includes('peluqueria')) promo = 'Corte de diseño capilar con 15% DCTO';
+                  else promo = 'Afeitado spa con toallas de eucalipto con 15% DCTO';
+                  
+                  triggerNotification(`Promo enviada por WhatsApp: "${promo}"`);
+                }}
+                className="w-full py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase tracking-widest font-bold transition-all flex items-center justify-center space-x-1.5 shadow"
+              >
+                <Plus size={11} />
+                <span>Enviar Promo Cruzada (WhatsApp)</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const getThisWeekRange = () => {
     const today = new Date();
     const day = today.getDay();
@@ -2959,8 +3169,8 @@ export default function AdminPage() {
               })}
             </div>
 
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+            {/* Charts Grid (Hidden on mobile) */}
+            <div className="hidden lg:grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
               {/* Daily Revenue Trend Chart */}
               <div className="lg:col-span-8 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 flex flex-col justify-between shadow-lg h-[350px]">
                 <div className="flex items-center justify-between pb-4">
@@ -3089,8 +3299,69 @@ export default function AdminPage() {
         {/* 2. AGENDA TAB */}
         {activeTab === 'agenda' && (
           <div className="space-y-6">
-            {/* 3 Business Sub-tabs */}
-            <div className="flex justify-center md:justify-start border-b border-white/5 pb-2">
+            {/* Mobile-only Dropdown Filters */}
+            <div className="md:hidden grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+              {/* Business Select */}
+              <div className="flex flex-col space-y-1 text-left">
+                <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Negocio</span>
+                <div className="relative">
+                  <select
+                    value={activeBusinessTab}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setActiveBusinessTab(val);
+                      const specs = servicesData[val]?.specialists || [];
+                      if (specs.length > 0) {
+                        setActiveSpecialistFilter(specs[0].id);
+                      } else {
+                        setActiveSpecialistFilter('all');
+                      }
+                    }}
+                    className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                  >
+                    {[
+                      { id: 'barberia', label: 'Barbería Tradicional' },
+                      { id: 'peluqueria', label: 'Peluquería de Autor' },
+                      { id: 'terapias', label: 'Terapias Holísticas' }
+                    ].filter(subtab => {
+                      const agendas = currentUser ? currentUser.assignedAgendas : ['barberia', 'peluqueria', 'terapias'];
+                      return agendas.includes(subtab.id as any);
+                    }).map(subtab => (
+                      <option key={subtab.id} value={subtab.id} className="bg-[#0c0c0c] text-white">
+                        {subtab.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                    <ChevronDown size={12} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Specialist Select */}
+              <div className="flex flex-col space-y-1 text-left">
+                <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Profesional</span>
+                <div className="relative">
+                  <select
+                    value={activeSpecialistFilter}
+                    onChange={(e) => setActiveSpecialistFilter(e.target.value)}
+                    className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                  >
+                    {servicesData[activeBusinessTab]?.specialists.map(sp => (
+                      <option key={sp.id} value={sp.id} className="bg-[#0c0c0c] text-white">
+                        {sp.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                    <ChevronDown size={12} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop-only 3 Business Sub-tabs */}
+            <div className="hidden md:flex justify-center md:justify-start border-b border-white/5 pb-2">
               <div className="flex space-x-2 bg-[#0c0c0c] border border-white/5 p-1 rounded-full">
                 {[
                   { id: 'barberia', label: 'Barbería Tradicional', badge: '01' },
@@ -3106,7 +3377,7 @@ export default function AdminPage() {
                       key={subtab.id}
                       onClick={() => {
                         setActiveBusinessTab(subtab.id as any);
-                        setActiveSpecialistFilter('all'); // Reset specialist filter on subtab change
+                        setActiveSpecialistFilter('all');
                       }}
                       className={`px-5 py-2.5 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all duration-300 flex items-center space-x-2 focus:outline-none cursor-pointer ${
                         isSubtabActive
@@ -3128,14 +3399,13 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Specialist Round Filters */}
+            {/* Desktop-only Specialist Round Filters */}
             {(!currentUser || currentUser.profileType === 'admin') && (
-              <div className="flex flex-col space-y-3">
+              <div className="hidden md:flex flex-col space-y-3">
                 <span className="text-[9px] uppercase tracking-[0.2em] text-text-secondary font-bold text-center md:text-left">
                   Filtrar por Profesional
                 </span>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pb-2">
-                  {/* Filter Option: TODOS */}
                   <button
                     onClick={() => setActiveSpecialistFilter('all')}
                     className="flex flex-col items-center space-y-1.5 focus:outline-none transition-all duration-300 cursor-pointer"
@@ -3156,7 +3426,6 @@ export default function AdminPage() {
                     </span>
                   </button>
 
-                  {/* Individual Specialists */}
                   {servicesData[activeBusinessTab]?.specialists.map((sp) => {
                     const isSelected = activeSpecialistFilter === sp.id;
                     const photo = sp.imageUrl || specialistPhotos[sp.id];
@@ -4106,8 +4375,8 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Table list of clients */}
-              <div className="overflow-x-auto">
+              {/* Table list of clients (Desktop Only) */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
@@ -4192,226 +4461,81 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {/* Right Column: Client CRM Details & Cross-Selling Panel */}
-            <div className="lg:col-span-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6 min-h-[400px]">
-              {selectedClient ? (
-                <div className="space-y-6">
-                  {/* Avatar & Basic Info */}
-                  <div className="text-center space-y-3 pb-6 border-b border-white/5 relative group/detail">
-                    <div className="absolute right-0 top-0 flex items-center space-x-1">
-                      {/* Botón de editar cliente */}
-                      <button
-                        onClick={() => {
-                          setClientToEdit(selectedClient);
-                          setEditClientName(selectedClient.name || '');
-                          
-                          // Parse country code and phone
-                          const rawPhone = selectedClient.phone || '';
-                          let parsedCountryCode = '+56';
-                          let parsedPhone = rawPhone.replace(/\s+/g, '');
-                          
-                          const countries = [
-                            { code: '+56', label: 'Chile (+56)' },
-                            { code: '+54', label: 'Argentina (+54)' },
-                            { code: '+51', label: 'Perú (+51)' },
-                            { code: '+57', label: 'Colombia (+57)' },
-                            { code: '+34', label: 'España (+34)' },
-                            { code: '+52', label: 'México (+52)' },
-                            { code: '+598', label: 'Uruguay (+598)' },
-                          ];
-
-                          const matchedCountry = countries.find(c => parsedPhone.startsWith(c.code));
-                          if (matchedCountry) {
-                            parsedCountryCode = matchedCountry.code;
-                            parsedPhone = parsedPhone.substring(matchedCountry.code.length);
-                          } else if (parsedPhone.startsWith('+')) {
-                            if (parsedPhone.length > 9) {
-                              parsedCountryCode = parsedPhone.substring(0, parsedPhone.length - 9);
-                              parsedPhone = parsedPhone.substring(parsedPhone.length - 9);
-                            }
-                          }
-
-                          setCountryCode(parsedCountryCode);
-                          setEditClientPhone(parsedPhone.replace(/\D/g, ''));
-                          setPhoneError('');
-                          setEditClientEmail(selectedClient.email || '');
-                          setIsEditingClient(true);
-                        }}
-                        className="p-2 text-white/30 hover:text-gold hover:bg-gold/10 rounded-xl transition-all cursor-pointer"
-                        title="Editar Cliente"
+              {/* Mobile Card-based Accordion List */}
+              <div className="md:hidden flex flex-col space-y-4">
+                {filteredClients.length === 0 ? (
+                  <p className="text-xs text-text-secondary italic text-center py-8">
+                    No hay clientes registrados en esta unidad de negocio.
+                  </p>
+                ) : (
+                  filteredClients.map((client) => {
+                    const isSelected = selectedClient?.phone === client.phone;
+                    return (
+                      <div
+                        key={client.phone}
+                        className={`border rounded-2xl bg-[#070707] p-4.5 space-y-4 transition-all duration-300 ${
+                          isSelected ? 'border-gold/30 bg-gold/[0.01]' : 'border-white/5 hover:border-white/10'
+                        }`}
                       >
-                        <Edit3 size={15} />
-                      </button>
-                      {/* Botón de eliminar cliente */}
-                      <button
-                        onClick={() => setClientToDelete({ phone: selectedClient.phone, name: selectedClient.name })}
-                        className="p-2 text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
-                        title="Eliminar Cliente"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                    <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-2xl font-bold text-gold mx-auto shadow-[inset_0_2px_12px_rgba(198,155,60,0.15)]">
-                      {selectedClient.name.split(' ').map((n: string) => n[0]).join('')}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center gap-2">
-                        <h3 className="font-serif text-lg text-white font-medium">{selectedClient.name}</h3>
-                        {selectedClient.notSoGoodClient && (
-                          <span className="text-[8px] uppercase font-bold tracking-widest bg-red-500/10 border border-red-500/35 text-red-400 px-2 py-0.5 rounded-full animate-pulse select-none">
-                            No tan buen cliente
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-center space-x-3 pt-1">
-                        <a 
-                          href={`https://wa.me/${selectedClient.phone.replace(/\D/g, '')}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
-                          title={`WhatsApp: ${selectedClient.phone}`}
+                        {/* Clickable Header */}
+                        <div 
+                          onClick={() => setSelectedClient(isSelected ? null : client)}
+                          className="flex justify-between items-start gap-4 cursor-pointer"
                         >
-                          <svg
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                            className="w-3.5 h-3.5"
-                          >
-                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.16 5.348 5.507 0 12.008 0c3.148.002 6.11 1.228 8.332 3.454a11.758 11.758 0 0 1 3.451 8.35c-.006 6.525-5.352 11.87-11.85 11.87-.193-.001-.387-.006-.579-.017l-5.61 1.472A1.03 1.03 0 0 1 .057 24zm6.59-4.846c1.6.95 3.6 1.455 5.362 1.456 5.4 0 9.8-4.4 9.8-9.8 0-2.613-1.018-5.07-2.868-6.92C17.09 2.038 14.63 1.02 12.01 1.02c-5.4 0-9.8 4.4-9.8 9.8.001 1.95.586 3.86 1.694 5.485l.1.15-.99 3.62 3.7-.97.14.09zm10.158-6.685c-.247-.123-1.463-.722-1.69-.804-.226-.082-.39-.123-.555.124-.165.247-.638.804-.783.969-.144.165-.29.185-.536.062-.247-.124-1.042-.384-1.986-1.226-.733-.653-1.228-1.46-1.372-1.707-.144-.247-.015-.38.109-.503.111-.11.247-.288.37-.433.124-.144.165-.247.248-.412.082-.165.04-.309-.02-.433-.062-.124-.555-1.339-.76-1.833-.2-.482-.401-.416-.554-.424-.144-.007-.31-.008-.474-.008-.165 0-.433.062-.66.309-.226.247-.865.845-.865 2.06 0 1.215.886 2.39 1.009 2.555.124.165 1.744 2.662 4.225 3.731.59.254 1.05.405 1.41.519.593.189 1.132.162 1.558.098.475-.072 1.463-.598 1.669-1.175.206-.577.206-1.071.144-1.175-.062-.103-.226-.165-.473-.288z" />
-                          </svg>
-                        </a>
-                        {selectedClient.email ? (
-                          <a 
-                            href={`mailto:${selectedClient.email}`}
-                            className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-gold hover:bg-gold/5 hover:border-gold/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
-                            title={`Email: ${selectedClient.email}`}
-                          >
-                            <Mail size={13} />
-                          </a>
-                        ) : (
-                          <div 
-                            className="w-8 h-8 rounded-full bg-white/5 border border-white/5 text-white/20 flex items-center justify-center select-none"
-                            title="Sin correo"
-                          >
-                            <Mail size={13} className="opacity-40" />
+                          <div className="space-y-1.5 text-left flex-1 min-w-0">
+                            <div className="flex items-center flex-wrap gap-2">
+                              <span className="font-semibold text-white text-sm">{client.name}</span>
+                              {client.notSoGoodClient && (
+                                <span className="text-[7px] font-bold uppercase tracking-wider bg-red-500/10 border border-red-500/25 text-red-400 px-2 py-0.5 rounded-full select-none">
+                                  No tan buen cliente
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-text-secondary font-mono">
+                              {client.phone}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {client.businesses.includes('barberia') && (
+                                <span className="text-[7px] font-bold uppercase tracking-wider bg-gold/5 border border-gold/15 text-gold px-2 py-0.5 rounded-full">Barbería</span>
+                              )}
+                              {client.businesses.includes('peluqueria') && (
+                                <span className="text-[7px] font-bold uppercase tracking-wider bg-[#CD7F32]/5 border border-[#CD7F32]/15 text-[#CD7F32] px-2 py-0.5 rounded-full">Peluquería</span>
+                              )}
+                              {client.businesses.includes('terapias') && (
+                                <span className="text-[7px] font-bold uppercase tracking-wider bg-[#E2E0D8]/5 border border-[#E2E0D8]/15 text-[#E2E0D8] px-2 py-0.5 rounded-full">Terapias</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-right flex flex-col items-end space-y-1">
+                            <span className="text-[8px] uppercase tracking-wider text-text-secondary">Inversión</span>
+                            <span className="text-xs font-semibold text-white/95">${client.totalSpent.toLocaleString('es-CL')}</span>
+                            <ChevronDown 
+                              size={12} 
+                              className={`text-text-secondary transition-transform duration-300 mt-1 ${isSelected ? 'rotate-180 text-gold' : 'rotate-0'}`} 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Collapsible details content */}
+                        {isSelected && (
+                          <div className="pt-4 border-t border-white/5">
+                            {renderClientDetailContent(client)}
                           </div>
                         )}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Booking Metrics */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl text-center space-y-1">
-                      <span className="text-[8px] uppercase tracking-widest text-text-secondary block">Última Visita</span>
-                      <span className="text-xs font-semibold text-white">{formatDateToDMY(selectedClient.lastVisit)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl text-center space-y-1">
-                      <span className="text-[8px] uppercase tracking-widest text-text-secondary block">Inversión Total</span>
-                      <span className="text-xs font-semibold text-gold">${selectedClient.totalSpent.toLocaleString('es-CL')}</span>
-                    </div>
-                  </div>
-
-                  {/* Booking History */}
-                  {(() => {
-                    const clientBookings = bookings.filter(
-                      b => b.clientPhone === selectedClient.phone && (b.status as string) !== 'bloqueado'
-                    ).sort((a, b) => {
-                      const dateDiff = b.date.localeCompare(a.date);
-                      if (dateDiff !== 0) return dateDiff;
-                      return b.time.localeCompare(a.time);
-                    });
-
-                    return (
-                      <div className="space-y-3 flex flex-col flex-1">
-                        <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">Historial de Reservas</span>
-                        <div className="max-h-[200px] overflow-y-auto pr-1 space-y-2 scrollbar-thin">
-                          {clientBookings.length === 0 ? (
-                            <p className="text-xs text-text-secondary italic">Sin reservas registradas.</p>
-                          ) : (
-                            clientBookings.map((b) => {
-                              const status = getCurrentBookingStatus(b.date, b.time, b.status, b.specialistName);
-                              let statusStyles = '';
-                              if (status === 'Finalizado') {
-                                statusStyles = 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'; // pagado
-                              } else if (status === 'En Proceso') {
-                                statusStyles = 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400';
-                              } else if (status === 'Espera') {
-                                statusStyles = 'bg-amber-500/10 border-amber-500/25 text-amber-400 animate-pulse';
-                              } else if (status === 'proximo') {
-                                statusStyles = 'bg-blue-500/10 border-blue-500/25 text-blue-400';
-                              } else { // reservado
-                                statusStyles = 'bg-gold/10 border-gold/25 text-gold';
-                              }
-
-                              return (
-                                <div 
-                                  key={b.id} 
-                                  className="bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-xl p-3 space-y-2 transition-all"
-                                >
-                                  <div className="flex justify-between items-start gap-2">
-                                    <div>
-                                      <h4 className="font-semibold text-white text-[11px] leading-snug">{b.serviceName}</h4>
-                                      <p className="text-[9px] text-text-secondary">{b.specialistName}</p>
-                                    </div>
-                                    <span className={`text-[8px] uppercase tracking-wider font-bold border px-2 py-0.5 rounded-full whitespace-nowrap ${statusStyles}`}>
-                                      {status === 'Finalizado' ? 'Pagado' : status === 'Espera' ? 'Espera' : status}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[9px] text-text-secondary border-t border-white/5 pt-1.5 font-mono">
-                                    <span>{formatDateToDMY(b.date)} • {b.time} hrs</span>
-                                    <span className="font-semibold text-white">{b.price}</span>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
                     );
-                  })()}
+                  })
+                )}
+              </div>
 
-                  {/* Creative Cross-Selling Campaign trigger */}
-                  <div className="bg-gold/5 border border-gold/15 rounded-2xl p-4.5 space-y-3.5">
-                    <div className="flex items-center space-x-2 text-gold">
-                      <Sparkles size={13} className="animate-pulse" />
-                      <span className="text-[10px] uppercase tracking-[0.2em] font-bold">Campaña de Venta Cruzada (CRM)</span>
-                    </div>
-                    
-                    {/* Check which business they haven't visited and offer promotion */}
-                    {selectedClient.businesses.length === 3 ? (
-                      <p className="text-[11px] text-emerald-400 font-light leading-relaxed">
-                        ¡Este cliente es un embajador unificado! Ya ha completado rituales en Barbería, Peluquería y Terapias.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-[11px] text-text-secondary leading-relaxed font-light">
-                          {selectedClient.name} aún no ha experimentado{' '}
-                          <span className="text-white font-semibold">
-                            {!selectedClient.businesses.includes('terapias') && 'nuestras Terapias Holísticas'}
-                            {selectedClient.businesses.includes('terapias') && !selectedClient.businesses.includes('peluqueria') && 'nuestra Peluquería de Autor'}
-                            {selectedClient.businesses.includes('terapias') && selectedClient.businesses.includes('peluqueria') && !selectedClient.businesses.includes('barberia') && 'nuestra Barbería Tradicional'}
-                          </span>.
-                        </p>
-                        <button
-                          onClick={() => {
-                            let promo = '';
-                            if (!selectedClient.businesses.includes('terapias')) promo = 'Masaje con Piedras Calientes Obsidiana con 15% DCTO';
-                            else if (!selectedClient.businesses.includes('peluqueria')) promo = 'Corte de diseño capilar con 15% DCTO';
-                            else promo = 'Afeitado spa con toallas de eucalipto con 15% DCTO';
-                            
-                            triggerNotification(`Promo enviada por WhatsApp: "${promo}"`);
-                          }}
-                          className="w-full py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase tracking-widest font-bold transition-all flex items-center justify-center space-x-1.5 shadow"
-                        >
-                          <Plus size={11} />
-                          <span>Enviar Promo Cruzada (WhatsApp)</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            </div>
+
+            {/* Right Column: Client CRM Details & Cross-Selling Panel (Desktop Only) */}
+            <div className="hidden lg:block lg:col-span-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6 min-h-[400px]">
+              {selectedClient ? (
+                renderClientDetailContent(selectedClient)
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center text-text-secondary font-light py-16 space-y-2">
                   <Users size={32} className="text-white/10" />
@@ -6554,8 +6678,8 @@ export default function AdminPage() {
 
             {/* Top Bar with Filter Selector and Add Button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-5 shadow-xl">
-              {/* Category Filter Tabs */}
-              <div className="flex bg-black rounded-xl border border-white/5 p-1 max-w-lg w-full">
+              {/* Category Filter Tabs (Desktop Only) */}
+              <div className="hidden sm:flex bg-black rounded-xl border border-white/5 p-1 max-w-lg w-full">
                 {[
                   { id: 'todos', label: 'Todos' },
                   { id: 'barberia', label: 'Barbería' },
@@ -6572,7 +6696,7 @@ export default function AdminPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveStaffCategoryFilter(tab.id as any)}
-                      className={`flex-1 py-2 rounded-lg text-xs uppercase tracking-widest font-semibold transition-all border ${
+                      className={`flex-1 py-2 rounded-lg text-xs uppercase tracking-widest font-semibold transition-all border cursor-pointer ${
                         isActive
                           ? `${activeBg} shadow-md`
                           : 'border-transparent text-text-secondary hover:text-white'
@@ -6582,6 +6706,29 @@ export default function AdminPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Category Filter Dropdown (Mobile Only) */}
+              <div className="sm:hidden relative w-full text-left">
+                <select
+                  value={activeStaffCategoryFilter}
+                  onChange={(e) => setActiveStaffCategoryFilter(e.target.value as any)}
+                  className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  {[
+                    { id: 'todos', label: 'Todos los Negocios' },
+                    { id: 'barberia', label: 'Barbería Tradicional' },
+                    { id: 'peluqueria', label: 'Peluquería de Autor' },
+                    { id: 'terapias', label: 'Terapias Holísticas' }
+                  ].map(tab => (
+                    <option key={tab.id} value={tab.id} className="bg-[#0c0c0c] text-white">
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                  <ChevronDown size={14} />
+                </div>
               </div>
 
               {/* Add New Staff Button */}
