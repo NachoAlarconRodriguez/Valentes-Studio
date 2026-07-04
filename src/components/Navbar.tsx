@@ -308,7 +308,10 @@ export function Navbar() {
                         onClick={() => setMenuOpen(false)}
                         className={`font-serif text-4xl sm:text-5xl font-light tracking-wide block transition-colors duration-300 ${hoverClass}`}
                       >
-                        <span className={isActive ? `${colors.textActive} pl-2 border-l-2 ${colors.borderActive}` : 'text-text-primary'}>
+                        <span className={isActive ? `${colors.textActive} pl-2 border-l-2 ${
+                          link.path === '/terapias' ? 'border-platinum' :
+                          link.path === '/peluqueria' ? 'border-bronze' : 'border-gold'
+                        }` : 'text-text-primary'}>
                           {link.name}
                         </span>
                       </Link>

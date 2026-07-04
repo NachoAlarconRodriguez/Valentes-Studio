@@ -57,7 +57,7 @@ export default function HomePage() {
             href={panel.path}
             onMouseEnter={() => setHoveredPanel(panel.id)}
             onMouseLeave={() => setHoveredPanel(null)}
-            className={`group relative overflow-hidden cursor-pointer transition-all duration-700 ease-out flex flex-col justify-end p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-white/5 ${
+            className={`group relative overflow-hidden cursor-pointer transition-all duration-700 ease-out flex flex-col justify-center items-center lg:justify-end lg:items-start p-8 sm:p-12 border-b lg:border-b-0 lg:border-r border-white/5 ${
               isAnyHovered
                 ? isHovered
                   ? 'flex-[1.5] min-h-[300px] lg:min-h-0'
@@ -65,8 +65,34 @@ export default function HomePage() {
                 : 'flex-1 min-h-[250px] lg:min-h-0'
             }`}
           >
-            {/* Top Brand Logo and Name */}
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 sm:top-12 z-10 flex flex-col items-center space-y-3 group-hover:scale-105 transition-transform duration-500 select-none w-full px-4 text-center">
+            {/* MOBILE LAYOUT (Centered, logo above title, no description) */}
+            <div className="lg:hidden flex flex-col items-center justify-center space-y-4 z-10 relative text-center w-full">
+              <div className={`relative ${panel.id === 3 ? 'w-20 h-20' : 'w-24 h-24'} select-none pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]`}>
+                <Image
+                  src={panel.logoUrl}
+                  alt={panel.businessName}
+                  fill
+                  sizes="96px"
+                  className="object-contain filter brightness-100"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className={`text-[8px] uppercase tracking-[0.3em] font-bold leading-none block ${
+                  panel.id === 3 ? 'text-platinum' : 'text-gold'
+                }`}>
+                  Santuario {panel.businessName}
+                </span>
+                <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-semibold block">
+                  Ritual {panel.number}
+                </span>
+                <h2 className="font-serif text-2xl text-white tracking-wide font-medium uppercase mt-1">
+                  {panel.title}
+                </h2>
+              </div>
+            </div>
+
+            {/* DESKTOP LAYOUT - Top Brand Logo and Name */}
+            <div className="hidden lg:flex absolute top-8 left-1/2 -translate-x-1/2 sm:top-12 z-10 flex flex-col items-center space-y-3 group-hover:scale-105 transition-transform duration-500 select-none w-full px-4 text-center">
               <div className={`relative ${panel.logoSize} transition-all duration-500 ease-out select-none pointer-events-none flex-shrink-0 ${
                 isHovered 
                   ? panel.id === 1
@@ -118,8 +144,8 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
             </div>
 
-            {/* Label and titles */}
-            <div className="relative z-10 text-left transition-all duration-500">
+            {/* DESKTOP LAYOUT - Label and titles */}
+            <div className="hidden lg:block relative z-10 text-left transition-all duration-500">
               <span className="text-[10px] uppercase tracking-[0.25em] text-gold font-semibold block mb-1">
                 Ritual {panel.number}
               </span>

@@ -147,46 +147,46 @@ export default function BarberiaLayout() {
               <div className="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-center justify-between z-10 gap-6 md:gap-10">
                 {/* Left Side: Minimalist branding & Action button */}
                 <div className="text-center md:text-left space-y-5 select-none order-2 md:order-1 flex-1 md:self-end md:pb-20">
-                  <div className="space-y-4">
-                    {/* Premium Client Logo */}
-                    <div className="relative w-28 h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
-                      <Image
-                        src="/hands-logo-v3.png"
-                        alt="Valentes Studio Logo"
-                        fill
-                        sizes="112px"
-                        className="object-contain"
-                        priority
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
-                        {content.barberia.heroTitle}
-                      </h1>
-                      <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium leading-none pl-1 select-none">
-                        {content.barberia.heroSubtitle}
-                      </h2>
-                    </div>
-                  </div>
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.6 }}
-                    className="pt-6"
-                  >
-                    <button
-                      onClick={() => setShowIntro(false)}
-                      className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
-                    >
-                      <span>{content.barberia.discoverBtn}</span>
-                      <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
-                    </button>
-                  </motion.div>
+                   <div className="space-y-4">
+                     {/* Premium Client Logo */}
+                     <div className="relative w-36 h-36 md:w-28 md:h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
+                       <Image
+                         src="/hands-logo-v3.png"
+                         alt="Valentes Studio Logo"
+                         fill
+                         sizes="(max-width: 768px) 144px, 112px"
+                         className="object-contain"
+                         priority
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
+                         {content.barberia.heroTitle}
+                       </h1>
+                       <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium leading-none pl-1 select-none">
+                         {content.barberia.heroSubtitle}
+                       </h2>
+                     </div>
+                   </div>
+                   
+                   <motion.div
+                     initial={{ opacity: 0, y: 10 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     transition={{ delay: 0.5, duration: 0.6 }}
+                     className="pt-6"
+                   >
+                     <button
+                       onClick={() => setShowIntro(false)}
+                       className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
+                     >
+                       <span>{content.barberia.discoverBtn}</span>
+                       <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
+                     </button>
+                   </motion.div>
                 </div>
 
-                {/* Right Side: Floating 3D Barber Pole */}
-                <div className="w-[240px] h-[300px] md:w-[260px] md:h-[360px] relative flex items-center justify-center order-1 md:order-2 md:mt-12">
+                {/* Right Side: Floating 3D Barber Pole (Hidden on mobile) */}
+                <div className="hidden md:flex w-[240px] h-[300px] md:w-[260px] md:h-[360px] relative items-center justify-center order-1 md:order-2 md:mt-12">
                   <BarberPoleCanvas />
                 </div>
               </div>
