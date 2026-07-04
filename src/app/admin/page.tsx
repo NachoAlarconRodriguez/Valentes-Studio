@@ -742,8 +742,19 @@ export default function AdminPage() {
   const [reqEmail, setReqEmail] = useState('');
   const [reqBusiness, setReqBusiness] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   
-  // Tab Navigation State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'agenda' | 'crm' | 'giftcards' | 'vsm' | 'servicios' | 'profesionales' | 'perfil' | 'horarios'>('dashboard');
+
+  // Prevent visual CMS on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && activeTab === 'vsm') {
+        setActiveTab('dashboard');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeTab]);
 
   // Schedule and Time Block States
   const [selectedScheduleStaffId, setSelectedScheduleStaffId] = useState<string>('');
@@ -814,6 +825,9 @@ export default function AdminPage() {
   // VSM Selected Page State
   const [vsmPage, setVsmPage] = useState<'home' | 'barberia' | 'peluqueria' | 'terapias' | 'peluqueria-gallery'>('home');
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Mobile Navigation Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Manual Booking Modal State
   const [isManualBookingOpen, setIsManualBookingOpen] = useState(false);
@@ -2095,7 +2109,7 @@ export default function AdminPage() {
         >
           <div className="space-y-2">
             <span className="text-[9px] uppercase tracking-[0.4em] text-gold font-semibold block">SANTUARIO DE BIENESTAR</span>
-            <h1 className="font-serif text-3xl font-bold tracking-[0.2em] text-white">
+            <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-[0.15em] md:tracking-[0.2em] text-white">
               {authView === 'login' && 'ADMINISTRACIÓN'}
               {authView === 'reset_password' && 'RECUPERAR'}
               {authView === 'request_access' && 'SOLICITAR ACCESO'}
@@ -2430,8 +2444,8 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col justify-between p-6 md:h-screen md:sticky md:top-0 z-20">
+      {/* Sidebar Navigation (Hidden on mobile) */}
+      <aside className="hidden md:flex md:w-64 bg-[#0a0a0a] border-r border-white/5 flex-col justify-between p-6 md:h-screen md:sticky md:top-0 z-20">
         <div className="md:flex-1 md:overflow-y-auto pr-2 md:-mr-2 min-h-0 space-y-10">
           {/* Brand Logo */}
           <Link href="/" className="flex flex-col select-none">
@@ -2538,8 +2552,213 @@ export default function AdminPage() {
         </div>
       </aside>
 
+      {/* Mobile Top Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0a0a0a] border-b border-white/5 flex items-center justify-between px-6 z-30 backdrop-blur-md bg-opacity-90">
+        <Link href="/" className="flex flex-col select-none text-left">
+          <span className="font-serif text-base font-bold tracking-[0.25em] text-gold text-gold-gradient leading-none">
+            SANTUARIO
+          </span>
+          <span className="text-[7px] uppercase tracking-[0.45em] text-text-secondary mt-0.5">
+            CONSOLA DE CONTROL
+          </span>
+        </Link>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 text-text-secondary hover:text-white transition-colors focus:outline-none"
+          aria-label="Abrir Menú"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+
+      {/* Mobile Drawer Navigation (Hamburger Menu Overlay) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden fixed inset-0 bg-black z-40"
+            />
+            
+            {/* Drawer Container */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="md:hidden fixed right-0 top-0 bottom-0 w-80 bg-[#0a0a0a] border-l border-white/5 z-50 flex flex-col justify-between p-6 shadow-2xl"
+            >
+              <div className="flex flex-col space-y-8 flex-1 overflow-y-auto pr-1">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex flex-col select-none text-left">
+                    <span className="font-serif text-sm font-bold tracking-[0.25em] text-gold">
+                      SANTUARIO
+                    </span>
+                    <span className="text-[7px] uppercase tracking-[0.45em] text-text-secondary mt-0.5">
+                      CONSOLA DE CONTROL
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-1.5 text-text-secondary hover:text-white transition-colors focus:outline-none"
+                    aria-label="Cerrar Menú"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Tabs List */}
+                <nav className="flex flex-col space-y-6 text-left">
+                  {[
+                    {
+                      title: 'Operaciones',
+                      items: [
+                        { id: 'crm', label: 'Clientes (CRM)', icon: Users, allowed: ['admin'] }
+                      ]
+                    },
+                    {
+                      title: 'Gestión y Equipo',
+                      items: [
+                        { id: 'servicios', label: 'Servicios', icon: Sparkles, allowed: ['admin'] },
+                        { id: 'profesionales', label: 'Profesionales', icon: UserCheck, allowed: ['admin'] },
+                        { id: 'horarios', label: 'Horarios', icon: Clock, allowed: ['admin'] }
+                      ]
+                    },
+                    {
+                      title: 'Marketing y CMS',
+                      items: [
+                        { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] }
+                      ]
+                    },
+                    {
+                      title: 'Ajustes',
+                      items: [
+                        { id: 'perfil', label: 'Mi Perfil', icon: User, allowed: ['admin', 'barber', 'estilista', 'terapeuta', 'mixto'] }
+                      ]
+                    }
+                  ].map((section) => {
+                    const role = currentUser ? currentUser.profileType : 'admin';
+                    const visibleItems = section.items.filter(item => item.allowed.includes(role));
+                    
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                      <div key={section.title} className="space-y-2">
+                        <span className="text-[8px] uppercase tracking-[0.25em] text-white/30 font-bold px-2 block">
+                          {section.title}
+                        </span>
+                        <div className="flex flex-col space-y-1">
+                          {visibleItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => {
+                                  setActiveTab(item.id as any);
+                                  setSelectedClient(null);
+                                  setIsMobileMenuOpen(false);
+                                }}
+                                className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-[10px] uppercase tracking-widest font-semibold transition-all duration-300 text-left focus:outline-none ${
+                                  isActive 
+                                    ? 'bg-gold/10 border border-gold/25 text-gold' 
+                                    : 'text-text-secondary hover:text-white hover:bg-white/[0.02] border border-transparent'
+                                }`}
+                              >
+                                <Icon size={12} className={isActive ? 'text-gold' : 'text-text-secondary'} />
+                                <span>{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* User Badge / Logout */}
+              <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-left">
+                  <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-xs font-bold text-gold">
+                    {currentUser ? currentUser.avatar || currentUser.name.split(' ').map((n: string) => n[0]).join('') : 'SV'}
+                  </div>
+                  <div className="text-left leading-tight">
+                    <div className="text-[10px] font-semibold text-white">{currentUser ? currentUser.name : profileName}</div>
+                    <div className="text-[8px] text-text-secondary uppercase tracking-wider">
+                      {currentUser ? currentUser.profileType : profileRole.split(' ')[0]}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="p-2 text-text-secondary hover:text-red-400 transition-colors focus:outline-none cursor-pointer"
+                  title="Cerrar Sesión"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bottom Tab Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0a0a0a]/90 backdrop-blur-lg border-t border-white/5 flex justify-around items-center px-4 pb-4 pt-2 z-30 select-none shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+        {/* Left: Panel Control */}
+        <button
+          onClick={() => {
+            setActiveTab('dashboard');
+            setSelectedClient(null);
+          }}
+          className={`flex flex-col items-center justify-center space-y-1.5 focus:outline-none flex-1 transition-all duration-300 ${
+            activeTab === 'dashboard' ? 'text-gold' : 'text-text-secondary hover:text-white'
+          }`}
+        >
+          <LayoutDashboard size={20} className={activeTab === 'dashboard' ? 'scale-110 drop-shadow-[0_0_8px_rgba(198,155,60,0.3)]' : 'scale-100'} />
+          <span className="text-[9px] uppercase tracking-wider font-semibold">Panel Control</span>
+        </button>
+
+        {/* Center: Big Reserva Button */}
+        <div className="relative -top-5 flex justify-center items-center flex-1">
+          <button
+            onClick={() => setIsManualBookingOpen(true)}
+            className="w-14 h-14 rounded-full bg-gold hover:bg-gold/90 text-black flex items-center justify-center shadow-[0_4px_20px_rgba(198,155,60,0.35)] hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none"
+            title="Nueva Reserva"
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* Right: Agenda */}
+        <button
+          onClick={() => {
+            setActiveTab('agenda');
+            setSelectedClient(null);
+          }}
+          className={`flex flex-col items-center justify-center space-y-1.5 focus:outline-none flex-1 transition-all duration-300 ${
+            activeTab === 'agenda' ? 'text-gold' : 'text-text-secondary hover:text-white'
+          }`}
+        >
+          <Calendar size={20} className={activeTab === 'agenda' ? 'scale-110 drop-shadow-[0_0_8px_rgba(198,155,60,0.3)]' : 'scale-100'} />
+          <span className="text-[9px] uppercase tracking-wider font-semibold">Agenda</span>
+        </button>
+      </div>
+
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full relative">
+      <main className="flex-1 p-4 pt-24 pb-28 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full relative">
         
         {/* HEADER AREA */}
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-8 border-b border-white/5 mb-8 gap-4">

@@ -201,13 +201,13 @@ export default function BarberiaLayout() {
             transition={{ duration: 0.6, ease: "easeInOut" }}
             className="w-full relative z-10"
           >
-            {/* Back to Home Button (floating below navbar) */}
+            {/* Back to Home Button (floating below navbar, hidden on mobile) */}
             <button
               onClick={() => {
                 setShowIntro(true);
                 setActivePanel(null);
               }}
-              className="absolute left-6 top-28 z-30 text-[9px] uppercase tracking-widest text-white/50 hover:text-gold hover:border-gold/30 transition-all border border-white/10 rounded-full px-4.5 py-2 bg-black/40 backdrop-blur-sm flex items-center space-x-1.5 cursor-pointer shadow-lg"
+              className="hidden md:flex absolute left-6 top-28 z-30 text-[9px] uppercase tracking-widest text-white/50 hover:text-gold hover:border-gold/30 transition-all border border-white/10 rounded-full px-4.5 py-2 bg-black/40 backdrop-blur-sm items-center space-x-1.5 cursor-pointer shadow-lg"
             >
               <span>← Inicio</span>
             </button>

@@ -26,6 +26,12 @@ const specialistPhotos: Record<string, string> = {
   st4: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80', // Nicolás Prat
 };
 
+const formatDateToDMY = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+};
+
 export function BookingModal() {
   const { isBookingOpen, closeBooking, selectedServiceForBooking } = useUIStore();
   const pathname = usePathname();
@@ -1113,7 +1119,7 @@ export function BookingModal() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className={labelClass}>WhatsApp *</label>
                           <div className="flex space-x-2 relative">
@@ -1325,7 +1331,7 @@ export function BookingModal() {
                         <span className={summaryLabelClass}>Fecha</span>
                         <span className={summaryValClass + " flex items-center"}>
                           <Calendar size={14} className={summaryIconClass} />
-                          {date}
+                          {formatDateToDMY(date)}
                         </span>
                       </div>
                       <div className={summaryBorderClass}>
