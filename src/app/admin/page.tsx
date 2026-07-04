@@ -1722,8 +1722,8 @@ export default function AdminPage() {
     : [];
 
   const bookedCount = isSingleDayMode
-    ? gridRows.filter(r => r.booking && r.booking.status !== 'bloqueado').length
-    : listBookings.filter(b => b.status !== 'bloqueado').length;
+    ? gridRows.filter(r => r.booking && (r.booking.status as string) !== 'bloqueado').length
+    : listBookings.filter(b => (b.status as string) !== 'bloqueado').length;
 
   const getActiveStyles = (viewMode: typeof agendaViewMode) => {
     const isActive = agendaViewMode === viewMode;
@@ -1879,7 +1879,7 @@ export default function AdminPage() {
   // Dynamic retention rate
   const uniqueClientsWithMultipleBookings = Object.values(
     bookings.reduce((acc, b) => {
-      if (b.status !== 'bloqueado') {
+      if ((b.status as string) !== 'bloqueado') {
         acc[b.clientPhone] = (acc[b.clientPhone] || 0) + 1;
       }
       return acc;
@@ -1887,7 +1887,7 @@ export default function AdminPage() {
   ).filter(count => count >= 2).length;
 
   const totalUniqueClients = new Set(
-    bookings.filter(b => b.status !== 'bloqueado').map(b => b.clientPhone)
+    bookings.filter(b => (b.status as string) !== 'bloqueado').map(b => b.clientPhone)
   ).size;
 
   const retentionRate = totalUniqueClients > 0 
@@ -1896,7 +1896,7 @@ export default function AdminPage() {
 
   const prevUniqueClientsWithMultipleBookings = Object.values(
     prevPeriodBookings.reduce((acc, b) => {
-      if (b.status !== 'bloqueado') {
+      if ((b.status as string) !== 'bloqueado') {
         acc[b.clientPhone] = (acc[b.clientPhone] || 0) + 1;
       }
       return acc;
@@ -1904,7 +1904,7 @@ export default function AdminPage() {
   ).filter(count => count >= 2).length;
 
   const prevTotalUniqueClients = new Set(
-    prevPeriodBookings.filter(b => b.status !== 'bloqueado').map(b => b.clientPhone)
+    prevPeriodBookings.filter(b => (b.status as string) !== 'bloqueado').map(b => b.clientPhone)
   ).size;
 
   const prevRetentionRate = prevTotalUniqueClients > 0 
@@ -4097,7 +4097,7 @@ export default function AdminPage() {
                   {/* Booking History */}
                   {(() => {
                     const clientBookings = bookings.filter(
-                      b => b.clientPhone === selectedClient.phone && b.status !== 'bloqueado'
+                      b => b.clientPhone === selectedClient.phone && (b.status as string) !== 'bloqueado'
                     ).sort((a, b) => {
                       const dateDiff = b.date.localeCompare(a.date);
                       if (dateDiff !== 0) return dateDiff;
@@ -6407,7 +6407,7 @@ export default function AdminPage() {
 
                   // Calculate specialist stats
                   const staffBookings = bookings.filter(
-                    b => b.specialistName === staff.name && b.status !== 'bloqueado' && b.status !== 'cancelado'
+                    b => b.specialistName === staff.name && (b.status as string) !== 'bloqueado' && (b.status as string) !== 'cancelado'
                   );
                   const totalCitas = staffBookings.length;
                   const totalRevenue = staffBookings.reduce((sum, b) => {
