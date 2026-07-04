@@ -95,6 +95,10 @@ export default function BarberiaLayout() {
     }
   });
 
+  const currentHairService = hairServices.find(s => s.id === selectedHair) || hairServices[0];
+  const currentBarbaService = barbaServices.find(s => s.id === selectedBarba) || barbaServices[0];
+  const currentComboService = comboServices.find(s => s.id === selectedCombo) || comboServices[0];
+
   // Helper to parse duration strings to minutes
   const parseDuration = (d: string) => {
     if (d.includes('hrs')) {
@@ -280,20 +284,23 @@ export default function BarberiaLayout() {
                             Selecciona tu Perfil:
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            {hairServices.map((service) => (
-                              <button
-                                key={service.id}
-                                onClick={() => setSelectedHair(service.id)}
-                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
-                                  selectedHair === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
-                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
-                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
-                              </button>
-                            ))}
+                            {hairServices.map((service) => {
+                              const isSelected = selectedHair === service.id || (!hairServices.some(s => s.id === selectedHair) && service.id === currentHairService?.id);
+                              return (
+                                <button
+                                  key={service.id}
+                                  onClick={() => setSelectedHair(service.id)}
+                                  className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                    isSelected
+                                      ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
+                                      : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                  }`}
+                                >
+                                  <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                  <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -316,9 +323,9 @@ export default function BarberiaLayout() {
                         </div>
 
                         {/* Notice for child/senior */}
-                        {hairServices.find(s => s.id === selectedHair)?.notice && (
+                        {currentHairService?.notice && (
                           <div className="text-[9px] text-gold/80 bg-gold/5 border border-gold/10 px-3 py-2 rounded-lg font-light leading-relaxed">
-                            * {hairServices.find(s => s.id === selectedHair)?.notice}
+                            * {currentHairService.notice}
                           </div>
                         )}
 
@@ -328,17 +335,18 @@ export default function BarberiaLayout() {
                             <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
                             <div className="flex items-baseline space-x-1.5 mt-0.5">
                               <span className="text-lg font-serif font-bold text-gold">
-                                {getCombinedPrice(hairServices.find(s => s.id === selectedHair)!.price)}
+                                {currentHairService ? getCombinedPrice(currentHairService.price) : ''}
                               </span>
                               <span className="text-[9px] text-text-secondary uppercase">
-                                {getCombinedDuration(hairServices.find(s => s.id === selectedHair)!.duration)}
+                                {currentHairService ? getCombinedDuration(currentHairService.duration) : ''}
                               </span>
                             </div>
                           </div>
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
-                                const s = hairServices.find(serv => serv.id === selectedHair)!;
+                                const s = currentHairService;
+                                if (!s) return;
                                 openBooking({
                                   id: s.id,
                                   name: s.label + (addCejas ? ' + Cejas' : ''),
@@ -425,20 +433,23 @@ export default function BarberiaLayout() {
                             Selecciona el Estilo:
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {barbaServices.map((service) => (
-                              <button
-                                key={service.id}
-                                onClick={() => setSelectedBarba(service.id)}
-                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
-                                  selectedBarba === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
-                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
-                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
-                              </button>
-                            ))}
+                            {barbaServices.map((service) => {
+                              const isSelected = selectedBarba === service.id || (!barbaServices.some(s => s.id === selectedBarba) && service.id === currentBarbaService?.id);
+                              return (
+                                <button
+                                  key={service.id}
+                                  onClick={() => setSelectedBarba(service.id)}
+                                  className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                    isSelected
+                                      ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
+                                      : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                  }`}
+                                >
+                                  <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                  <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -466,17 +477,18 @@ export default function BarberiaLayout() {
                             <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
                             <div className="flex items-baseline space-x-1.5 mt-0.5">
                               <span className="text-lg font-serif font-bold text-gold">
-                                {getCombinedPrice(barbaServices.find(s => s.id === selectedBarba)!.price)}
+                                {currentBarbaService ? getCombinedPrice(currentBarbaService.price) : ''}
                               </span>
                               <span className="text-[9px] text-text-secondary uppercase">
-                                {getCombinedDuration(barbaServices.find(s => s.id === selectedBarba)!.duration)}
+                                {currentBarbaService ? getCombinedDuration(currentBarbaService.duration) : ''}
                               </span>
                             </div>
                           </div>
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
-                                const s = barbaServices.find(serv => serv.id === selectedBarba)!;
+                                const s = currentBarbaService;
+                                if (!s) return;
                                 openBooking({
                                   id: s.id,
                                   name: s.label + (addCejas ? ' + Cejas' : ''),
@@ -563,20 +575,23 @@ export default function BarberiaLayout() {
                             Selecciona tu Combo:
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {comboServices.map((service) => (
-                              <button
-                                key={service.id}
-                                onClick={() => setSelectedCombo(service.id)}
-                                className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
-                                  selectedCombo === service.id
-                                    ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
-                                    : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
-                                <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
-                              </button>
-                            ))}
+                            {comboServices.map((service) => {
+                              const isSelected = selectedCombo === service.id || (!comboServices.some(s => s.id === selectedCombo) && service.id === currentComboService?.id);
+                              return (
+                                <button
+                                  key={service.id}
+                                  onClick={() => setSelectedCombo(service.id)}
+                                  className={`p-3 rounded-xl border text-xs text-left transition-all duration-300 ${
+                                    isSelected
+                                      ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
+                                      : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20'
+                                  }`}
+                                >
+                                  <div className="font-bold text-[11px] uppercase tracking-wider">{service.name}</div>
+                                  <div className="text-[10px] text-text-secondary font-medium mt-0.5">{service.price}</div>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -604,17 +619,18 @@ export default function BarberiaLayout() {
                             <span className="text-[8px] uppercase tracking-widest text-text-secondary block leading-none">Precio Total</span>
                             <div className="flex items-baseline space-x-1.5 mt-0.5">
                               <span className="text-lg font-serif font-bold text-gold">
-                                {getCombinedPrice(comboServices.find(s => s.id === selectedCombo)!.price)}
+                                {currentComboService ? getCombinedPrice(currentComboService.price) : ''}
                               </span>
                               <span className="text-[9px] text-text-secondary uppercase">
-                                {getCombinedDuration(comboServices.find(s => s.id === selectedCombo)!.duration)}
+                                {currentComboService ? getCombinedDuration(currentComboService.duration) : ''}
                               </span>
                             </div>
                           </div>
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
-                                const s = comboServices.find(serv => serv.id === selectedCombo)!;
+                                const s = currentComboService;
+                                if (!s) return;
                                 openBooking({
                                   id: s.id,
                                   name: s.label + (addCejas ? ' + Cejas' : ''),
