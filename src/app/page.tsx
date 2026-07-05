@@ -18,7 +18,7 @@ export default function HomePage() {
       path: '/barberia',
       imageUrl: content.home.panel1Image,
       number: '01',
-      logoUrl: '/hands-logo-v3.png',
+      logoUrl: '/hands-logo-v4.png',
       businessName: 'Valentes Studio',
       logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
     },
@@ -29,7 +29,7 @@ export default function HomePage() {
       path: '/peluqueria',
       imageUrl: content.home.panel2Image,
       number: '02',
-      logoUrl: '/peluqueria-logo-v3.png',
+      logoUrl: '/peluqueria-logo-v4.png',
       businessName: 'Alma Bela Studio',
       logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
     },
@@ -96,10 +96,10 @@ export default function HomePage() {
               <div className={`relative ${panel.logoSize} transition-all duration-500 ease-out select-none pointer-events-none flex-shrink-0 ${
                 isHovered 
                   ? panel.id === 1
-                    ? 'scale-140 drop-shadow-[0_0_20px_rgba(229,184,66,0.4)]'
+                    ? 'scale-125 drop-shadow-[0_0_20px_rgba(212,175,55,0.45)]'
                     : panel.id === 2
-                    ? 'scale-140 drop-shadow-[0_0_20px_rgba(205,127,50,0.4)]'
-                    : 'scale-140 drop-shadow-[0_0_20px_rgba(226,224,216,0.4)]'
+                    ? 'scale-125 drop-shadow-[0_0_20px_rgba(205,127,50,0.45)]'
+                    : 'scale-125 drop-shadow-[0_0_20px_rgba(226,224,216,0.45)]'
                   : 'scale-100'
               }`}>
                 <Image
@@ -110,7 +110,9 @@ export default function HomePage() {
                   className="object-contain filter brightness-100 group-hover:brightness-110 transition-all duration-500"
                 />
               </div>
-              <div className="flex flex-col items-center text-center">
+              <div className={`flex flex-col items-center text-center transition-transform duration-500 ease-out ${
+                isHovered ? 'translate-y-3.5' : 'translate-y-0'
+              }`}>
                 <span className={`text-[9px] uppercase tracking-[0.3em] font-bold leading-none mb-1 shadow-sm transition-colors duration-500 ${
                   panel.id === 3 ? 'text-platinum' : 'text-gold'
                 }`}>
@@ -118,9 +120,9 @@ export default function HomePage() {
                 </span>
                 <span className={`font-serif text-xs sm:text-sm font-semibold text-white tracking-wider leading-none shadow-sm transition-colors duration-500 uppercase ${
                   panel.id === 1 
-                    ? 'group-hover:text-gold' 
+                    ? 'group-hover:text-[#D48C37]' 
                     : panel.id === 2 
-                    ? 'group-hover:text-bronze' 
+                    ? 'group-hover:text-[#D4AF37]' 
                     : 'group-hover:text-platinum'
                 }`}>
                   {panel.businessName}
@@ -140,6 +142,17 @@ export default function HomePage() {
                     ? 'grayscale-0 scale-105 brightness-75'
                     : 'grayscale opacity-60 brightness-[0.55]'
                 }`}
+              />
+              {/* Warm brand tint overlay (mix-blend-color) */}
+              <div 
+                className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
+                  panel.id === 1 
+                    ? 'bg-gold/5 group-hover:bg-gold/15' 
+                    : panel.id === 2 
+                    ? 'bg-bronze/5 group-hover:bg-bronze/15' 
+                    : 'bg-platinum/5 group-hover:bg-platinum/12'
+                }`}
+                style={{ mixBlendMode: 'color' }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
             </div>

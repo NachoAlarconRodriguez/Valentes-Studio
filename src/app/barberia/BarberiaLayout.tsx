@@ -151,7 +151,7 @@ export default function BarberiaLayout() {
                      {/* Premium Client Logo */}
                      <div className="relative w-36 h-36 md:w-28 md:h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
                        <Image
-                         src="/hands-logo-v3.png"
+                         src="/hands-logo-v4.png"
                          alt="Valentes Studio Logo"
                          fill
                          sizes="(max-width: 768px) 144px, 112px"
@@ -244,6 +244,15 @@ export default function BarberiaLayout() {
                           ? 'grayscale-0 scale-105 brightness-75'
                           : 'grayscale opacity-60 brightness-[0.55]'
                       }`}
+                    />
+                    {/* Warm brand tint overlay (mix-blend-color) */}
+                    <div 
+                      className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
+                        activePanel === 1 || hoveredPanel === 1
+                          ? 'bg-gold/15'
+                          : 'bg-gold/5'
+                      }`}
+                      style={{ mixBlendMode: 'color' }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
                   </div>
@@ -394,6 +403,15 @@ export default function BarberiaLayout() {
                           : 'grayscale opacity-60 brightness-[0.55]'
                       }`}
                     />
+                    {/* Warm brand tint overlay (mix-blend-color) */}
+                    <div 
+                      className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
+                        activePanel === 2 || hoveredPanel === 2
+                          ? 'bg-gold/15'
+                          : 'bg-gold/5'
+                      }`}
+                      style={{ mixBlendMode: 'color' }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
                   </div>
 
@@ -535,6 +553,15 @@ export default function BarberiaLayout() {
                           ? 'grayscale-0 scale-105 brightness-75'
                           : 'grayscale opacity-60 brightness-[0.55]'
                       }`}
+                    />
+                    {/* Warm brand tint overlay (mix-blend-color) */}
+                    <div 
+                      className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
+                        activePanel === 3 || hoveredPanel === 3
+                          ? 'bg-gold/15'
+                          : 'bg-gold/5'
+                      }`}
+                      style={{ mixBlendMode: 'color' }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-1" />
                   </div>
@@ -741,7 +768,7 @@ export default function BarberiaLayout() {
                         <polygon
                           points="50,0.5 99.5,25 99.5,75 50,99.5 0.5,75 0.5,25"
                           fill="none"
-                          stroke="#E5B842"
+                          stroke="#D4AF37"
                           strokeWidth="0.8"
                           strokeOpacity="0.25"
                           className="group-hover:stroke-opacity-60 transition-all duration-500"

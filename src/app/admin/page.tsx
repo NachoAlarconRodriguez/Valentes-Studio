@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
+import { uploadImageAction } from './actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -329,6 +330,7 @@ export default function AdminPage() {
   // Staff Configuration State
   const [activeStaffCategoryFilter, setActiveStaffCategoryFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
   const [isStaffDrawerOpen, setIsStaffDrawerOpen] = useState(false);
+  const [isUploadingStaffImage, setIsUploadingStaffImage] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
 
   // Staff Form state
@@ -345,6 +347,7 @@ export default function AdminPage() {
   const [staffFormCountryCode, setStaffFormCountryCode] = useState('+56');
   const [isStaffCountryDropdownOpen, setIsStaffCountryDropdownOpen] = useState(false);
   const [staffPhoneError, setStaffPhoneError] = useState('');
+  const [staffFormIsActive, setStaffFormIsActive] = useState(true);
   const [flippedStaff, setFlippedStaff] = useState<Record<string, boolean>>({});
   const [staffToDelete, setStaffToDelete] = useState<{ category: string; id: string; name: string } | null>(null);
   const [clientToDelete, setClientToDelete] = useState<{ phone: string; name: string } | null>(null);
@@ -607,6 +610,7 @@ export default function AdminPage() {
     setStaffFormCountryCode('+56');
     setIsStaffCountryDropdownOpen(false);
     setStaffPhoneError('');
+    setStaffFormIsActive(true);
     setEditingStaff(null);
   };
 
@@ -621,6 +625,7 @@ export default function AdminPage() {
     setStaffFormAgendas(staff.assignedAgendas || ['barberia']);
     setStaffFormAvatar(staff.avatar || '');
     setStaffFormImageUrl(staff.imageUrl || '');
+    setStaffFormIsActive(staff.isActive !== false);
 
     // Parse phone number
     let code = '+56';
@@ -651,13 +656,13 @@ export default function AdminPage() {
       return;
     }
 
-    if (staffFormPhone.length !== 9) {
+    if (staffFormPhone.trim() && staffFormPhone.trim().length !== 9) {
       setStaffPhoneError('El teléfono debe tener exactamente 9 dígitos.');
       triggerNotification('Corrige los errores antes de guardar.');
       return;
     }
 
-    const finalPhone = staffFormCountryCode + staffFormPhone.trim();
+    const finalPhone = staffFormPhone.trim() ? (staffFormCountryCode + staffFormPhone.trim()) : '';
 
     // Determine target category based on profileType
     let primaryCategory = 'barberia';
@@ -701,7 +706,8 @@ export default function AdminPage() {
       assignedAgendas: staffFormAgendas,
       avatar: staffFormAvatar.trim() || initials,
       imageUrl: staffFormImageUrl.trim(),
-      phone: finalPhone
+      phone: finalPhone,
+      isActive: staffFormIsActive
     };
 
     if (editingStaff) {
@@ -949,7 +955,7 @@ export default function AdminPage() {
           if (matchedSp) {
             const userWithPhone = {
               ...matchedSp,
-              phone: matchedSp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
+              phone: matchedSp.phone || undefined
             };
             setCurrentUser(userWithPhone);
             if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
@@ -1278,19 +1284,10 @@ export default function AdminPage() {
               }
 
               try {
-                const filename = `cms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
-                const { error } = await supabase.storage
-                  .from('cms-images')
-                  .upload(filename, blob, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '3600',
-                    upsert: false
-                  });
-
-                if (error) throw error;
-
-                const { data } = supabase.storage.from('cms-images').getPublicUrl(filename);
-                resolve(data.publicUrl);
+                const formData = new FormData();
+                formData.append('file', blob, 'image.jpg');
+                const publicUrl = await uploadImageAction(formData);
+                resolve(publicUrl);
               } catch (uploadError) {
                 reject(uploadError);
               }
@@ -3190,8 +3187,8 @@ export default function AdminPage() {
                   <svg viewBox="0 0 500 150" className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#E5B842" stopOpacity="0.15" />
-                        <stop offset="100%" stopColor="#E5B842" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.15" />
+                        <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
                     
@@ -3208,7 +3205,7 @@ export default function AdminPage() {
                     <path
                       d={pathD}
                       fill="none"
-                      stroke="#E5B842"
+                      stroke="#D4AF37"
                       strokeWidth="2.5"
                     />
 
@@ -3219,7 +3216,7 @@ export default function AdminPage() {
                           cx={p.x} 
                           cy={p.y} 
                           r="4" 
-                          fill="#E5B842" 
+                          fill="#D4AF37" 
                           stroke="#070707" 
                           strokeWidth="1.5" 
                           className="hover:scale-125 transition-transform cursor-pointer"
@@ -3251,7 +3248,7 @@ export default function AdminPage() {
                     <circle cx="18" cy="18" r="15.91" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="3" />
                     
                     {/* Web Segment (gold) */}
-                    <circle cx="18" cy="18" r="15.91" fill="none" stroke="#E5B842" strokeWidth="3" 
+                    <circle cx="18" cy="18" r="15.91" fill="none" stroke="#D4AF37" strokeWidth="3" 
                       strokeDasharray={`${webPct} ${100 - webPct}`} 
                       strokeDashoffset="0" 
                     />
@@ -6747,13 +6744,12 @@ export default function AdminPage() {
             {/* List Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {(() => {
-                const allSpecialists = Object.keys(servicesData).flatMap(cat => 
-                  servicesData[cat].specialists.map(sp => ({ 
-                    ...sp, 
-                    primaryCategory: cat,
-                    phone: sp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
-                  }))
-                );
+                const allSpecialists = specialistsList.map(sp => ({
+                  ...sp,
+                  primaryCategory: (sp.assignedAgendas && sp.assignedAgendas.length > 0)
+                    ? sp.assignedAgendas[0]
+                    : 'barberia'
+                }));
                 const uniqueSpecialists = Array.from(new Map(allSpecialists.map(sp => [sp.id, sp])).values());
                 const filteredStaff = uniqueSpecialists.filter(sp => {
                   if (activeStaffCategoryFilter === 'todos') return true;
@@ -6806,8 +6802,28 @@ export default function AdminPage() {
                             pointerEvents: isFlipped ? 'none' : 'auto',
                             zIndex: isFlipped ? 0 : 10,
                           }}
-                          className="bg-[#0c0c0c] border border-white/5 rounded-3xl overflow-hidden group shadow-xl hover:border-gold/30 transition-colors duration-300 cursor-pointer"
+                          className={`bg-[#0c0c0c] rounded-3xl overflow-hidden group shadow-xl transition-colors duration-300 cursor-pointer border ${staff.isActive !== false ? 'border-white/5 hover:border-gold/30' : 'border-white/[0.03] opacity-70'}`}
                         >
+                          {/* Active / Inactive status indicator - top left corner */}
+                          <div className="absolute top-3 left-3 z-30 flex items-center space-x-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/10">
+                            {staff.isActive !== false ? (
+                              <>
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                                </span>
+                                <span className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">Activo</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="relative flex h-2 w-2">
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white/30" />
+                                </span>
+                                <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider">Inactivo</span>
+                              </>
+                            )}
+                          </div>
+
                           {staff.imageUrl ? (
                             <Image
                               src={staff.imageUrl}
@@ -7206,7 +7222,7 @@ export default function AdminPage() {
                               { id: 'terapias', label: 'Terapias Holísticas' }
                             ].map((ag) => {
                               const isChecked = staffFormAgendas.includes(ag.id as any);
-                              const isDisabled = staffFormProfileType !== 'mixto';
+                              const isDisabled = staffFormProfileType !== 'mixto' && staffFormProfileType !== 'admin';
                               
                               return (
                                 <label
@@ -7243,7 +7259,37 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-
+                        {/* Estado Activo / Inactivo */}
+                        <div className="space-y-2.5">
+                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold font-sans">
+                            Estado de la Cuenta
+                          </label>
+                          <label className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer hover:bg-white/[0.01] ${
+                            staffFormIsActive ? 'bg-gold/5 border-gold/30' : 'border-white/5 bg-black/20'
+                          }`}>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-white font-medium">Habilitado para trabajar</span>
+                              <span className="text-[9px] text-text-secondary mt-0.5">
+                                {staffFormIsActive 
+                                  ? 'Disponible para citas y con acceso a la administración' 
+                                  : 'Oculto en reservas y sin acceso a la administración'}
+                              </span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={staffFormIsActive}
+                              onChange={(e) => setStaffFormIsActive(e.target.checked)}
+                              className="sr-only"
+                            />
+                            <div className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${
+                              staffFormIsActive ? 'bg-gold' : 'bg-white/10'
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full bg-black shadow-md transform transition-transform duration-300 ${
+                                staffFormIsActive ? 'translate-x-4' : 'translate-x-0'
+                              }`} />
+                            </div>
+                          </label>
+                        </div>
 
                         {/* Imagen del Profesional */}
                         <div className="space-y-3">
@@ -7269,24 +7315,38 @@ export default function AdminPage() {
                             {/* File Upload Trigger */}
                             <div className="flex-1">
                               <label className="inline-block py-2.5 px-4 rounded-xl border border-white/10 text-white hover:border-gold/30 hover:text-gold transition-colors text-[10px] uppercase tracking-widest font-bold bg-white/5 cursor-pointer text-center w-full">
-                                <span>Subir Imagen</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const reader = new FileReader();
-                                      reader.onload = (event) => {
-                                        if (event.target?.result) {
-                                          setStaffFormImageUrl(event.target.result as string);
+                                {isUploadingStaffImage ? (
+                                  <div className="flex items-center justify-center space-x-2 py-0.5">
+                                    <span className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />
+                                    <span>Subiendo...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span>Subir Imagen</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      disabled={isUploadingStaffImage}
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          setIsUploadingStaffImage(true);
+                                          try {
+                                            const publicUrl = await optimizeAndUploadImage(file);
+                                            setStaffFormImageUrl(publicUrl);
+                                            triggerNotification('Imagen subida con éxito.');
+                                          } catch (err: any) {
+                                            console.error(err);
+                                            triggerNotification('Error al subir la imagen.');
+                                          } finally {
+                                            setIsUploadingStaffImage(false);
+                                          }
                                         }
-                                      };
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }}
-                                />
+                                      }}
+                                    />
+                                  </>
+                                )}
                               </label>
                             </div>
                           </div>

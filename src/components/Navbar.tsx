@@ -123,7 +123,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/hands-logo-v3.png"
+                    src="/hands-logo-v4.png"
                     alt="Valentes Barber Studio Logo"
                     fill
                     sizes="44px"
@@ -144,7 +144,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/peluqueria-logo-v3.png"
+                    src="/peluqueria-logo-v4.png"
                     alt="Alma Bela Studio Logo"
                     fill
                     sizes="44px"

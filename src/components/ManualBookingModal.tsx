@@ -525,7 +525,7 @@ export function ManualBookingModal({
 
   // Color styling helpers matching business themes
   const isTerapias = category === 'terapias';
-  const themeGold = isTerapias ? '#E2E0D8' : '#E5B842';
+  const themeGold = isTerapias ? '#E2E0D8' : '#D4AF37';
   const textGoldClass = isTerapias ? 'text-platinum' : 'text-gold';
   const borderFocusClass = isTerapias ? 'focus:border-platinum/50' : 'focus:border-gold/50';
   const bgThemeClass = isTerapias ? 'bg-platinum' : 'bg-gold';

@@ -115,7 +115,7 @@ function generateBarberPolePoints(): BarberPolePoint[] {
   const cylinderHeight = 1.5;
   
   // Colors (Luxury gold theme)
-  const colorGold: [number, number, number] = [0.898, 0.722, 0.259]; // #E5B842 (Warm Luxury Gold)
+  const colorGold: [number, number, number] = [0.831, 0.686, 0.216]; // #D4AF37 (Warm Luxury Gold)
   const colorBronze: [number, number, number] = [0.55, 0.43, 0.28]; // #8C6E47 (Warm Bronze)
   const colorLightGold: [number, number, number] = [0.88, 0.82, 0.68]; // #E2D3B8 (Light Champagne Gold)
   

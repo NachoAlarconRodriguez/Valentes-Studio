@@ -154,7 +154,7 @@ export function BookingModal() {
 
   // Filter specialists based on business type and eligible services
   const filteredSpecialistsList = React.useMemo(() => {
-    let list = specialistsList;
+    let list = specialistsList.filter(spec => spec.isActive !== false);
 
     // 1. Filter by business type (profileType)
     list = list.filter(spec => {
@@ -420,7 +420,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/hands-logo-v3.png"
+                        src="/hands-logo-v4.png"
                         alt="Valentes Studio Logo"
                         fill
                         sizes="64px"
@@ -439,7 +439,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/peluqueria-logo-v3.png"
+                        src="/peluqueria-logo-v4.png"
                         alt="Alma Bela Studio Logo"
                         fill
                         sizes="64px"

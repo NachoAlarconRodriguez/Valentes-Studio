@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-gold: #E5B842;
+  --color-gold: #D4AF37;
   --color-bronze: #CD7F32;
   --color-platinum: #E2E0D8;
   --color-bg-base: #111111;
@@ -9,7 +9,7 @@
   --color-text-primary: #F0F0F0;
   --color-text-secondary: #A0A0A0;
   
-  --font-serif: var(--font-cinzel), serif;
+  --font-serif: var(--font-inter), sans-serif;
   --font-sans: var(--font-inter), sans-serif;
 }
 
@@ -33,7 +33,7 @@ body {
   background: rgba(30, 30, 30, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(229, 184, 66, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
@@ -43,14 +43,14 @@ body {
 
 .glass-panel-hover:hover {
   background: rgba(30, 30, 30, 0.8);
-  border-color: rgba(229, 184, 66, 0.25);
-  box-shadow: 0 12px 40px 0 rgba(229, 184, 66, 0.05);
+  border-color: rgba(212, 175, 55, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(212, 175, 55, 0.05);
   transform: translateY(-2px);
 }
 
 /* Gold Text Gradient */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #F0F0F0 0%, #E5B842 50%, #CD7F32 100%);
+  background: linear-gradient(135deg, #F0F0F0 0%, #D4AF37 50%, #CD7F32 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -73,12 +73,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(229, 184, 66, 0.2);
+  background: rgba(212, 175, 55, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(229, 184, 66, 0.4);
+  background: rgba(212, 175, 55, 0.4);
 }
 
 /* Hide canvas focus outline */
@@ -100,7 +100,7 @@ canvas {
 }
 
 @utility animate-text-gold-flow {
-  background: linear-gradient(120deg, #FFFFFF 0%, #E5B842 50%, #FFFFFF 100%);
+  background: linear-gradient(120deg, #FFFFFF 0%, #D4AF37 50%, #FFFFFF 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -146,14 +146,14 @@ canvas {
     -45deg,
     #0a0a0a,
     #0a0a0a 10px,
-    #E5B842 10px,
-    #E5B842 20px
+    #D4AF37 10px,
+    #D4AF37 20px
   );
   background-size: 28.3px 28.3px; /* sqrt(2) * 20px for seamless tiling */
   animation: barberPoleScroll 1.2s linear infinite;
   border-radius: 6px;
-  border: 1px solid rgba(229, 184, 66, 0.4);
-  box-shadow: 0 0 15px rgba(229, 184, 66, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
 }
 
 @keyframes barberPoleScroll {
@@ -169,25 +169,25 @@ canvas {
 @utility apple-gold-glass {
   background: linear-gradient(
     135deg,
-    rgba(229, 184, 66, 0.06) 0%,
+    rgba(212, 175, 55, 0.06) 0%,
     rgba(25, 25, 25, 0.25) 50%,
-    rgba(229, 184, 66, 0.02) 100%
+    rgba(212, 175, 55, 0.02) 100%
   );
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(229, 184, 66, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   box-shadow: 
     0 12px 40px 0 rgba(0, 0, 0, 0.65),
     inset 0 1px 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 25px 0 rgba(229, 184, 66, 0.04);
+    0 0 25px 0 rgba(212, 175, 55, 0.04);
   transition: all 0.4s ease;
 
   &:hover {
-    border-color: rgba(229, 184, 66, 0.35);
+    border-color: rgba(212, 175, 55, 0.35);
     box-shadow: 
       0 16px 48px 0 rgba(0, 0, 0, 0.75),
       inset 0 1px 1px 0 rgba(255, 255, 255, 0.12),
-      0 0 35px 0 rgba(229, 184, 66, 0.08);
+      0 0 35px 0 rgba(212, 175, 55, 0.08);
   }
 }
 

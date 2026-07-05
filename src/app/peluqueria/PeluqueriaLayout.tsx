@@ -224,7 +224,7 @@ export default function PeluqueriaLayout() {
                 {/* Premium Logo */}
                 <div className="relative w-28 h-28 hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
                   <Image
-                    src="/peluqueria-logo-v3.png"
+                    src="/peluqueria-logo-v4.png"
                     alt="Alma Bela Studio Logo"
                     fill
                     sizes="112px"
@@ -301,6 +301,11 @@ export default function PeluqueriaLayout() {
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
                   className="object-cover opacity-55 contrast-105 brightness-90 group-hover:opacity-100 transition-all duration-700 scale-100 group-hover:scale-103"
+                />
+                {/* Warm brand tint overlay (mix-blend-color) */}
+                <div 
+                  className="absolute inset-0 bg-bronze/5 group-hover:bg-bronze/15 transition-colors duration-700 pointer-events-none z-1"
+                  style={{ mixBlendMode: 'color' }}
                 />
 
                 {/* Gallery trigger hover layout */}
