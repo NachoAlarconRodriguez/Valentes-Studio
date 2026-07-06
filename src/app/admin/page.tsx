@@ -8598,19 +8598,46 @@ export default function AdminPage() {
               </div>
 
               {mediaEditorType === 'video' ? (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">URL del Video o Archivo</label>
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Subir archivo de video desde el computador</label>
+                  <label className="flex items-center justify-center border border-dashed border-white/10 hover:border-gold/35 rounded-lg p-3.5 cursor-pointer transition-colors bg-white/[0.01]">
+                    {isUploadingAsset ? (
+                      <div className="flex items-center space-x-2 text-xs text-text-secondary py-1">
+                        <span className="w-3.5 h-3.5 border border-gold border-t-transparent rounded-full animate-spin" />
+                        <span>Subiendo video...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center space-y-1 text-center py-1">
+                        <UploadCloud size={16} className="text-text-secondary hover:text-gold transition-colors" />
+                        <span className="text-[10px] text-white font-semibold">Seleccionar video</span>
+                        <span className="text-[8px] text-text-secondary">Formatos mp4, webm, mov</span>
+                      </div>
+                    )}
                     <input
-                      type="text"
-                      value={editingAsset.currentValue}
-                      onChange={(e) => {
-                        const newVal = e.target.value;
-                        setEditingAsset(prev => prev ? { ...prev, currentValue: newVal } : null);
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      disabled={isUploadingAsset}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIsUploadingAsset(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            const publicUrl = await uploadImageAction(formData);
+                            setEditingAsset(prev => prev ? { ...prev, currentValue: publicUrl } : null);
+                            triggerNotification('Video subido con éxito.');
+                          } catch (err: any) {
+                            console.error(err);
+                            triggerNotification('Error al subir el video.');
+                          } finally {
+                            setIsUploadingAsset(false);
+                          }
+                        }
                       }}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
                     />
-                  </div>
+                  </label>
                 </div>
               ) : (
                 <div className="space-y-1">
