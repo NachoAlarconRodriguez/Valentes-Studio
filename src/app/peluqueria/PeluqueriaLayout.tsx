@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Sparkles, ChevronRight, ChevronLeft, X, Star } from 'lucide-react';
+import { Clock, Sparkles, ChevronRight, ChevronLeft, X, Star, Scissors } from 'lucide-react';
 import { crossSellingMap } from '@/data/mockData';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -12,7 +12,7 @@ import useContentStore from '@/store/useContentStore';
 
 interface CardItem {
   id: string;
-  type: 'service' | 'deco' | 'deco-vertical-text' | 'gallery-trigger' | 'specialists-trigger';
+  type: 'service' | 'deco' | 'deco-vertical-text' | 'gallery-trigger' | 'specialists-trigger' | 'services-trigger';
   text?: string;
   service?: {
     id: string;
@@ -35,6 +35,7 @@ export default function PeluqueriaLayout() {
   const [isEntered, setIsEntered] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSpecialistsOpen, setIsSpecialistsOpen] = useState(false);
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(0);
   const { content } = useContentStore();
   const { servicesData } = useServicesStore();
@@ -73,127 +74,90 @@ export default function PeluqueriaLayout() {
 
   if (!data) return null;
 
-  // Asymmetrical image grid matching FLOEMA aesthetics resolved dynamically from the store
-  const cards = React.useMemo(() => {
-    const services = data.services || [];
-    
-    // Default static card templates
-    const staticTemplates = [
-      {
-        id: 'c1',
-        type: 'service' as const,
-        serviceId: 'p1',
-        imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-2'
-      },
-      {
-        id: 'c2',
-        type: 'gallery-trigger' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      },
-      {
-        id: 'c3',
-        type: 'service' as const,
-        serviceId: 'p2',
-        imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-2'
-      },
-      {
-        id: 'c4',
-        type: 'deco-vertical-text' as const,
-        text: 'ALMA BELA',
-        imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-3'
-      },
-      {
-        id: 'c5',
-        type: 'service' as const,
-        serviceId: 'p3',
-        imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-2'
-      },
-      {
-        id: 'c6',
-        type: 'specialists-trigger' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      },
-      {
-        id: 'c7',
-        type: 'deco' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      },
-      {
-        id: 'c8',
-        type: 'service' as const,
-        serviceId: 'p4',
-        imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      },
-      {
-        id: 'c9',
-        type: 'deco' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-2'
-      },
-      {
-        id: 'c10',
-        type: 'deco' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-2'
-      },
-      {
-        id: 'c11',
-        type: 'deco' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      },
-      {
-        id: 'c12',
-        type: 'deco' as const,
-        imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
-        gridClass: 'md:col-span-1 md:row-span-1'
-      }
-    ];
+  // All active peluquería services (for the services modal)
+  const allActiveServices = (data.services || []).filter(s => s.isActive !== false);
 
-    const result: CardItem[] = [];
-    const usedServiceIds = new Set<string>();
-
-    staticTemplates.forEach(t => {
-      if (t.type === 'service') {
-        const sObj = services.find(s => s.id === t.serviceId);
-        if (sObj && sObj.isActive !== false) {
-          usedServiceIds.add(sObj.id);
-          result.push({
-            id: t.id,
-            type: 'service',
-            service: { id: sObj.id, name: sObj.name, price: sObj.price, duration: sObj.duration },
-            imageUrl: t.imageUrl,
-            gridClass: t.gridClass
-          });
-        }
-      } else {
-        result.push(t as any);
-      }
-    });
-
-    // Append any extra/new services added by the admin dynamically
-    services.forEach((sObj) => {
-      if (sObj.isActive !== false && !usedServiceIds.has(sObj.id)) {
-        result.push({
-          id: `c_new_${sObj.id}`,
-          type: 'service',
-          service: { id: sObj.id, name: sObj.name, price: sObj.price, duration: sObj.duration },
-          imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
-          gridClass: 'md:col-span-1 md:row-span-1'
-        });
-      }
-    });
-
-    return result;
-  }, [data.services]);
+  // Fixed bento grid — 12 static cards, NO extra service cards appended
+  const cards: CardItem[] = [
+    {
+      id: 'c1',
+      type: 'service',
+      service: allActiveServices[0] ? { id: allActiveServices[0].id, name: allActiveServices[0].name, price: allActiveServices[0].price, duration: allActiveServices[0].duration } : undefined,
+      imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-2'
+    },
+    {
+      id: 'c2',
+      type: 'gallery-trigger',
+      imageUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'c3',
+      type: 'service',
+      service: allActiveServices[1] ? { id: allActiveServices[1].id, name: allActiveServices[1].name, price: allActiveServices[1].price, duration: allActiveServices[1].duration } : undefined,
+      imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-2'
+    },
+    {
+      id: 'c4',
+      type: 'deco-vertical-text',
+      text: 'ALMA BELA',
+      imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-3'
+    },
+    {
+      id: 'c5',
+      type: 'service',
+      service: allActiveServices[2] ? { id: allActiveServices[2].id, name: allActiveServices[2].name, price: allActiveServices[2].price, duration: allActiveServices[2].duration } : undefined,
+      imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-2'
+    },
+    {
+      id: 'c6',
+      type: 'specialists-trigger',
+      imageUrl: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      // This was the plain 'deco' card — now it's the services-trigger
+      id: 'c7',
+      type: 'services-trigger',
+      imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'c8',
+      type: 'service',
+      service: allActiveServices[3] ? { id: allActiveServices[3].id, name: allActiveServices[3].name, price: allActiveServices[3].price, duration: allActiveServices[3].duration } : undefined,
+      imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'c9',
+      type: 'deco',
+      imageUrl: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-2'
+    },
+    {
+      id: 'c10',
+      type: 'deco',
+      imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-2'
+    },
+    {
+      id: 'c11',
+      type: 'deco',
+      imageUrl: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    },
+    {
+      id: 'c12',
+      type: 'deco',
+      imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
+      gridClass: 'md:col-span-1 md:row-span-1'
+    }
+  ];
 
   return (
     <div className="bg-[#0A0A0A] text-[#fdfbf7] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
@@ -290,6 +254,8 @@ export default function PeluqueriaLayout() {
                     setIsGalleryOpen(true);
                   } else if (card.type === 'specialists-trigger') {
                     setIsSpecialistsOpen(true);
+                  } else if (card.type === 'services-trigger') {
+                    setIsServicesOpen(true);
                   }
                 }}
                 className={`relative overflow-hidden rounded-3xl bg-[#121212] border border-white/5 cursor-pointer group transition-all duration-500 shadow-md hover:shadow-xl ${card.gridClass}`}
@@ -346,7 +312,7 @@ export default function PeluqueriaLayout() {
                     <div className="space-y-1 transform translate-y-3 group-hover:translate-y-0 transition-transform duration-500">
                       <span className="text-[9px] uppercase tracking-widest text-gold/80 block flex items-center gap-1 font-semibold">
                         <Star size={10} className="fill-gold/85" />
-                        Estilo & Experiencia
+                        Estilo &amp; Experiencia
                       </span>
                       <h3 className="font-serif text-lg tracking-wide font-medium leading-snug">
                         Nuestras Especialistas
@@ -354,6 +320,26 @@ export default function PeluqueriaLayout() {
                       <div className="flex justify-between items-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-[9px] uppercase tracking-widest border border-gold/40 text-gold px-3 py-1 rounded-full hover:bg-gold hover:text-black hover:border-gold transition-colors font-medium">
                           Ver Equipo
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Services trigger hover layout */}
+                {card.type === 'services-trigger' && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6 text-white transition-all duration-500">
+                    <div className="space-y-1 transform translate-y-3 group-hover:translate-y-0 transition-transform duration-500">
+                      <span className="text-[9px] uppercase tracking-widest text-gold/80 block flex items-center gap-1 font-semibold">
+                        <Scissors size={10} />
+                        Carta de Servicios
+                      </span>
+                      <h3 className="font-serif text-lg tracking-wide font-medium leading-snug">
+                        Ver Todos los Servicios
+                      </h3>
+                      <div className="flex justify-between items-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-[9px] uppercase tracking-widest border border-gold/40 text-gold px-3 py-1 rounded-full hover:bg-gold hover:text-black hover:border-gold transition-colors font-medium">
+                          Explorar &amp; Reservar
                         </span>
                       </div>
                     </div>
@@ -676,6 +662,103 @@ export default function PeluqueriaLayout() {
                   })}
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. CARTA DE SERVICIOS MODAL */}
+      <AnimatePresence>
+        {isServicesOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsServicesOpen(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="relative w-full max-w-3xl bg-[#090909] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl p-8 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setIsServicesOpen(false)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer z-30 focus:outline-none"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Header */}
+              <div className="mb-8 space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/10 border border-gold/20 text-[9px] text-gold uppercase tracking-widest font-bold mb-3">
+                  <Scissors size={10} />
+                  <span>Carta de Servicios</span>
+                </div>
+                <h3 className="font-serif text-2xl text-white tracking-wide">Nuestros Servicios</h3>
+                <p className="text-xs text-text-secondary leading-relaxed font-light">
+                  Selecciona un servicio para conocer los detalles y agendar tu cita.
+                </p>
+              </div>
+
+              {/* Services Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {allActiveServices.map((service, idx) => (
+                  <motion.button
+                    key={service.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => {
+                      setIsServicesOpen(false);
+                      openBooking({
+                        id: service.id,
+                        name: service.name,
+                        price: service.price
+                      });
+                    }}
+                    className="group text-left bg-[#0c0c0c] border border-white/5 hover:border-gold/30 rounded-2xl p-5 transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 cursor-pointer focus:outline-none"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1 flex-grow min-w-0">
+                        <h4 className="font-serif text-sm text-white group-hover:text-gold transition-colors duration-300 leading-snug">
+                          {service.name}
+                        </h4>
+                        {service.description && (
+                          <p className="text-[10px] text-text-secondary leading-relaxed line-clamp-2 font-light">
+                            {service.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 pt-1">
+                          <span className="flex items-center gap-1 text-[9px] text-white/40 uppercase tracking-wider font-semibold">
+                            <Clock size={9} />
+                            {service.duration}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span className="font-serif text-sm font-bold text-gold whitespace-nowrap">
+                          {service.price}
+                        </span>
+                        <span className="text-[8px] uppercase tracking-widest border border-gold/30 text-gold px-2.5 py-1 rounded-full group-hover:bg-gold group-hover:text-black group-hover:border-gold transition-all duration-300 font-semibold whitespace-nowrap">
+                          Reservar
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              {allActiveServices.length === 0 && (
+                <div className="text-center py-12 text-text-secondary text-sm">
+                  No hay servicios disponibles en este momento.
+                </div>
+              )}
             </motion.div>
           </div>
         )}
