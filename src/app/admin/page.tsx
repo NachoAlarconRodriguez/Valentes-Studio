@@ -5564,39 +5564,142 @@ export default function AdminPage() {
                                       exit={{ opacity: 0, y: 10 }}
                                       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
                                     >
-                                      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setVsmPeluGalleryOpen(false)} />
-                                      <div className="relative w-full max-w-2xl bg-[#090909] border border-gold/25 rounded-2xl p-6 z-10 max-h-[85vh] overflow-y-auto shadow-2xl">
-                                        <button onClick={() => setVsmPeluGalleryOpen(false)} className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer">✕</button>
-                                        <div className="mb-4">
-                                          <span className="text-[8px] uppercase tracking-widest text-gold font-bold block mb-1">✦ Portafolio de Arte</span>
-                                          <h3 className="font-serif text-lg text-gold">
-                                            {renderEditableText('peluqueria', 'galeriaTriggerTitle', vsmForm.peluqueria.galeriaTriggerTitle || 'Galería de Trabajos', 'text-gold font-serif')}
-                                          </h3>
-                                          <p className="text-[9px] text-text-secondary mt-0.5">Explora nuestras coloraciones y diseños</p>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-3">
-                                          {(vsmForm.peluqueria.galleryItems || []).map((item, idx) => (
-                                            <div key={item.id} className="relative group/gi">
-                                              <div className="aspect-square rounded-xl overflow-hidden border border-white/10 relative">
-                                                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover opacity-70 group-hover/gi:opacity-100 transition-all duration-500" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                                      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setVsmPeluGalleryOpen(false)} />
+                                      <div className="relative w-full max-w-4xl bg-[#090909] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl grid grid-cols-1 md:grid-cols-12 min-h-[500px] max-h-[90vh] md:max-h-[80vh] text-left">
+                                        
+                                        {/* Close Button */}
+                                        <button
+                                          onClick={() => setVsmPeluGalleryOpen(false)}
+                                          className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer z-30 focus:outline-none"
+                                        >
+                                          <X size={16} />
+                                        </button>
+
+                                        {/* Left Panel: Featured Image & Details */}
+                                        {vsmForm.peluqueria.galleryItems && vsmForm.peluqueria.galleryItems.length > 0 ? (() => {
+                                          const currentItem = vsmForm.peluqueria.galleryItems[vsmGalleryIdx] || vsmForm.peluqueria.galleryItems[0];
+                                          if (!currentItem) return null;
+                                          return (
+                                            <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group">
+                                              <img
+                                                src={currentItem.imageUrl}
+                                                alt={currentItem.title}
+                                                className="absolute inset-0 object-cover w-full h-full opacity-60 transition-all duration-700 pointer-events-none"
+                                              />
+                                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10 pointer-events-none" />
+
+                                              {/* Image Edit Trigger (using 'imageUrl' key so it saves properly) */}
+                                              <div className="absolute top-4 right-4 z-30">
                                                 <button
-                                                  onClick={(e) => { e.stopPropagation(); setEditingAsset({ page: 'peluqueria', key: 'galleryItems', label: `Foto Galería ${idx + 1}`, currentValue: item.imageUrl, itemId: item.id }); }}
-                                                  className="absolute top-1 right-1 bg-black/70 hover:bg-gold hover:text-black border border-white/10 text-white rounded-full px-1.5 py-0.5 text-[7px] uppercase tracking-widest font-bold opacity-0 group-hover/gi:opacity-100 transition-all cursor-pointer"
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setEditingAsset({
+                                                      page: 'peluqueria',
+                                                      key: 'imageUrl',
+                                                      label: `Foto Galería: ${currentItem.title}`,
+                                                      currentValue: currentItem.imageUrl,
+                                                      itemId: currentItem.id
+                                                    });
+                                                  }}
+                                                  className="bg-black/90 hover:bg-gold hover:text-black border border-gold/30 text-white rounded-lg px-2.5 py-1.5 text-[9px] uppercase tracking-widest font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-lg"
                                                 >
-                                                  📷
+                                                  <Camera size={10} />
+                                                  <span>Cambiar Imagen</span>
                                                 </button>
-                                                <div className="absolute bottom-0 left-0 right-0 p-2">
-                                                  <p className="text-[8px] text-white font-serif leading-tight">{item.title}</p>
-                                                  <p className="text-[7px] text-gold">{item.price}</p>
+                                              </div>
+
+                                              {/* Details overlay at the bottom */}
+                                              <div className="absolute bottom-0 left-0 right-0 p-8 z-20 space-y-3">
+                                                <span className="text-[9px] uppercase tracking-widest text-gold bg-gold/10 border border-gold/25 px-2.5 py-1 rounded-full font-semibold inline-block">
+                                                  {renderEditableGalleryText(currentItem.id, 'stylist', currentItem.stylist, 'text-gold')}
+                                                </span>
+                                                <h4 className="font-serif text-2xl text-white font-medium tracking-wide">
+                                                  {renderEditableGalleryText(currentItem.id, 'title', currentItem.title, 'text-white font-serif')}
+                                                </h4>
+                                                <p className="text-xs text-white/70 leading-relaxed font-light max-w-xl">
+                                                  {renderEditableGalleryText(currentItem.id, 'technique', currentItem.technique, 'text-white/70 font-light')}
+                                                </p>
+                                                <div className="flex items-center space-x-4 pt-1.5 text-xs text-gold font-light">
+                                                  <span className="flex items-center gap-1">
+                                                    <Clock size={12} />
+                                                    {renderEditableGalleryText(currentItem.id, 'duration', currentItem.duration, 'text-gold')}
+                                                  </span>
+                                                  <span>•</span>
+                                                  <span>
+                                                    Valor Estimado: {renderEditableGalleryText(currentItem.id, 'price', currentItem.price, 'text-gold')}
+                                                  </span>
                                                 </div>
                                               </div>
                                             </div>
-                                          ))}
-                                        </div>
-                                        {(vsmForm.peluqueria.galleryItems || []).length === 0 && (
-                                          <p className="text-center text-[10px] text-text-secondary py-6">Sin fotos de galería. Agrégalas desde la sección Galería.</p>
+                                          );
+                                        })() : (
+                                          <div className="col-span-7 flex items-center justify-center text-text-secondary text-xs">No hay trabajos en la galería</div>
                                         )}
+
+                                        {/* Right Panel: Thumbnails Grid & Action Buttons */}
+                                        <div className="col-span-1 md:col-span-5 p-8 bg-[#070707] flex flex-col justify-between overflow-y-auto max-h-[90vh] md:max-h-[80vh]">
+                                          <div className="space-y-6">
+                                            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                                              <div>
+                                                <h3 className="font-serif text-lg text-gold tracking-wide">
+                                                  {renderEditableText('peluqueria', 'galeriaTriggerTitle', vsmForm.peluqueria.galeriaTriggerTitle || 'Galería de Trabajos', 'text-gold font-serif text-lg')}
+                                                </h3>
+                                                <p className="text-[9px] text-text-secondary tracking-widest uppercase mt-0.5">Explora coloraciones y diseños</p>
+                                              </div>
+                                              
+                                              {/* Add button */}
+                                              <button
+                                                onClick={handleGalleryItemAdd}
+                                                className="py-1.5 px-3 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase font-bold tracking-widest flex items-center space-x-1 cursor-pointer transition-all shadow-md shadow-gold/10"
+                                                title="Añadir Trabajo"
+                                              >
+                                                <Plus size={10} />
+                                                <span>Añadir</span>
+                                              </button>
+                                            </div>
+
+                                            {/* Grid of thumbnails */}
+                                            <div className="grid grid-cols-3 gap-3">
+                                              {(vsmForm.peluqueria.galleryItems || []).map((item, index) => {
+                                                const isSelected = vsmGalleryIdx === index;
+                                                return (
+                                                  <div key={item.id} className="relative group/thumb aspect-square">
+                                                    <button
+                                                      onClick={() => setVsmGalleryIdx(index)}
+                                                      className={`w-full h-full rounded-2xl overflow-hidden border-2 transition-all duration-300 focus:outline-none ${
+                                                        isSelected ? 'border-gold scale-105 shadow-[0_0_12px_rgba(198,155,60,0.3)]' : 'border-white/10 hover:border-white/30'
+                                                      }`}
+                                                    >
+                                                      <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full pointer-events-none" />
+                                                    </button>
+                                                    
+                                                    {/* Trash button overlay */}
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isSelected) {
+                                                          setVsmGalleryIdx(prev => Math.max(0, prev - 1));
+                                                        }
+                                                        handleGalleryItemDelete(item.id);
+                                                      }}
+                                                      className="absolute -top-1.5 -right-1.5 p-1.5 bg-red-600 text-white rounded-full border border-red-500/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity hover:bg-red-700 hover:scale-110 cursor-pointer shadow-lg z-20"
+                                                      title="Eliminar Trabajo"
+                                                    >
+                                                      <Trash2 size={9} />
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+
+                                          <div className="pt-6 border-t border-white/5">
+                                            <p className="text-[10px] text-text-secondary leading-relaxed font-light">
+                                              Modo Edición: Haz clic sobre los textos en el panel izquierdo (Estilista, Título, Técnica, Duración, Precio) para modificarlos. Los cambios se guardarán automáticamente al salir del campo.
+                                            </p>
+                                          </div>
+                                        </div>
                                       </div>
                                     </motion.div>
                                   )}
@@ -5623,7 +5726,7 @@ export default function AdminPage() {
                                         </div>
                                         <div className="space-y-3">
                                           {(servicesData.peluqueria?.specialists || []).map((sp) => (
-                                            <div key={sp.id} className="flex gap-3 bg-[#0c0c0c] border border-white/5 rounded-xl p-3 items-center hover:border-gold/15 transition-colors">
+                                            <div key={sp.id} className="flex gap-3 bg-[#0c0c0c] border border-white/5 rounded-xl p-3 items-center hover:border-gold/15 transition-colors text-left">
                                               <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-gold/15 flex-shrink-0 overflow-hidden">
                                                 {sp.imageUrl ? (
                                                   <img src={sp.imageUrl} alt={sp.name} className="w-full h-full object-cover" />
@@ -5649,44 +5752,87 @@ export default function AdminPage() {
 
                                 {/* ── SERVICES POPUP PREVIEW ── */}
                                 <AnimatePresence>
-                                  {vsmPeluServicesOpen && (
-                                    <motion.div
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, y: 10 }}
-                                      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-                                    >
-                                      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setVsmPeluServicesOpen(false)} />
-                                      <div className="relative w-full max-w-2xl bg-[#090909] border border-gold/25 rounded-2xl p-6 z-10 max-h-[85vh] overflow-y-auto shadow-2xl">
-                                        <button onClick={() => setVsmPeluServicesOpen(false)} className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer">✕</button>
-                                        <div className="mb-5">
-                                          <span className="text-[8px] uppercase tracking-widest text-gold font-bold block mb-1">✂ Carta de Servicios</span>
-                                          <h3 className="font-serif text-lg text-gold">
-                                            {renderEditableText('peluqueria', 'servicesTriggerTitle', vsmForm.peluqueria.servicesTriggerTitle || 'Ver Todos los Servicios', 'text-gold font-serif')}
-                                          </h3>
-                                          <p className="text-[9px] text-text-secondary mt-0.5">Selecciona un servicio para agendar</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                          {(servicesData.peluqueria?.services || []).filter(s => s.isActive !== false).map((srv) => (
-                                            <div key={srv.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0c0c0c] border border-white/5 hover:border-gold/20 transition-colors">
-                                              <div className="flex-grow min-w-0 pr-3">
-                                                <h4 className="font-serif text-xs text-white font-medium">{srv.name}</h4>
-                                                {srv.description && <p className="text-[8px] text-text-secondary leading-tight mt-0.5 line-clamp-1">{srv.description}</p>}
-                                                <span className="text-[7px] text-white/40 uppercase tracking-wider mt-0.5 block">⏱ {srv.duration}</span>
+                                  {vsmPeluServicesOpen && (() => {
+                                    const SERVICE_GROUPS = [
+                                      { label: 'Cortes', keywords: ['corte', 'corte masculino', 'corte femenino', 'corte infantil', 'diseño'] },
+                                      { label: 'Color & Técnicas', keywords: ['color', 'coloración', 'balayage', 'reflejo', 'iluminación', 'tinte', 'mechas', 'babylight'] },
+                                      { label: 'Tratamientos', keywords: ['tratamiento', 'hidratación', 'seda', 'keratina', 'nutritiva', 'brillo', 'salud', 'profunda'] },
+                                      { label: 'Peinados & Styling', keywords: ['peinado', 'brushing', 'ondas', 'plancha', 'styling', 'secado', 'editorial'] },
+                                    ];
+
+                                    const allActiveServices = (servicesData.peluqueria?.services || []).filter(s => s.isActive !== false);
+
+                                    const getServiceGroup = (name: string): string => {
+                                      const lower = name.toLowerCase();
+                                      for (const group of SERVICE_GROUPS) {
+                                        if (group.keywords.some(kw => lower.includes(kw))) return group.label;
+                                      }
+                                      return 'Otros Servicios';
+                                    };
+
+                                    const groupedServices: Record<string, typeof allActiveServices> = {};
+                                    SERVICE_GROUPS.forEach(g => { groupedServices[g.label] = []; });
+                                    groupedServices['Otros Servicios'] = [];
+                                    allActiveServices.forEach(s => {
+                                      const gLabel = getServiceGroup(s.name);
+                                      groupedServices[gLabel].push(s);
+                                    });
+
+                                    const finalGroupOrder = [
+                                      ...SERVICE_GROUPS.map(g => g.label).filter(l => groupedServices[l]?.length > 0),
+                                      ...(groupedServices['Otros Servicios']?.length > 0 ? ['Otros Servicios'] : [])
+                                    ];
+
+                                    return (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                                      >
+                                        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setVsmPeluServicesOpen(false)} />
+                                        <div className="relative w-full max-w-2xl bg-[#090909] border border-gold/25 rounded-2xl p-6 z-10 max-h-[85vh] overflow-y-auto shadow-2xl">
+                                          <button onClick={() => setVsmPeluServicesOpen(false)} className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer">✕</button>
+                                          <div className="mb-5 text-left">
+                                            <span className="text-[8px] uppercase tracking-widest text-gold font-bold block mb-1">✂ Carta de Servicios</span>
+                                            <h3 className="font-serif text-lg text-gold">
+                                              {renderEditableText('peluqueria', 'servicesTriggerTitle', vsmForm.peluqueria.servicesTriggerTitle || 'Ver Todos los Servicios', 'text-gold font-serif')}
+                                            </h3>
+                                            <p className="text-[9px] text-text-secondary mt-0.5">Nuestra carta de servicios agrupada</p>
+                                          </div>
+                                          
+                                          <div className="space-y-6 text-left">
+                                            {finalGroupOrder.map((groupLabel) => (
+                                              <div key={groupLabel}>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                  <span className="text-[9px] uppercase tracking-[0.2em] text-gold font-bold">{groupLabel}</span>
+                                                  <div className="flex-grow h-[1px] bg-gold/15" />
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                  {groupedServices[groupLabel].map((srv) => (
+                                                    <div key={srv.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0c0c0c] border border-white/5 hover:border-gold/20 transition-colors">
+                                                      <div className="flex-grow min-w-0 pr-3">
+                                                        <h4 className="font-serif text-xs text-white font-medium">{srv.name}</h4>
+                                                        {srv.description && <p className="text-[8px] text-text-secondary leading-tight mt-0.5 line-clamp-1 font-light">{srv.description}</p>}
+                                                        <span className="text-[7px] text-white/40 uppercase tracking-wider mt-0.5 block">⏱ {srv.duration}</span>
+                                                      </div>
+                                                      <div className="flex-shrink-0 text-right">
+                                                        <span className="font-serif text-xs text-gold font-bold block">{srv.price}</span>
+                                                        <span className="text-[7px] uppercase tracking-widest border border-gold/30 text-gold px-2 py-0.5 rounded-full font-semibold block mt-1">Reservar</span>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
                                               </div>
-                                              <div className="flex-shrink-0 text-right">
-                                                <span className="font-serif text-xs text-gold font-bold block">{srv.price}</span>
-                                                <span className="text-[7px] uppercase tracking-widest border border-gold/30 text-gold px-2 py-0.5 rounded-full font-semibold block mt-1">Reservar</span>
-                                              </div>
-                                            </div>
-                                          ))}
-                                          {(servicesData.peluqueria?.services || []).filter(s => s.isActive !== false).length === 0 && (
-                                            <p className="text-center text-[10px] text-text-secondary py-4">Sin servicios activos en Peluquería.</p>
-                                          )}
+                                            ))}
+                                            {allActiveServices.length === 0 && (
+                                              <p className="text-center text-[10px] text-text-secondary py-4">Sin servicios activos en Peluquería.</p>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
+                                      </motion.div>
+                                    );
+                                  })()}
                                 </AnimatePresence>
                               </motion.div>
                             )}
