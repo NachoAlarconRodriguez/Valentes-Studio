@@ -11,6 +11,19 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import useContentStore from '@/store/useContentStore';
 
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.ogg') ||
+    url.includes('video') ||
+    url.startsWith('data:video/')
+  );
+};
+
 // Dynamically import the 3D Canvas to disable SSR
 const BarberPoleCanvas = dynamic(() => import('@/components/BarberPoleCanvas'), {
   ssr: false,
@@ -232,19 +245,33 @@ export default function BarberiaLayout() {
                         : 'flex-[0.5] min-h-[120px] lg:min-h-0'
                   }`}
                 >
-                  {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                    <Image
-                      src={content.barberia.imageCabello}
-                      alt="Ritual de Cabello"
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                      className={`object-cover transition-all duration-1000 ${
-                        activePanel === 1 || hoveredPanel === 1
-                          ? 'grayscale-0 scale-105 brightness-75'
-                          : 'grayscale opacity-60 brightness-[0.55]'
-                      }`}
-                    />
+                    {isVideoUrl(content.barberia.imageCabello) ? (
+                      <video
+                        src={content.barberia.imageCabello}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={`object-cover w-full h-full transition-all duration-1000 ${
+                          activePanel === 1 || hoveredPanel === 1
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    ) : (
+                      <Image
+                        src={content.barberia.imageCabello}
+                        alt="Ritual de Cabello"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 33vw"
+                        className={`object-cover transition-all duration-1000 ${
+                          activePanel === 1 || hoveredPanel === 1
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    )}
                     {/* Warm brand tint overlay (mix-blend-color) */}
                     <div 
                       className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
@@ -390,19 +417,33 @@ export default function BarberiaLayout() {
                         : 'flex-[0.5] min-h-[120px] lg:min-h-0'
                   }`}
                 >
-                  {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                    <Image
-                      src={content.barberia.imageBarba}
-                      alt="Ritual de Barba"
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                      className={`object-cover transition-all duration-1000 ${
-                        activePanel === 2 || hoveredPanel === 2
-                          ? 'grayscale-0 scale-105 brightness-75'
-                          : 'grayscale opacity-60 brightness-[0.55]'
-                      }`}
-                    />
+                    {isVideoUrl(content.barberia.imageBarba) ? (
+                      <video
+                        src={content.barberia.imageBarba}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={`object-cover w-full h-full transition-all duration-1000 ${
+                          activePanel === 2 || hoveredPanel === 2
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    ) : (
+                      <Image
+                        src={content.barberia.imageBarba}
+                        alt="Ritual de Barba"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 33vw"
+                        className={`object-cover transition-all duration-1000 ${
+                          activePanel === 2 || hoveredPanel === 2
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    )}
                     {/* Warm brand tint overlay (mix-blend-color) */}
                     <div 
                       className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
@@ -541,19 +582,33 @@ export default function BarberiaLayout() {
                         : 'flex-[0.5] min-h-[120px] lg:min-h-0'
                   }`}
                 >
-                  {/* Background image */}
                   <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                    <Image
-                      src={content.barberia.imageCompleto}
-                      alt="Ritual Completo"
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                      className={`object-cover transition-all duration-1000 ${
-                        activePanel === 3 || hoveredPanel === 3
-                          ? 'grayscale-0 scale-105 brightness-75'
-                          : 'grayscale opacity-60 brightness-[0.55]'
-                      }`}
-                    />
+                    {isVideoUrl(content.barberia.imageCompleto) ? (
+                      <video
+                        src={content.barberia.imageCompleto}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={`object-cover w-full h-full transition-all duration-1000 ${
+                          activePanel === 3 || hoveredPanel === 3
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    ) : (
+                      <Image
+                        src={content.barberia.imageCompleto}
+                        alt="Ritual Completo"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 33vw"
+                        className={`object-cover transition-all duration-1000 ${
+                          activePanel === 3 || hoveredPanel === 3
+                            ? 'grayscale-0 scale-105 brightness-75'
+                            : 'grayscale opacity-60 brightness-[0.55]'
+                        }`}
+                      />
+                    )}
                     {/* Warm brand tint overlay (mix-blend-color) */}
                     <div 
                       className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${

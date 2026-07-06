@@ -10,6 +10,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import useContentStore from '@/store/useContentStore';
 
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.ogg') ||
+    url.includes('video') ||
+    url.startsWith('data:video/')
+  );
+};
+
 interface CardItem {
   id: string;
   type: 'service' | 'deco' | 'deco-vertical-text' | 'gallery-trigger' | 'specialists-trigger' | 'services-trigger';
@@ -292,14 +305,25 @@ export default function PeluqueriaLayout() {
                 }}
                 className={`relative overflow-hidden rounded-3xl bg-[#121212] border border-white/5 cursor-pointer group transition-all duration-500 shadow-md hover:shadow-xl ${card.gridClass}`}
               >
-                {/* Asymmetrical grid image with gold-tinted overlay */}
-                <Image
-                  src={card.imageUrl}
-                  alt={card.type === 'service' ? (card.service?.name || 'Servicio') : 'Alma Bela'}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
-                  className="object-cover opacity-55 contrast-105 brightness-90 group-hover:opacity-100 transition-all duration-700 scale-100 group-hover:scale-103"
-                />
+                {/* Asymmetrical grid image or video with gold-tinted overlay */}
+                {isVideoUrl(card.imageUrl) ? (
+                  <video
+                    src={card.imageUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="object-cover w-full h-full opacity-55 contrast-105 brightness-90 group-hover:opacity-100 transition-all duration-700 scale-100 group-hover:scale-103"
+                  />
+                ) : (
+                  <Image
+                    src={card.imageUrl}
+                    alt={card.type === 'service' ? (card.service?.name || 'Servicio') : 'Alma Bela'}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
+                    className="object-cover opacity-55 contrast-105 brightness-90 group-hover:opacity-100 transition-all duration-700 scale-100 group-hover:scale-103"
+                  />
+                )}
                 {/* Warm brand tint overlay (mix-blend-color) */}
                 <div 
                   className="absolute inset-0 bg-bronze/5 group-hover:bg-bronze/15 transition-colors duration-700 pointer-events-none z-1"
@@ -315,7 +339,7 @@ export default function PeluqueriaLayout() {
                         Portafolio de Arte
                       </span>
                       <h3 className="font-serif text-lg tracking-wide font-medium leading-snug">
-                        Galería de Trabajos
+                        {content.peluqueria.galeriaTriggerTitle || 'Galería de Trabajos'}
                       </h3>
                       <div className="flex justify-between items-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-[9px] uppercase tracking-widest border border-gold/40 text-gold px-3 py-1 rounded-full hover:bg-gold hover:text-black hover:border-gold transition-colors font-medium">
@@ -347,7 +371,7 @@ export default function PeluqueriaLayout() {
                         Estilo &amp; Experiencia
                       </span>
                       <h3 className="font-serif text-lg tracking-wide font-medium leading-snug">
-                        Nuestras Especialistas
+                        {content.peluqueria.specialistsTriggerTitle || 'Nuestras Especialistas'}
                       </h3>
                       <div className="flex justify-between items-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-[9px] uppercase tracking-widest border border-gold/40 text-gold px-3 py-1 rounded-full hover:bg-gold hover:text-black hover:border-gold transition-colors font-medium">
@@ -367,7 +391,7 @@ export default function PeluqueriaLayout() {
                         Carta de Servicios
                       </span>
                       <h3 className="font-serif text-lg tracking-wide font-medium leading-snug">
-                        Ver Todos los Servicios
+                        {content.peluqueria.servicesTriggerTitle || 'Ver Todos los Servicios'}
                       </h3>
                       <div className="flex justify-between items-center pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-[9px] uppercase tracking-widest border border-gold/40 text-gold px-3 py-1 rounded-full hover:bg-gold hover:text-black hover:border-gold transition-colors font-medium">
@@ -629,7 +653,9 @@ export default function PeluqueriaLayout() {
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="font-serif text-2xl text-gold tracking-wide">Nuestras Especialistas</h3>
+                  <h3 className="font-serif text-2xl text-gold tracking-wide">
+                    {content.peluqueria.specialistsTriggerTitle || 'Nuestras Especialistas'}
+                  </h3>
                   <p className="text-xs text-text-secondary tracking-widest uppercase mt-0.5">Alma Bela Studio • Peluquería de Autor</p>
                 </div>
 

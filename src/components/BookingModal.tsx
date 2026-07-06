@@ -458,8 +458,8 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/terapias-logo.png"
-                        alt="Essencia Pura Studio Logo"
+                        src="/terapias-logo-v7.png"
+                        alt="Jefito Lopes Studio Logo"
                         fill
                         sizes="64px"
                         className="object-contain"
@@ -467,9 +467,9 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Essencia Pura Studio
+                        Jefito Lopes Studio
                       </span>
-                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">ESSENCIA PURA</h2>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">JEFITO LOPES</h2>
                       <h2 className="font-serif text-[10px] tracking-[0.3em] text-platinum/80 uppercase font-bold mt-1">STUDIO</h2>
                     </div>
                   </div>
@@ -523,7 +523,7 @@ export function BookingModal() {
                       ? 'Santuario de Barbería Tradicional'
                       : category === 'peluqueria'
                       ? 'Santuario de Peluquería de Autor'
-                      : 'Essência Pura • Terapias Holísticas'
+                      : 'Jefito Lopes • Terapias Holísticas'
                     }
                   </p>
                 </div>

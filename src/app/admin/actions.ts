@@ -24,7 +24,8 @@ export async function uploadImageAction(formData: FormData): Promise<string> {
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const filename = `cms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+  const filename = `cms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
   const { data, error } = await supabase.storage
     .from('cms-images')

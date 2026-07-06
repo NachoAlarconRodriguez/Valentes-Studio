@@ -46,6 +46,36 @@ import {
 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';
+
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.ogg') ||
+    url.includes('video') ||
+    url.startsWith('data:video/')
+  );
+};
+
+const renderMediaPreview = (src: string, className: string) => {
+  if (isVideoUrl(src)) {
+    return (
+      <video
+        src={src}
+        className={className}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
+    );
+  }
+  return <img src={src} alt="" className={className} />;
+};
+
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useScheduleStore, DailyShift, TimeBlock, parseDurationToMinutes } from '@/store/useScheduleStore';
@@ -944,9 +974,17 @@ export default function AdminPage() {
   const [vsmPeluServicesOpen, setVsmPeluServicesOpen] = useState(false);
   const [vsmViewMode, setVsmViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [editingAsset, setEditingAsset] = useState<{ page: string; key: string; label: string; currentValue: string; itemId?: string } | null>(null);
+  const [mediaEditorType, setMediaEditorType] = useState<'image' | 'video'>('image');
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
   const [vsmFullscreen, setVsmFullscreen] = useState(false);
   const [vsmGalleryIdx, setVsmGalleryIdx] = useState(0);
+
+  useEffect(() => {
+    if (editingAsset) {
+      const isVideo = isVideoUrl(editingAsset.currentValue) || editingAsset.key.toLowerCase().includes('video');
+      setMediaEditorType(isVideo ? 'video' : 'image');
+    }
+  }, [editingAsset]);
 
   // Check active session on mount
   useEffect(() => {
@@ -5258,18 +5296,20 @@ export default function AdminPage() {
                       {vsmPage === 'home' && (
                         <div className="flex flex-row w-full h-[320px] bg-black relative rounded-xl overflow-hidden border border-white/5">
                           {[
-                            { title: vsmForm.home.panel1Title, subtitle: vsmForm.home.panel1Subtitle, img: vsmForm.home.panel1Image, keyTitle: 'panel1Title', keySubtitle: 'panel1Subtitle', keyImg: 'panel1Image', num: '01', label: 'Barbería' },
-                            { title: vsmForm.home.panel2Title, subtitle: vsmForm.home.panel2Subtitle, img: vsmForm.home.panel2Image, keyTitle: 'panel2Title', keySubtitle: 'panel2Subtitle', keyImg: 'panel2Image', num: '02', label: 'Peluquería' },
-                            { title: vsmForm.home.panel3Title, subtitle: vsmForm.home.panel3Subtitle, img: vsmForm.home.panel3Image, keyTitle: 'panel3Title', keySubtitle: 'panel3Subtitle', keyImg: 'panel3Image', num: '03', label: 'Terapias' }
+                            { title: vsmForm.home.panel1Title, subtitle: vsmForm.home.panel1Subtitle, img: vsmForm.home.panel1Image, keyTitle: 'panel1Title', keySubtitle: 'panel1Subtitle', keyImg: 'panel1Image', label: vsmForm.home.panel1Label || 'Ritual 01', keyLabel: 'panel1Label', name: 'Barbería' },
+                            { title: vsmForm.home.panel2Title, subtitle: vsmForm.home.panel2Subtitle, img: vsmForm.home.panel2Image, keyTitle: 'panel2Title', keySubtitle: 'panel2Subtitle', keyImg: 'panel2Image', label: vsmForm.home.panel2Label || 'Ritual 02', keyLabel: 'panel2Label', name: 'Peluquería' },
+                            { title: vsmForm.home.panel3Title, subtitle: vsmForm.home.panel3Subtitle, img: vsmForm.home.panel3Image, keyTitle: 'panel3Title', keySubtitle: 'panel3Subtitle', keyImg: 'panel3Image', label: vsmForm.home.panel3Label || 'Ritual 03', keyLabel: 'panel3Label', name: 'Terapias' }
                           ].map((panel, idx) => (
                             <div key={idx} className="flex-1 relative overflow-hidden flex flex-col justify-end p-5 border-r border-white/5 last:border-0 group select-none">
-                              <img src={panel.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-55 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-all duration-700 pointer-events-none" />
+                              {renderMediaPreview(panel.img, "absolute inset-0 object-cover w-full h-full opacity-55 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-all duration-700 pointer-events-none")}
                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10 pointer-events-none" />
                               
-                              {renderEditableImage('home', panel.keyImg, `Imagen ${panel.label}`, panel.img)}
+                              {renderEditableImage('home', panel.keyImg, `Imagen ${panel.name}`, panel.img)}
                               
                               <div className="relative z-20 space-y-1">
-                                <span className="text-[7px] uppercase tracking-[0.25em] text-gold font-bold block">Ritual {panel.num}</span>
+                                <span className="text-[7px] uppercase tracking-[0.25em] text-gold font-bold block">
+                                  {renderEditableText('home', panel.keyLabel, panel.label, 'text-gold font-sans')}
+                                </span>
                                 <h3 className="font-serif text-sm text-white tracking-wide font-medium leading-tight">
                                   {renderEditableText('home', panel.keyTitle, panel.title, 'text-white hover:text-gold focus:text-gold font-serif')}
                                 </h3>
@@ -5346,7 +5386,7 @@ export default function AdminPage() {
                               }
                             ].map((rit, idx) => (
                               <div key={idx} className="relative h-[130px] rounded-xl overflow-hidden flex flex-col justify-end p-3.5 border border-white/5 group select-none">
-                                <img src={rit.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-45 group-hover:opacity-75 transition-all duration-700 pointer-events-none" />
+                                {renderMediaPreview(rit.img, "absolute inset-0 object-cover w-full h-full opacity-45 group-hover:opacity-75 transition-all duration-700 pointer-events-none")}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
                                 
                                 {renderEditableImage('barberia', rit.keyImg, rit.title, rit.img)}
@@ -5428,7 +5468,7 @@ export default function AdminPage() {
 
                                   {/* c1 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src={vsmForm.peluqueria.bentoImageC1 || 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC1 || 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-bronze/5 pointer-events-none" style={{ mixBlendMode: 'color' }} />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
@@ -5447,7 +5487,7 @@ export default function AdminPage() {
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar la Galería"
                                   >
-                                    <img src={vsmForm.peluqueria.bentoImageC2 || 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC2 || 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">✦ Portafolio de Arte</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5462,7 +5502,7 @@ export default function AdminPage() {
 
                                   {/* c3 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src={vsmForm.peluqueria.bentoImageC3 || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC3 || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[1]?.duration || '90 min'}
@@ -5476,7 +5516,7 @@ export default function AdminPage() {
 
                                   {/* c4 — Deco vertical text */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-3">
-                                    <img src={vsmForm.peluqueria.bentoImageC4 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC4 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
                                       <span
                                         className="font-serif text-gold/20 text-3xl tracking-[0.4em] uppercase whitespace-nowrap"
@@ -5490,7 +5530,7 @@ export default function AdminPage() {
 
                                   {/* c5 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src={vsmForm.peluqueria.bentoImageC5 || 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC5 || 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[2]?.duration || '60 min'}
@@ -5508,7 +5548,7 @@ export default function AdminPage() {
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar Especialistas"
                                   >
-                                    <img src={vsmForm.peluqueria.bentoImageC6 || 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC6 || 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">★ Estilo &amp; Experiencia</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5527,7 +5567,7 @@ export default function AdminPage() {
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar Carta de Servicios"
                                   >
-                                    <img src={vsmForm.peluqueria.bentoImageC7 || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC7 || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">✂ Carta de Servicios</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5542,7 +5582,7 @@ export default function AdminPage() {
 
                                   {/* c8 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
-                                    <img src={vsmForm.peluqueria.bentoImageC8 || 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC8 || 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[3]?.duration || '45 min'}
@@ -5556,25 +5596,25 @@ export default function AdminPage() {
 
                                   {/* c9 — Deco */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src={vsmForm.peluqueria.bentoImageC9 || 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC9 || 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     {renderEditableImage('peluqueria', 'bentoImageC9', 'Imagen Decoración 1', vsmForm.peluqueria.bentoImageC9)}
                                   </div>
 
                                   {/* c10 — Deco */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src={vsmForm.peluqueria.bentoImageC10 || 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC10 || 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     {renderEditableImage('peluqueria', 'bentoImageC10', 'Imagen Decoración 2', vsmForm.peluqueria.bentoImageC10)}
                                   </div>
 
                                   {/* c11 — Deco */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
-                                    <img src={vsmForm.peluqueria.bentoImageC11 || 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC11 || 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     {renderEditableImage('peluqueria', 'bentoImageC11', 'Imagen Decoración 3', vsmForm.peluqueria.bentoImageC11)}
                                   </div>
 
                                   {/* c12 — Deco */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
-                                    <img src={vsmForm.peluqueria.bentoImageC12 || 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderMediaPreview(vsmForm.peluqueria.bentoImageC12 || 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=400&q=70', "absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none")}
                                     {renderEditableImage('peluqueria', 'bentoImageC12', 'Imagen Decoración 4', vsmForm.peluqueria.bentoImageC12)}
                                   </div>
 
@@ -5964,18 +6004,20 @@ export default function AdminPage() {
                       {vsmPage === 'home' && (
                         <div className="flex flex-col flex-1 bg-black">
                           {[
-                            { title: vsmForm.home.panel1Title, subtitle: vsmForm.home.panel1Subtitle, img: vsmForm.home.panel1Image, keyTitle: 'panel1Title', keySubtitle: 'panel1Subtitle', keyImg: 'panel1Image', num: '01', label: 'Barbería' },
-                            { title: vsmForm.home.panel2Title, subtitle: vsmForm.home.panel2Subtitle, img: vsmForm.home.panel2Image, keyTitle: 'panel2Title', keySubtitle: 'panel2Subtitle', keyImg: 'panel2Image', num: '02', label: 'Peluquería' },
-                            { title: vsmForm.home.panel3Title, subtitle: vsmForm.home.panel3Subtitle, img: vsmForm.home.panel3Image, keyTitle: 'panel3Title', keySubtitle: 'panel3Subtitle', keyImg: 'panel3Image', num: '03', label: 'Terapias' }
+                            { title: vsmForm.home.panel1Title, subtitle: vsmForm.home.panel1Subtitle, img: vsmForm.home.panel1Image, keyTitle: 'panel1Title', keySubtitle: 'panel1Subtitle', keyImg: 'panel1Image', label: vsmForm.home.panel1Label || 'Ritual 01', keyLabel: 'panel1Label', name: 'Barbería' },
+                            { title: vsmForm.home.panel2Title, subtitle: vsmForm.home.panel2Subtitle, img: vsmForm.home.panel2Image, keyTitle: 'panel2Title', keySubtitle: 'panel2Subtitle', keyImg: 'panel2Image', label: vsmForm.home.panel2Label || 'Ritual 02', keyLabel: 'panel2Label', name: 'Peluquería' },
+                            { title: vsmForm.home.panel3Title, subtitle: vsmForm.home.panel3Subtitle, img: vsmForm.home.panel3Image, keyTitle: 'panel3Title', keySubtitle: 'panel3Subtitle', keyImg: 'panel3Image', label: vsmForm.home.panel3Label || 'Ritual 03', keyLabel: 'panel3Label', name: 'Terapias' }
                           ].map((panel, idx) => (
                             <div key={idx} className="relative h-[135px] flex flex-col justify-end p-4 border-b border-white/5 last:border-0 group/panel overflow-hidden">
                               <img src={panel.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-50 grayscale group-hover/panel:opacity-80 transition-all duration-700 pointer-events-none" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent pointer-events-none" />
                               
-                              {renderEditableImage('home', panel.keyImg, `Imagen ${panel.label}`, panel.img)}
+                              {renderEditableImage('home', panel.keyImg, `Imagen ${panel.name}`, panel.img)}
                               
                               <div className="relative z-10 space-y-0.5">
-                                <span className="text-[6px] text-gold uppercase tracking-widest font-semibold block">Ritual {panel.num}</span>
+                                <span className="text-[6px] text-gold uppercase tracking-widest font-semibold block">
+                                  {renderEditableText('home', panel.keyLabel, panel.label, 'text-gold font-sans')}
+                                </span>
                                 <h4 className="font-serif text-[11px] text-white font-medium">
                                   {renderEditableText('home', panel.keyTitle, panel.title, 'text-white font-serif')}
                                 </h4>
@@ -8476,26 +8518,95 @@ export default function AdminPage() {
             </div>
             
             <div className="space-y-4">
-              {/* Conditionally show URL input ONLY for video assets */}
-              {editingAsset.key.toLowerCase().includes('video') && (
-                <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">URL del Video</label>
-                  <input
-                    type="text"
-                    value={editingAsset.currentValue}
-                    onChange={(e) => {
-                      const newVal = e.target.value;
-                      setEditingAsset(prev => prev ? { ...prev, currentValue: newVal } : null);
-                    }}
-                    className="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
-                  />
+              {/* Media Type Selector */}
+              <div className="space-y-1">
+                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Tipo de Medio</label>
+                <div className="flex space-x-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorType('image')}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
+                      mediaEditorType === 'image'
+                        ? 'bg-gold text-black shadow-sm'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Imagen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaEditorType('video')}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
+                      mediaEditorType === 'video'
+                        ? 'bg-gold text-black shadow-sm'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Video
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* File Uploader */}
-              {!editingAsset.key.toLowerCase().includes('video') && (
+              {mediaEditorType === 'video' ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">URL del Video o Archivo</label>
+                    <input
+                      type="text"
+                      value={editingAsset.currentValue}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        setEditingAsset(prev => prev ? { ...prev, currentValue: newVal } : null);
+                      }}
+                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-gold/30 font-mono"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Subir archivo de video desde el computador</label>
+                    <label className="flex items-center justify-center border border-dashed border-white/10 hover:border-gold/35 rounded-lg p-3.5 cursor-pointer transition-colors bg-white/[0.01]">
+                      {isUploadingAsset ? (
+                        <div className="flex items-center space-x-2 text-xs text-text-secondary py-1">
+                          <span className="w-3.5 h-3.5 border border-gold border-t-transparent rounded-full animate-spin" />
+                          <span>Subiendo video...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center space-y-1 text-center py-1">
+                          <UploadCloud size={16} className="text-text-secondary hover:text-gold transition-colors" />
+                          <span className="text-[10px] text-white font-semibold">Seleccionar video</span>
+                          <span className="text-[8px] text-text-secondary">Formatos mp4, webm, mov</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        disabled={isUploadingAsset}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setIsUploadingAsset(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              const publicUrl = await uploadImageAction(formData);
+                              setEditingAsset(prev => prev ? { ...prev, currentValue: publicUrl } : null);
+                              triggerNotification('Video subido con éxito.');
+                            } catch (err: any) {
+                              console.error(err);
+                              triggerNotification('Error al subir el video.');
+                            } finally {
+                              setIsUploadingAsset(false);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Seleccionar archivo desde el computador</label>
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Seleccionar imagen desde el computador</label>
                   <label className="flex items-center justify-center border border-dashed border-white/10 hover:border-gold/35 rounded-lg p-3.5 cursor-pointer transition-colors bg-white/[0.01]">
                     {isUploadingAsset ? (
                       <div className="flex items-center space-x-2 text-xs text-text-secondary py-1">
@@ -8505,7 +8616,7 @@ export default function AdminPage() {
                     ) : (
                       <div className="flex flex-col items-center space-y-1 text-center py-1">
                         <UploadCloud size={16} className="text-text-secondary hover:text-gold transition-colors" />
-                        <span className="text-[10px] text-white font-semibold">Seleccionar archivo</span>
+                        <span className="text-[10px] text-white font-semibold">Seleccionar imagen</span>
                         <span className="text-[8px] text-text-secondary">Se optimizará automáticamente</span>
                       </div>
                     )}
@@ -8535,16 +8646,28 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Previsualización de la Imagen Cargada */}
-              {!editingAsset.key.toLowerCase().includes('video') && editingAsset.currentValue && (
+              {/* Previsualización del Recurso Cargado */}
+              {editingAsset.currentValue && (
                 <div className="space-y-1.5">
-                  <span className="block text-[9px] uppercase tracking-wider text-gold font-bold">Imagen Previsualizada</span>
+                  <span className="block text-[9px] uppercase tracking-wider text-gold font-bold">
+                    {mediaEditorType === 'video' ? 'Video Previsualizado' : 'Imagen Previsualizada'}
+                  </span>
                   <div className="relative w-full h-44 rounded-2xl overflow-hidden border border-white/10 bg-black/50 flex items-center justify-center p-2">
-                    <img 
-                      src={editingAsset.currentValue} 
-                      alt="Vista previa" 
-                      className="object-contain max-h-40 rounded-xl"
-                    />
+                    {mediaEditorType === 'video' ? (
+                      <video 
+                        src={editingAsset.currentValue} 
+                        className="max-h-40 rounded-xl"
+                        controls
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img 
+                        src={editingAsset.currentValue} 
+                        alt="Vista previa" 
+                        className="object-contain max-h-40 rounded-xl"
+                      />
+                    )}
                   </div>
                 </div>
               )}

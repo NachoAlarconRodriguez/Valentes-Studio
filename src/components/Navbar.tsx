@@ -165,8 +165,8 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/terapias-logo.png"
-                    alt="Essencia Pura Studio Logo"
+                    src="/terapias-logo-v7.png"
+                    alt="Jefito Lopes Studio Logo"
                     fill
                     sizes="44px"
                     className="object-contain"
@@ -175,7 +175,7 @@ export function Navbar() {
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-platinum bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent transition-all duration-300">
-                    ESSENCIA PURA
+                    JEFITO LOPES
                   </span>
                   <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-platinum transition-colors duration-300 leading-none mt-0.5">
                     STUDIO

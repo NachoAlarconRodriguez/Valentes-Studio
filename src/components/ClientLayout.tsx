@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useUIStore, SectionTheme } from '@/store/useUIStore';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './Navbar';
 import BookingModal from './BookingModal';
 
@@ -32,6 +33,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
   const fetchGiftCards = useGiftCardStore(state => state.fetchGiftCards);
   const fetchContent = useContentStore(state => state.fetchContent);
+  const hasFetched = useContentStore(state => state.hasFetched);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -74,8 +76,63 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+
   return (
     <div className="min-h-screen text-text-primary flex flex-col font-sans select-none relative">
+      {/* Global Transition Loader */}
+      <AnimatePresence>
+        {!hasFetched && !pathname.startsWith('/admin') && (
+          <motion.div
+            key="global-loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            className="fixed inset-0 z-[999] bg-[#070707] flex flex-col items-center justify-center"
+          >
+            {/* Elegant vignette overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.85)_100%)] pointer-events-none" />
+
+            <div className="relative flex flex-col items-center space-y-8 z-10">
+              {/* Golden pulsing logo */}
+              <motion.div
+                animate={{
+                  scale: [1, 1.05, 1],
+                  opacity: [0.8, 1, 0.8]
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="relative w-28 h-28 select-none pointer-events-none"
+              >
+                <img
+                  src="/lotus-transparent.png"
+                  alt="Santuario Logo"
+                  className="object-contain w-full h-full filter brightness-95 contrast-105"
+                />
+              </motion.div>
+
+              {/* Brand Title */}
+              <div className="flex flex-col items-center space-y-3 text-center">
+                <span className="font-serif text-3xl md:text-4xl font-bold tracking-[0.25em] text-gold-gradient bg-clip-text text-transparent bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa7c11] select-none uppercase">
+                  Santuario
+                </span>
+                <span className="text-[9px] uppercase tracking-[0.5em] text-white/50 font-light select-none">
+                  DE BIENESTAR & AUTORÍA
+                </span>
+              </div>
+
+              {/* Elegant golden spinning line */}
+              <div className="relative w-16 h-16 flex items-center justify-center">
+                <div className="absolute inset-0 border-2 border-gold/10 rounded-full" />
+                <div className="absolute inset-0 border-2 border-t-gold/70 border-r-gold/30 border-b-transparent border-l-transparent rounded-full animate-spin" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background WebGL canvas */}
       <WebGLCanvas />
 

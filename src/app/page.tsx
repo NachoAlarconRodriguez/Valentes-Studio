@@ -6,6 +6,19 @@ import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
 import useContentStore from '@/store/useContentStore';
 
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.ogg') ||
+    url.includes('video') ||
+    url.startsWith('data:video/')
+  );
+};
+
 export default function HomePage() {
   const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
   const { content } = useContentStore();
@@ -17,9 +30,10 @@ export default function HomePage() {
       subtitle: content.home.panel1Subtitle,
       path: '/barberia',
       imageUrl: content.home.panel1Image,
-      number: '01',
+      label: content.home.panel1Label || 'Ritual 01',
       logoUrl: '/hands-logo-v4.png',
       businessName: 'Valentes Studio',
+      businessCategory: 'Barbería',
       logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
     },
     {
@@ -28,9 +42,10 @@ export default function HomePage() {
       subtitle: content.home.panel2Subtitle,
       path: '/peluqueria',
       imageUrl: content.home.panel2Image,
-      number: '02',
+      label: content.home.panel2Label || 'Ritual 02',
       logoUrl: '/peluqueria-logo-v4.png',
       businessName: 'Alma Bela Studio',
+      businessCategory: 'Peluquería',
       logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
     },
     {
@@ -39,10 +54,11 @@ export default function HomePage() {
       subtitle: content.home.panel3Subtitle,
       path: '/terapias',
       imageUrl: content.home.panel3Image,
-      number: '03',
-      logoUrl: '/terapias-logo.png',
-      businessName: 'Essencia Pura Studio',
-      logoSize: 'w-16 h-16 sm:w-20 sm:h-20'
+      label: content.home.panel3Label || 'Ritual 03',
+      logoUrl: '/terapias-logo-v7.png',
+      businessName: 'Jefito Lopes Studio',
+      businessCategory: 'Terapias Holísticas',
+      logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
     }
   ];
 
@@ -67,7 +83,7 @@ export default function HomePage() {
           >
             {/* MOBILE LAYOUT (Centered, logo above title, no description) */}
             <div className="lg:hidden flex flex-col items-center justify-center space-y-4 z-10 relative text-center w-full">
-              <div className={`relative ${panel.id === 3 ? 'w-20 h-20' : 'w-24 h-24'} select-none pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]`}>
+              <div className="relative w-24 h-24 select-none pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]">
                 <Image
                   src={panel.logoUrl}
                   alt={panel.businessName}
@@ -80,10 +96,10 @@ export default function HomePage() {
                 <span className={`text-[8px] uppercase tracking-[0.3em] font-bold leading-none block ${
                   panel.id === 3 ? 'text-platinum' : 'text-gold'
                 }`}>
-                  Santuario {panel.businessName}
+                  {panel.businessCategory} {panel.businessName}
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-semibold block">
-                  Ritual {panel.number}
+                  {panel.label}
                 </span>
                 <h2 className="font-serif text-2xl text-white tracking-wide font-medium uppercase mt-1">
                   {panel.title}
@@ -116,7 +132,7 @@ export default function HomePage() {
                 <span className={`text-[9px] uppercase tracking-[0.3em] font-bold leading-none mb-1 shadow-sm transition-colors duration-500 ${
                   panel.id === 3 ? 'text-platinum' : 'text-gold'
                 }`}>
-                  Santuario
+                  {panel.businessCategory}
                 </span>
                 <span className={`font-serif text-xs sm:text-sm font-semibold text-white tracking-wider leading-none shadow-sm transition-colors duration-500 uppercase ${
                   panel.id === 1 
@@ -130,19 +146,34 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Background image */}
+            {/* Background image or video */}
             <div className="absolute inset-0 z-0 select-none pointer-events-none">
-              <Image
-                src={panel.imageUrl}
-                alt={panel.title}
-                fill
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className={`object-cover transition-all duration-1000 ${
-                  isHovered
-                    ? 'grayscale-0 scale-105 brightness-75'
-                    : 'grayscale opacity-60 brightness-[0.55]'
-                }`}
-              />
+              {isVideoUrl(panel.imageUrl) ? (
+                <video
+                  src={panel.imageUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className={`object-cover w-full h-full transition-all duration-1000 ${
+                    isHovered
+                      ? 'grayscale-0 scale-105 brightness-75'
+                      : 'grayscale opacity-60 brightness-[0.55]'
+                  }`}
+                />
+              ) : (
+                <Image
+                  src={panel.imageUrl}
+                  alt={panel.title}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className={`object-cover transition-all duration-1000 ${
+                    isHovered
+                      ? 'grayscale-0 scale-105 brightness-75'
+                      : 'grayscale opacity-60 brightness-[0.55]'
+                  }`}
+                />
+              )}
               {/* Warm brand tint overlay (mix-blend-color) */}
               <div 
                 className={`absolute inset-0 transition-colors duration-700 pointer-events-none z-1 ${
@@ -160,7 +191,7 @@ export default function HomePage() {
             {/* DESKTOP LAYOUT - Label and titles */}
             <div className="hidden lg:block relative z-10 text-left transition-all duration-500">
               <span className="text-[10px] uppercase tracking-[0.25em] text-gold font-semibold block mb-1">
-                Ritual {panel.number}
+                {panel.label}
               </span>
               <h2 className="font-serif text-3xl lg:text-4xl text-white tracking-wide font-medium group-hover:text-gold transition-colors duration-300">
                 {panel.title}

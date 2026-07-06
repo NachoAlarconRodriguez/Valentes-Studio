@@ -17,12 +17,15 @@ export interface PageContent {
     panel1Title: string;
     panel1Subtitle: string;
     panel1Image: string;
+    panel1Label?: string;
     panel2Title: string;
     panel2Subtitle: string;
     panel2Image: string;
+    panel2Label?: string;
     panel3Title: string;
     panel3Subtitle: string;
     panel3Image: string;
+    panel3Label?: string;
   };
   barberia: {
     heroTitle: string;
@@ -73,6 +76,7 @@ export interface PageContent {
 interface ContentStore {
   content: PageContent;
   loading: boolean;
+  hasFetched: boolean;
   
   // Actions
   fetchContent: () => Promise<void>;
@@ -87,12 +91,15 @@ const defaultContent: PageContent = {
     panel1Title: 'Barbería Tradicional',
     panel1Subtitle: 'Cortes de autor, afeitados con navaja libre y rituales de toallas calientes.',
     panel1Image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80',
+    panel1Label: 'Ritual 01',
     panel2Title: 'Peluquería de Autor',
     panel2Subtitle: 'Coloración botánica orgánica, cortes de diseño y nutrición molecular profunda.',
     panel2Image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80',
+    panel2Label: 'Ritual 02',
     panel3Title: 'Terapias Holísticas',
     panel3Subtitle: 'Masajes con piedras calientes volcánicas, reiki y sonoterapia vibracional.',
     panel3Image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+    panel3Label: 'Ritual 03',
   },
   barberia: {
     heroTitle: 'VALENTES',
@@ -198,6 +205,7 @@ const defaultContent: PageContent = {
 export const useContentStore = create<ContentStore>((set, get) => ({
   content: defaultContent,
   loading: false,
+  hasFetched: false,
 
   fetchContent: async () => {
     set({ loading: true });
@@ -216,14 +224,14 @@ export const useContentStore = create<ContentStore>((set, get) => ({
             content[key] = { ...content[key], ...row.content };
           }
         });
-        set({ content, loading: false });
+        set({ content, loading: false, hasFetched: true });
       } else {
         // No contents in DB yet, load defaults
-        set({ content: defaultContent, loading: false });
+        set({ content: defaultContent, loading: false, hasFetched: true });
       }
     } catch (error) {
       console.error('Error fetching page content:', error);
-      set({ loading: false });
+      set({ loading: false, hasFetched: true });
     }
   },
 
