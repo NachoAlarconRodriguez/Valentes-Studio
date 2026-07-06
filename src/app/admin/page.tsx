@@ -8545,7 +8545,7 @@ export default function AdminPage() {
       </main>
 
       {editingAsset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
           <div className="bg-[#0c0c0c] border border-gold/20 rounded-3xl p-6 max-w-md w-full shadow-[0_15px_40px_rgba(0,0,0,0.8)] space-y-4 text-left">
             <div className="flex justify-between items-center border-b border-white/5 pb-3">
               <h3 className="font-serif text-sm font-bold text-white tracking-wider uppercase">{editingAsset.label}</h3>
