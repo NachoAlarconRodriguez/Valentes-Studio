@@ -27,10 +27,22 @@ export async function uploadImageAction(formData: FormData): Promise<string> {
   const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
   const filename = `cms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
+  let contentType = file.type;
+  if (!contentType || contentType === 'application/octet-stream') {
+    const extLower = ext?.toLowerCase();
+    if (extLower === 'mp4') contentType = 'video/mp4';
+    else if (extLower === 'webm') contentType = 'video/webm';
+    else if (extLower === 'mov') contentType = 'video/quicktime';
+    else if (extLower === 'png') contentType = 'image/png';
+    else if (extLower === 'webp') contentType = 'image/webp';
+    else if (extLower === 'gif') contentType = 'image/gif';
+    else contentType = 'image/jpeg';
+  }
+
   const { data, error } = await supabase.storage
     .from('cms-images')
     .upload(filename, buffer, {
-      contentType: file.type || 'image/jpeg',
+      contentType,
       cacheControl: '3600',
       upsert: false
     });
