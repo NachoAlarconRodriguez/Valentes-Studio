@@ -5360,12 +5360,18 @@ export default function AdminPage() {
                         <div className="min-h-[300px] flex flex-col justify-center relative">
                           <AnimatePresence mode="wait">
                             {!vsmPeluEntered ? (
-                              <motion.div 
+                              /* ── PORTADA / COVER ── */
+                              <motion.div
                                 key="cover"
                                 initial={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 className="bg-[#080808] border border-white/5 rounded-xl p-8 text-center space-y-6 flex flex-col items-center justify-center relative min-h-[280px]"
                               >
+                                {/* Logo placeholder */}
+                                <div className="w-14 h-14 rounded-full bg-gold/5 border border-gold/20 flex items-center justify-center mx-auto">
+                                  <span className="text-gold/60 text-[8px] uppercase tracking-widest font-bold">Logo</span>
+                                </div>
+
                                 <div className="space-y-1">
                                   <h2 className="font-serif text-3xl font-bold tracking-[0.2em] text-gold leading-none">
                                     {renderEditableText('peluqueria', 'overlayLine1', vsmForm.peluqueria.overlayLine1, 'text-gold font-serif')}
@@ -5378,7 +5384,8 @@ export default function AdminPage() {
                                     {renderEditableText('peluqueria', 'overlaySubtitle', vsmForm.peluqueria.overlaySubtitle, 'text-gold/80')}
                                   </span>
                                 </div>
-                                <button 
+
+                                <button
                                   onClick={() => setVsmPeluEntered(true)}
                                   className="px-5 py-2.5 border border-gold/45 text-gold text-[8px] uppercase tracking-[0.2em] rounded-full hover:bg-gold hover:text-black hover:border-gold transition-all duration-300 font-bold bg-black/40 cursor-pointer shadow-md"
                                 >
@@ -5386,20 +5393,16 @@ export default function AdminPage() {
                                 </button>
                               </motion.div>
                             ) : (
-                              <motion.div 
+                              /* ── INTERIOR / BENTO GRID ── */
+                              <motion.div
                                 key="grid"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 className="space-y-5 text-left"
                               >
-                                <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                                  <div className="space-y-1">
-                                    <span className="text-[8px] text-gold uppercase tracking-wider block font-bold">Carta de Estilo</span>
-                                    <h3 className="font-serif text-sm text-white font-medium">
-                                      {renderEditableText('peluqueria', 'pageTitle', vsmForm.peluqueria.pageTitle, 'text-white font-serif')}
-                                    </h3>
-                                  </div>
-                                  <button 
+                                {/* Back button */}
+                                <div className="flex justify-end">
+                                  <button
                                     onClick={() => setVsmPeluEntered(false)}
                                     className="text-[8px] text-white/50 hover:text-gold uppercase tracking-wider border border-white/10 rounded-full px-2.5 py-1 bg-black/40 cursor-pointer"
                                   >
@@ -5407,26 +5410,96 @@ export default function AdminPage() {
                                   </button>
                                 </div>
 
-                                <p className="text-[10px] text-text-secondary leading-relaxed font-light max-w-xl">
-                                  {renderEditableText('peluqueria', 'pageDescription', vsmForm.peluqueria.pageDescription, 'text-text-secondary')}
-                                </p>
+                                {/* Bento Grid — 4 columns, auto rows of 130px so it fits the preview area */}
+                                <div className="grid grid-cols-4 gap-2 auto-rows-[130px]">
 
-                                {/* Services Grid */}
-                                <div className="grid grid-cols-3 gap-4">
-                                  {[
-                                    { name: 'Corte de Diseño', price: '$38K', img: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=200&q=80' },
-                                    { name: 'Color Orgánico', price: '$65K', img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=200&q=80' },
-                                    { name: 'Tratamiento Seda', price: '$48K', img: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=200&q=80' }
-                                  ].map((item, idx) => (
-                                    <div key={idx} className="relative h-[100px] rounded-xl overflow-hidden flex flex-col justify-end p-3 border border-white/5 group select-none">
-                                      <img src={item.img} alt="" className="absolute inset-0 object-cover w-full h-full opacity-45 group-hover:opacity-75 transition-all duration-500 pointer-events-none" />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
-                                      <div className="relative z-10 text-left">
-                                        <span className="text-[9px] text-white font-medium block leading-tight">{item.name}</span>
-                                        <span className="text-[7px] text-gold block mt-0.5 font-semibold leading-none">{item.price}</span>
-                                      </div>
+                                  {/* c1 — Service col-span-1 row-span-2 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
+                                    <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-bronze/5 pointer-events-none" style={{ mixBlendMode: 'color' }} />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">45 min</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium leading-snug">
+                                        {vsmForm.peluqueria.pageTitle ? vsmForm.peluqueria.pageTitle.split(' ').slice(0, 2).join(' ') : 'Servicio 1'}
+                                      </h3>
                                     </div>
-                                  ))}
+                                  </div>
+
+                                  {/* c2 — Gallery trigger col-span-1 row-span-1 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold flex items-center gap-1">✦ Portafolio de Arte</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium">Galería de Trabajos</h3>
+                                    </div>
+                                  </div>
+
+                                  {/* c3 — Service col-span-1 row-span-2 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
+                                    <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">60 min</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium leading-snug">Servicio 2</h3>
+                                    </div>
+                                  </div>
+
+                                  {/* c4 — deco-vertical-text col-span-1 row-span-3 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-3">
+                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                                      <span
+                                        className="font-serif text-gold/20 text-3xl tracking-[0.4em] uppercase whitespace-nowrap"
+                                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                                      >
+                                        {vsmForm.peluqueria.overlayLine1 || 'ALMA'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* c5 — Service col-span-1 row-span-2 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
+                                    <img src="https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">50 min</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium leading-snug">Servicio 3</h3>
+                                    </div>
+                                  </div>
+
+                                  {/* c6 — Specialists trigger col-span-1 row-span-1 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src="https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold flex items-center gap-1">★ Estilo & Experiencia</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium">Nuestras Especialistas</h3>
+                                    </div>
+                                  </div>
+
+                                  {/* c7 — deco col-span-1 row-span-1 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-bronze/5 pointer-events-none" style={{ mixBlendMode: 'color' }} />
+                                  </div>
+
+                                  {/* c8 — Service col-span-1 row-span-1 */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
+                                      <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">45 min</span>
+                                      <h3 className="font-serif text-xs tracking-wide font-medium leading-snug">Servicio 4</h3>
+                                    </div>
+                                  </div>
+
+                                </div>
+
+                                {/* Editable title & description below the grid */}
+                                <div className="space-y-1 pt-2 border-t border-white/5">
+                                  <span className="text-[8px] text-gold uppercase tracking-wider font-bold block">Carta de Estilo</span>
+                                  <h3 className="font-serif text-sm text-white font-medium">
+                                    {renderEditableText('peluqueria', 'pageTitle', vsmForm.peluqueria.pageTitle, 'text-white font-serif')}
+                                  </h3>
+                                  <p className="text-[10px] text-text-secondary leading-relaxed font-light">
+                                    {renderEditableText('peluqueria', 'pageDescription', vsmForm.peluqueria.pageDescription, 'text-text-secondary')}
+                                  </p>
                                 </div>
                               </motion.div>
                             )}
