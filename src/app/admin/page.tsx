@@ -984,7 +984,7 @@ export default function AdminPage() {
       const isVideo = isVideoUrl(editingAsset.currentValue) || editingAsset.key.toLowerCase().includes('video');
       setMediaEditorType(isVideo ? 'video' : 'image');
     }
-  }, [editingAsset]);
+  }, [editingAsset?.page, editingAsset?.key, editingAsset?.itemId]);
 
   // Check active session on mount
   useEffect(() => {
