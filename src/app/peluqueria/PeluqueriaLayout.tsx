@@ -77,6 +77,38 @@ export default function PeluqueriaLayout() {
   // All active peluquería services (for the services modal)
   const allActiveServices = (data.services || []).filter(s => s.isActive !== false);
 
+  // Group services into named categories by keyword detection
+  const SERVICE_GROUPS: { label: string; keywords: string[] }[] = [
+    { label: 'Cortes', keywords: ['corte', 'corte masculino', 'corte femenino', 'corte infantil', 'diseño'] },
+    { label: 'Color & Técnicas', keywords: ['color', 'coloración', 'balayage', 'reflejo', 'iluminación', 'tinte', 'mechas', 'babylight'] },
+    { label: 'Tratamientos', keywords: ['tratamiento', 'hidratación', 'seda', 'keratina', 'nutritiva', 'brillo', 'salud', 'profunda'] },
+    { label: 'Peinados & Styling', keywords: ['peinado', 'brushing', 'ondas', 'plancha', 'styling', 'secado', 'editorial'] },
+  ];
+
+  function getServiceGroup(name: string): string {
+    const lower = name.toLowerCase();
+    for (const group of SERVICE_GROUPS) {
+      if (group.keywords.some(kw => lower.includes(kw))) return group.label;
+    }
+    return 'Otros Servicios';
+  }
+
+  // Build ordered group map preserving the SERVICE_GROUPS order
+  const groupedServices: Record<string, typeof allActiveServices> = {};
+  const groupOrder: string[] = [];
+  SERVICE_GROUPS.forEach(g => { groupedServices[g.label] = []; });
+  groupedServices['Otros Servicios'] = [];
+  allActiveServices.forEach(s => {
+    const gLabel = getServiceGroup(s.name);
+    if (!groupOrder.includes(gLabel)) groupOrder.push(gLabel);
+    groupedServices[gLabel].push(s);
+  });
+  // Final order: keep SERVICE_GROUPS order, append Otros at the end
+  const finalGroupOrder = [
+    ...SERVICE_GROUPS.map(g => g.label).filter(l => groupedServices[l]?.length > 0),
+    ...(groupedServices['Otros Servicios']?.length > 0 ? ['Otros Servicios'] : [])
+  ];
+
   // Fixed bento grid — 12 static cards, NO extra service cards appended
   const cards: CardItem[] = [
     {
@@ -706,57 +738,71 @@ export default function PeluqueriaLayout() {
                 </p>
               </div>
 
-              {/* Services Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {allActiveServices.map((service, idx) => (
-                  <motion.button
-                    key={service.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.04 }}
-                    onClick={() => {
-                      setIsServicesOpen(false);
-                      openBooking({
-                        id: service.id,
-                        name: service.name,
-                        price: service.price
-                      });
-                    }}
-                    className="group text-left bg-[#0c0c0c] border border-white/5 hover:border-gold/30 rounded-2xl p-5 transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 cursor-pointer focus:outline-none"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1 flex-grow min-w-0">
-                        <h4 className="font-serif text-sm text-white group-hover:text-gold transition-colors duration-300 leading-snug">
-                          {service.name}
-                        </h4>
-                        {service.description && (
-                          <p className="text-[10px] text-text-secondary leading-relaxed line-clamp-2 font-light">
-                            {service.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-3 pt-1">
-                          <span className="flex items-center gap-1 text-[9px] text-white/40 uppercase tracking-wider font-semibold">
-                            <Clock size={9} />
-                            {service.duration}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <span className="font-serif text-sm font-bold text-gold whitespace-nowrap">
-                          {service.price}
-                        </span>
-                        <span className="text-[8px] uppercase tracking-widest border border-gold/30 text-gold px-2.5 py-1 rounded-full group-hover:bg-gold group-hover:text-black group-hover:border-gold transition-all duration-300 font-semibold whitespace-nowrap">
-                          Reservar
-                        </span>
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-
-              {allActiveServices.length === 0 && (
+              {/* Services grouped by category */}
+              {allActiveServices.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
                   No hay servicios disponibles en este momento.
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {finalGroupOrder.map((groupLabel, gIdx) => (
+                    <div key={groupLabel}>
+                      {/* Category header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-[9px] uppercase tracking-[0.25em] text-gold font-bold">{groupLabel}</span>
+                        <div className="flex-1 h-[1px] bg-gold/15" />
+                        <span className="text-[9px] text-white/25 font-light">{groupedServices[groupLabel].length} {groupedServices[groupLabel].length === 1 ? 'servicio' : 'servicios'}</span>
+                      </div>
+
+                      {/* Service cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {groupedServices[groupLabel].map((service, idx) => (
+                          <motion.button
+                            key={service.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: (gIdx * 0.05) + (idx * 0.03) }}
+                            onClick={() => {
+                              setIsServicesOpen(false);
+                              openBooking({
+                                id: service.id,
+                                name: service.name,
+                                price: service.price
+                              });
+                            }}
+                            className="group text-left bg-[#0c0c0c] border border-white/5 hover:border-gold/30 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 cursor-pointer focus:outline-none"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1 flex-grow min-w-0">
+                                <h4 className="font-serif text-sm text-white group-hover:text-gold transition-colors duration-300 leading-snug">
+                                  {service.name}
+                                </h4>
+                                {service.description && (
+                                  <p className="text-[10px] text-text-secondary leading-relaxed line-clamp-2 font-light">
+                                    {service.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 pt-1">
+                                  <span className="flex items-center gap-1 text-[9px] text-white/40 uppercase tracking-wider font-semibold">
+                                    <Clock size={9} />
+                                    {service.duration}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <span className="font-serif text-sm font-bold text-gold whitespace-nowrap">
+                                  {service.price}
+                                </span>
+                                <span className="text-[8px] uppercase tracking-widest border border-gold/30 text-gold px-2.5 py-1 rounded-full group-hover:bg-gold group-hover:text-black group-hover:border-gold transition-all duration-300 font-semibold whitespace-nowrap">
+                                  Reservar
+                                </span>
+                              </div>
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </motion.div>
