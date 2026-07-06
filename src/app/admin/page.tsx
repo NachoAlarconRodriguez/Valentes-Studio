@@ -1264,7 +1264,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleProfileResetPassword = () => {
+  const handleProfileResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
       triggerNotification('Por favor, escribe y confirma la nueva contraseña.');
       return;
@@ -1276,15 +1276,26 @@ export default function AdminPage() {
     }
     setPasswordError(null);
 
-    if (currentUser) {
-      const updatedUser = {
-        ...currentUser,
-        password: newPassword
-      };
-      setCurrentUser(updatedUser);
-      setNewPassword('');
-      setConfirmPassword('');
-      triggerNotification('Contraseña restablecida con éxito.');
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        triggerNotification(`Error al restablecer la contraseña: ${error.message}`);
+        return;
+      }
+
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          password: newPassword
+        };
+        setCurrentUser(updatedUser);
+        setNewPassword('');
+        setConfirmPassword('');
+        triggerNotification('Contraseña restablecida con éxito.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerNotification('Ocurrió un error inesperado al restablecer la contraseña.');
     }
   };
 
