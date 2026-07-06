@@ -1291,7 +1291,11 @@ export default function AdminPage() {
         setCurrentUser(updatedUser);
         setNewPassword('');
         setConfirmPassword('');
-        triggerNotification('Contraseña restablecida con éxito.');
+        triggerNotification('Contraseña restablecida con éxito. Cerrando sesión por seguridad...');
+        
+        setTimeout(() => {
+          handleLogout();
+        }, 2500);
       }
     } catch (err: any) {
       console.error(err);
