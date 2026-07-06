@@ -47,6 +47,9 @@ export interface PageContent {
     pageTitle: string;
     pageDescription: string;
     galleryItems: GalleryItem[];
+    galeriaTriggerTitle: string;
+    specialistsTriggerTitle: string;
+    servicesTriggerTitle: string;
   };
   terapias: {
     pageTitle: string;
@@ -101,6 +104,9 @@ const defaultContent: PageContent = {
     overlaySubtitle: 'STUDIO',
     pageTitle: 'Peluquería de Autor',
     pageDescription: 'Un espacio de empatía, técnica y cuidado donde transformamos vidas. Entendemos que la belleza es mucho más que apariencia: es identidad, expresión, confianza y, sobre todo, tu autoestima.',
+    galeriaTriggerTitle: 'Galería de Trabajos',
+    specialistsTriggerTitle: 'Nuestras Especialistas',
+    servicesTriggerTitle: 'Ver Todos los Servicios',
     galleryItems: [
       {
         id: 'g1',
