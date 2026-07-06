@@ -348,6 +348,9 @@ export default function AdminPage() {
   const [isStaffCountryDropdownOpen, setIsStaffCountryDropdownOpen] = useState(false);
   const [staffPhoneError, setStaffPhoneError] = useState('');
   const [staffFormIsActive, setStaffFormIsActive] = useState(true);
+  const [staffFormSubmitted, setStaffFormSubmitted] = useState(false);
+  const [serviceFormSubmitted, setServiceFormSubmitted] = useState(false);
+  const [profileFormSubmitted, setProfileFormSubmitted] = useState(false);
   const [flippedStaff, setFlippedStaff] = useState<Record<string, boolean>>({});
   const [staffToDelete, setStaffToDelete] = useState<{ category: string; id: string; name: string } | null>(null);
   const [clientToDelete, setClientToDelete] = useState<{ phone: string; name: string } | null>(null);
@@ -528,6 +531,7 @@ export default function AdminPage() {
     setServiceFormSpecialists([]);
     setServiceFormGroup('cabello');
     setEditingService(null);
+    setServiceFormSubmitted(false);
   };
 
   const populateServiceForm = (service: any) => {
@@ -539,10 +543,12 @@ export default function AdminPage() {
     setServiceFormSpecialists(service.specialistIds || []);
     setServiceFormGroup(getServiceGroup(service));
     setIsServiceDrawerOpen(true);
+    setServiceFormSubmitted(false);
   };
 
   const handleServiceFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setServiceFormSubmitted(true);
     if (!serviceFormName || !serviceFormPrice || !serviceFormDuration) {
       triggerNotification('Por favor, completa los campos obligatorios.');
       return;
@@ -612,6 +618,7 @@ export default function AdminPage() {
     setStaffPhoneError('');
     setStaffFormIsActive(true);
     setEditingStaff(null);
+    setStaffFormSubmitted(false);
   };
 
   const populateStaffForm = (staff: any) => {
@@ -647,11 +654,13 @@ export default function AdminPage() {
     setStaffPhoneError('');
     setIsStaffCountryDropdownOpen(false);
     setIsStaffDrawerOpen(true);
+    setStaffFormSubmitted(false);
   };
 
   const handleStaffFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffFormName || !staffFormEmail || !staffFormProfileType) {
+    setStaffFormSubmitted(true);
+    if (!staffFormName || !staffFormEmail || !staffFormProfileType || !staffFormPhone) {
       triggerNotification('Por favor, completa los campos obligatorios.');
       return;
     }
@@ -1162,6 +1171,7 @@ export default function AdminPage() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    setProfileFormSubmitted(true);
     if (!profileName || !profileEmail || !profileRole) {
       triggerNotification('Por favor, completa los campos obligatorios.');
       return;
@@ -6290,22 +6300,30 @@ export default function AdminPage() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nombre Completo</label>
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nombre Completo *</label>
                   <input
                     type="text"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30"
+                    className={`w-full bg-black/40 border rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none transition-colors ${
+                      profileFormSubmitted && !profileName.trim()
+                        ? 'border-red-500/80 focus:border-red-500'
+                        : 'border-white/5 focus:border-gold/30'
+                    }`}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Rol en el Negocio</label>
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Rol en el Negocio *</label>
                   <div className="relative">
                     <button
                       type="button"
                       disabled={currentUser?.profileType !== 'admin'}
                       onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                      className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white text-left flex justify-between items-center focus:outline-none focus:border-gold/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className={`w-full bg-black/40 border rounded-lg py-2.5 px-3 text-xs text-white text-left flex justify-between items-center focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors ${
+                        profileFormSubmitted && !profileRole.trim()
+                          ? 'border-red-500/80 focus:border-red-500'
+                          : 'border-white/5 focus:border-gold/30'
+                      }`}
                     >
                       <span>{profileRole || 'Seleccionar Rol...'}</span>
                       {currentUser?.profileType === 'admin' && <ChevronDown size={12} className="text-text-secondary" />}
@@ -6825,7 +6843,11 @@ export default function AdminPage() {
                             placeholder="Ej. Ritual de Barba Premium"
                             value={serviceFormName}
                             onChange={(e) => setServiceFormName(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
+                            className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors ${
+                              serviceFormSubmitted && !serviceFormName.trim()
+                                ? 'border-red-500/80 focus:border-red-500'
+                                : 'border-white/10 focus:border-gold/30'
+                            }`}
                           />
                         </div>
 
@@ -6860,7 +6882,11 @@ export default function AdminPage() {
                               placeholder="Ej. $15.000 o 15000"
                               value={serviceFormPrice}
                               onChange={(e) => setServiceFormPrice(e.target.value)}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono"
+                              className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors font-mono ${
+                                serviceFormSubmitted && !serviceFormPrice.trim()
+                                  ? 'border-red-500/80 focus:border-red-500'
+                                  : 'border-white/10 focus:border-gold/30'
+                              }`}
                             />
                           </div>
 
@@ -6875,7 +6901,11 @@ export default function AdminPage() {
                                 value: dur,
                                 label: dur
                               }))}
-                              buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                              buttonClassName={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none hover:border-white/10 transition-colors text-left ${
+                                serviceFormSubmitted && !serviceFormDuration
+                                  ? 'border-red-500/80 focus:border-red-500'
+                                  : 'border-white/10 focus:border-gold/30'
+                              }`}
                             />
                           </div>
                         </div>
@@ -7540,7 +7570,11 @@ export default function AdminPage() {
                             placeholder="Ej. Roberto Sánchez"
                             value={staffFormName}
                             onChange={(e) => setStaffFormName(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors"
+                            className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors ${
+                              staffFormSubmitted && !staffFormName.trim()
+                                ? 'border-red-500/80 focus:border-red-500'
+                                : 'border-white/10 focus:border-gold/30'
+                            }`}
                           />
                         </div>
 
@@ -7556,7 +7590,11 @@ export default function AdminPage() {
                             placeholder="Ej. roberto.sanchez@valentes.cl"
                             value={staffFormEmail}
                             onChange={(e) => setStaffFormEmail(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-gold/30 transition-colors font-mono disabled:opacity-50 disabled:cursor-not-allowed disabled:border-white/5"
+                            className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors font-mono disabled:opacity-50 disabled:cursor-not-allowed disabled:border-white/5 ${
+                              staffFormSubmitted && !staffFormEmail.trim()
+                                ? 'border-red-500/80 focus:border-red-500'
+                                : 'border-white/10 focus:border-gold/30'
+                            }`}
                           />
                         </div>
 
@@ -7628,7 +7666,11 @@ export default function AdminPage() {
                                   }
                                 }}
                                 className={`w-full h-11 bg-black/40 border rounded-xl px-4 text-xs text-white focus:outline-none transition-colors ${
-                                  staffPhoneError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-gold/30'
+                                  staffPhoneError 
+                                    ? 'border-red-500/50 focus:border-red-500' 
+                                    : staffFormSubmitted && !staffFormPhone.trim()
+                                    ? 'border-red-500/80 focus:border-red-500'
+                                    : 'border-white/10 focus:border-gold/30'
                                 }`}
                                 placeholder="Ej. 966118844"
                               />
@@ -7668,7 +7710,11 @@ export default function AdminPage() {
                               { value: 'mixto', label: 'Mixto (Múltiples Agendas)' },
                               { value: 'admin', label: 'Administrador (Acceso Total)' }
                             ]}
-                            buttonClassName="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/10 transition-colors text-left"
+                            buttonClassName={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none hover:border-white/10 transition-colors text-left ${
+                              staffFormSubmitted && !staffFormProfileType
+                                ? 'border-red-500/80 focus:border-red-500'
+                                : 'border-white/10 focus:border-gold/30'
+                            }`}
                           />
                         </div>
 
