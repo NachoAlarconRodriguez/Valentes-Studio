@@ -488,13 +488,24 @@ export default function PeluqueriaLayout() {
 
               {/* Left Panel: Featured Image & Technique Details */}
               <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group/gallery-nav">
-                <Image
-                  src={currentItem.imageUrl}
-                  alt={currentItem.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover transition-all duration-700"
-                />
+                {isVideoUrl(currentItem.imageUrl) ? (
+                  <video
+                    src={currentItem.imageUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 object-cover w-full h-full transition-all duration-700"
+                  />
+                ) : (
+                  <Image
+                    src={currentItem.imageUrl}
+                    alt={currentItem.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover transition-all duration-700"
+                  />
+                )}
                 {/* Dark shading mask */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10" />
 
@@ -566,13 +577,22 @@ export default function PeluqueriaLayout() {
                             isSelected ? 'border-gold scale-105 shadow-[0_0_12px_rgba(198,155,60,0.3)]' : 'border-white/10 hover:border-white/30'
                           }`}
                         >
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.title}
-                            fill
-                            sizes="120px"
-                            className="object-cover"
-                          />
+                          {isVideoUrl(item.imageUrl) ? (
+                            <video
+                              src={item.imageUrl}
+                              className="object-cover w-full h-full pointer-events-none"
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.title}
+                              fill
+                              sizes="120px"
+                              className="object-cover"
+                            />
+                          )}
                         </button>
                       );
                     })}

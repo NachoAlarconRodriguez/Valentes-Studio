@@ -5112,11 +5112,22 @@ export default function AdminPage() {
                       if (!currentItem) return null;
                       return (
                         <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group">
-                          <img
-                            src={currentItem.imageUrl}
-                            alt={currentItem.title}
-                            className="absolute inset-0 object-cover w-full h-full opacity-60 group-hover:opacity-85 transition-all duration-700 pointer-events-none"
-                          />
+                          {isVideoUrl(currentItem.imageUrl) ? (
+                            <video
+                              src={currentItem.imageUrl}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="absolute inset-0 object-cover w-full h-full opacity-60 group-hover:opacity-85 transition-all duration-700 pointer-events-none"
+                            />
+                          ) : (
+                            <img
+                              src={currentItem.imageUrl}
+                              alt={currentItem.title}
+                              className="absolute inset-0 object-cover w-full h-full opacity-60 group-hover:opacity-85 transition-all duration-700 pointer-events-none"
+                            />
+                          )}
                           {/* Dark shading mask */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10 pointer-events-none" />
 
@@ -5251,11 +5262,20 @@ export default function AdminPage() {
                                     isSelected ? 'border-gold scale-105 shadow-[0_0_10px_rgba(198,155,60,0.25)]' : 'border-white/10 hover:border-white/20'
                                   }`}
                                 >
-                                  <img
-                                    src={item.imageUrl}
-                                    alt={item.title}
-                                    className="object-cover w-full h-full pointer-events-none"
-                                  />
+                                  {isVideoUrl(item.imageUrl) ? (
+                                    <video
+                                      src={item.imageUrl}
+                                      className="object-cover w-full h-full pointer-events-none"
+                                      muted
+                                      playsInline
+                                    />
+                                  ) : (
+                                    <img
+                                      src={item.imageUrl}
+                                      alt={item.title}
+                                      className="object-cover w-full h-full pointer-events-none"
+                                    />
+                                  )}
                                 </button>
                                 
                                 {/* Trash button overlay */}
@@ -5663,11 +5683,22 @@ export default function AdminPage() {
                                           if (!currentItem) return null;
                                           return (
                                             <div className="col-span-1 md:col-span-7 relative h-[250px] md:h-auto overflow-hidden border-b md:border-b-0 md:border-r border-white/5 group">
-                                              <img
-                                                src={currentItem.imageUrl}
-                                                alt={currentItem.title}
-                                                className="absolute inset-0 object-cover w-full h-full opacity-60 transition-all duration-700 pointer-events-none"
-                                              />
+                                              {isVideoUrl(currentItem.imageUrl) ? (
+                                                <video
+                                                  src={currentItem.imageUrl}
+                                                  autoPlay
+                                                  loop
+                                                  muted
+                                                  playsInline
+                                                  className="absolute inset-0 object-cover w-full h-full opacity-60 transition-all duration-700 pointer-events-none"
+                                                />
+                                              ) : (
+                                                <img
+                                                  src={currentItem.imageUrl}
+                                                  alt={currentItem.title}
+                                                  className="absolute inset-0 object-cover w-full h-full opacity-60 transition-all duration-700 pointer-events-none"
+                                                />
+                                              )}
                                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10 pointer-events-none" />
 
                                               {/* Image Edit Trigger (using 'imageUrl' key so it saves properly) */}
@@ -5753,7 +5784,16 @@ export default function AdminPage() {
                                                         isSelected ? 'border-gold scale-105 shadow-[0_0_12px_rgba(198,155,60,0.3)]' : 'border-white/10 hover:border-white/30'
                                                       }`}
                                                     >
-                                                      <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full pointer-events-none" />
+                                                      {isVideoUrl(item.imageUrl) ? (
+                                                        <video
+                                                          src={item.imageUrl}
+                                                          className="object-cover w-full h-full pointer-events-none"
+                                                          muted
+                                                          playsInline
+                                                        />
+                                                      ) : (
+                                                        <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full pointer-events-none" />
+                                                      )}
                                                     </button>
                                                     
                                                     {/* Trash button overlay */}

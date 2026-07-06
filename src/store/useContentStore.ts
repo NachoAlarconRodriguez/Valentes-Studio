@@ -10,6 +10,7 @@ export interface GalleryItem {
   price: string;
   imageUrl: string;
   serviceId?: string;
+  mediaType?: 'image' | 'video';
 }
 
 export interface PageContent {
