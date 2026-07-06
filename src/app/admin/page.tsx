@@ -809,7 +809,7 @@ export default function AdminPage() {
   const [activeBusinessTab, setActiveBusinessTab] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   
   // Dashboard Filtering States
-  const [dbDateFilter, setDbDateFilter] = useState<'hoy' | 'semana' | 'mes' | 'personalizado'>('semana');
+  const [dbDateFilter, setDbDateFilter] = useState<'hoy' | 'semana' | 'mes' | 'personalizado'>('hoy');
   const [dbStartDate, setDbStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
@@ -2008,6 +2008,23 @@ export default function AdminPage() {
     filterEndDate = dbEndDate;
   }
 
+  const formattedDateRangeText = (() => {
+    if (dbDateFilter === 'hoy') {
+      return `Hoy (${formatDateLabel(todayStr)})`;
+    }
+    if (dbDateFilter === 'semana') {
+      return `Últimos 7 días (${formatDateLabel(filterStartDate)} al ${formatDateLabel(filterEndDate)})`;
+    }
+    if (dbDateFilter === 'mes') {
+      return `Últimos 30 días (${formatDateLabel(filterStartDate)} al ${formatDateLabel(filterEndDate)})`;
+    }
+    if (dbDateFilter === 'personalizado') {
+      return `Rango personalizado (${formatDateLabel(filterStartDate)} al ${formatDateLabel(filterEndDate)})`;
+    }
+    return '';
+  })();
+
+
   // Filter bookings for dashboard metrics and graphs
   const dashboardBookings = bookings.filter(b => {
     const matchesDate = b.date >= filterStartDate && b.date <= filterEndDate;
@@ -3134,6 +3151,13 @@ export default function AdminPage() {
                 />
               </div>
 
+            </div>
+
+            {/* Visual Date Range Indicator */}
+            <div className="flex items-center space-x-2 text-[10px] uppercase tracking-wider text-text-secondary pl-1 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-gold/70 animate-pulse" />
+              <span>Datos correspondientes a: </span>
+              <strong className="text-gold font-medium">{formattedDateRangeText}</strong>
             </div>
 
             {/* Metric Cards Grid */}
