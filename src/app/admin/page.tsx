@@ -8564,7 +8564,12 @@ export default function AdminPage() {
                 <div className="flex space-x-2 bg-black/40 p-1 rounded-xl border border-white/5">
                   <button
                     type="button"
-                    onClick={() => setMediaEditorType('image')}
+                    onClick={() => {
+                      setMediaEditorType('image');
+                      if (editingAsset && isVideoUrl(editingAsset.currentValue)) {
+                        setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
+                      }
+                    }}
                     className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
                       mediaEditorType === 'image'
                         ? 'bg-gold text-black shadow-sm'
@@ -8575,7 +8580,12 @@ export default function AdminPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMediaEditorType('video')}
+                    onClick={() => {
+                      setMediaEditorType('video');
+                      if (editingAsset && !isVideoUrl(editingAsset.currentValue)) {
+                        setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
+                      }
+                    }}
                     className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
                       mediaEditorType === 'video'
                         ? 'bg-gold text-black shadow-sm'
