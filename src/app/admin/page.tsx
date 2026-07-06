@@ -5416,9 +5416,9 @@ export default function AdminPage() {
                                 {/* Bento Grid — 4 columns, auto rows of 130px */}
                                 <div className="grid grid-cols-4 gap-2 auto-rows-[130px]">
 
-                                  {/* c1 — Service (real name from store) */}
+                                  {/* c1 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC1 || 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-bronze/5 pointer-events-none" style={{ mixBlendMode: 'color' }} />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
@@ -5428,15 +5428,16 @@ export default function AdminPage() {
                                         {servicesData.peluqueria?.services?.[0]?.name || 'Servicio 1'}
                                       </h3>
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC1', 'Imagen Corte', vsmForm.peluqueria.bentoImageC1)}
                                   </div>
 
-                                  {/* c2 — Gallery trigger (editable label + click to preview popup) */}
+                                  {/* c2 — Gallery trigger */}
                                   <div
                                     onClick={() => setVsmPeluGalleryOpen(true)}
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar la Galería"
                                   >
-                                    <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC2 || 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">✦ Portafolio de Arte</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5446,11 +5447,12 @@ export default function AdminPage() {
                                     <div className="absolute top-1.5 right-1.5 bg-gold/80 text-black text-[6px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                       Ver popup
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC2', 'Imagen Galería', vsmForm.peluqueria.bentoImageC2)}
                                   </div>
 
-                                  {/* c3 — Service (real name from store) */}
+                                  {/* c3 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC3 || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[1]?.duration || '90 min'}
@@ -5459,11 +5461,12 @@ export default function AdminPage() {
                                         {servicesData.peluqueria?.services?.[1]?.name || 'Coloración Orgánica'}
                                       </h3>
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC3', 'Imagen Coloración', vsmForm.peluqueria.bentoImageC3)}
                                   </div>
 
-                                  {/* c4 — Deco vertical text (pulled from editable overlay) */}
+                                  {/* c4 — Deco vertical text */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-3">
-                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC4 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
                                       <span
                                         className="font-serif text-gold/20 text-3xl tracking-[0.4em] uppercase whitespace-nowrap"
@@ -5472,11 +5475,12 @@ export default function AdminPage() {
                                         {vsmForm.peluqueria.overlayLine1 || 'ALMA'}
                                       </span>
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC4', 'Imagen Deco Texto', vsmForm.peluqueria.bentoImageC4)}
                                   </div>
 
-                                  {/* c5 — Service (real name from store) */}
+                                  {/* c5 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
-                                    <img src="https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC5 || 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[2]?.duration || '60 min'}
@@ -5485,15 +5489,16 @@ export default function AdminPage() {
                                         {servicesData.peluqueria?.services?.[2]?.name || 'Tratamiento Seda'}
                                       </h3>
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC5', 'Imagen Tratamiento', vsmForm.peluqueria.bentoImageC5)}
                                   </div>
 
-                                  {/* c6 — Specialists trigger (editable label + click to preview popup) */}
+                                  {/* c6 — Specialists trigger */}
                                   <div
                                     onClick={() => setVsmPeluSpecialistsOpen(true)}
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar Especialistas"
                                   >
-                                    <img src="https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC6 || 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">★ Estilo &amp; Experiencia</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5503,15 +5508,16 @@ export default function AdminPage() {
                                     <div className="absolute top-1.5 right-1.5 bg-gold/80 text-black text-[6px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                       Ver popup
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC6', 'Imagen Especialistas', vsmForm.peluqueria.bentoImageC6)}
                                   </div>
 
-                                  {/* c7 — Services trigger (editable label + click to preview popup) */}
+                                  {/* c7 — Services trigger */}
                                   <div
                                     onClick={() => setVsmPeluServicesOpen(true)}
                                     className="relative overflow-hidden rounded-2xl bg-[#121212] border border-gold/25 group col-span-1 row-span-1 cursor-pointer hover:border-gold/50 transition-colors"
                                     title="Clic para previsualizar Carta de Servicios"
                                   >
-                                    <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC7 || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">✂ Carta de Servicios</span>
                                       <h3 className="font-serif text-xs tracking-wide font-medium text-white">
@@ -5521,11 +5527,12 @@ export default function AdminPage() {
                                     <div className="absolute top-1.5 right-1.5 bg-gold/80 text-black text-[6px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                       Ver popup
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC7', 'Imagen Carta de Servicios', vsmForm.peluqueria.bentoImageC7)}
                                   </div>
 
-                                  {/* c8 — Service (real name from store) */}
+                                  {/* c8 — Service */}
                                   <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
-                                    <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=400&q=70" alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    <img src={vsmForm.peluqueria.bentoImageC8 || 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
                                       <span className="text-[7px] uppercase tracking-widest text-gold/80 block font-semibold">
                                         {servicesData.peluqueria?.services?.[3]?.duration || '45 min'}
@@ -5534,6 +5541,31 @@ export default function AdminPage() {
                                         {servicesData.peluqueria?.services?.[3]?.name || 'Peinado Editorial'}
                                       </h3>
                                     </div>
+                                    {renderEditableImage('peluqueria', 'bentoImageC8', 'Imagen Peinado', vsmForm.peluqueria.bentoImageC8)}
+                                  </div>
+
+                                  {/* c9 — Deco */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
+                                    <img src={vsmForm.peluqueria.bentoImageC9 || 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderEditableImage('peluqueria', 'bentoImageC9', 'Imagen Decoración 1', vsmForm.peluqueria.bentoImageC9)}
+                                  </div>
+
+                                  {/* c10 — Deco */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-2">
+                                    <img src={vsmForm.peluqueria.bentoImageC10 || 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderEditableImage('peluqueria', 'bentoImageC10', 'Imagen Decoración 2', vsmForm.peluqueria.bentoImageC10)}
+                                  </div>
+
+                                  {/* c11 — Deco */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src={vsmForm.peluqueria.bentoImageC11 || 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderEditableImage('peluqueria', 'bentoImageC11', 'Imagen Decoración 3', vsmForm.peluqueria.bentoImageC11)}
+                                  </div>
+
+                                  {/* c12 — Deco */}
+                                  <div className="relative overflow-hidden rounded-2xl bg-[#121212] border border-white/5 group col-span-1 row-span-1">
+                                    <img src={vsmForm.peluqueria.bentoImageC12 || 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=400&q=70'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-55 group-hover:opacity-90 transition-all duration-700 pointer-events-none" />
+                                    {renderEditableImage('peluqueria', 'bentoImageC12', 'Imagen Decoración 4', vsmForm.peluqueria.bentoImageC12)}
                                   </div>
 
                                 </div>

@@ -115,78 +115,78 @@ export default function PeluqueriaLayout() {
       id: 'c1',
       type: 'service',
       service: allActiveServices[0] ? { id: allActiveServices[0].id, name: allActiveServices[0].name, price: allActiveServices[0].price, duration: allActiveServices[0].duration } : undefined,
-      imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC1 || 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
     {
       id: 'c2',
       type: 'gallery-trigger',
-      imageUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC2 || 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
     {
       id: 'c3',
       type: 'service',
       service: allActiveServices[1] ? { id: allActiveServices[1].id, name: allActiveServices[1].name, price: allActiveServices[1].price, duration: allActiveServices[1].duration } : undefined,
-      imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC3 || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
     {
       id: 'c4',
       type: 'deco-vertical-text',
       text: 'ALMA BELA',
-      imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC4 || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-3'
     },
     {
       id: 'c5',
       type: 'service',
       service: allActiveServices[2] ? { id: allActiveServices[2].id, name: allActiveServices[2].name, price: allActiveServices[2].price, duration: allActiveServices[2].duration } : undefined,
-      imageUrl: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC5 || 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
     {
       id: 'c6',
       type: 'specialists-trigger',
-      imageUrl: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC6 || 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
     {
       // This was the plain 'deco' card — now it's the services-trigger
       id: 'c7',
       type: 'services-trigger',
-      imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC7 || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
     {
       id: 'c8',
       type: 'service',
       service: allActiveServices[3] ? { id: allActiveServices[3].id, name: allActiveServices[3].name, price: allActiveServices[3].price, duration: allActiveServices[3].duration } : undefined,
-      imageUrl: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC8 || 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
     {
       id: 'c9',
       type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC9 || 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
     {
       id: 'c10',
       type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC10 || 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
     {
       id: 'c11',
       type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC11 || 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
     {
       id: 'c12',
       type: 'deco',
-      imageUrl: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
+      imageUrl: content.peluqueria.bentoImageC12 || 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     }
   ];

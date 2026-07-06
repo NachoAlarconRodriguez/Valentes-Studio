@@ -50,6 +50,18 @@ export interface PageContent {
     galeriaTriggerTitle: string;
     specialistsTriggerTitle: string;
     servicesTriggerTitle: string;
+    bentoImageC1: string;
+    bentoImageC2: string;
+    bentoImageC3: string;
+    bentoImageC4: string;
+    bentoImageC5: string;
+    bentoImageC6: string;
+    bentoImageC7: string;
+    bentoImageC8: string;
+    bentoImageC9: string;
+    bentoImageC10: string;
+    bentoImageC11: string;
+    bentoImageC12: string;
   };
   terapias: {
     pageTitle: string;
@@ -107,6 +119,18 @@ const defaultContent: PageContent = {
     galeriaTriggerTitle: 'Galería de Trabajos',
     specialistsTriggerTitle: 'Nuestras Especialistas',
     servicesTriggerTitle: 'Ver Todos los Servicios',
+    bentoImageC1: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+    bentoImageC2: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80',
+    bentoImageC3: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+    bentoImageC4: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+    bentoImageC5: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
+    bentoImageC6: 'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=800&q=80',
+    bentoImageC7: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+    bentoImageC8: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
+    bentoImageC9: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80',
+    bentoImageC10: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?auto=format&fit=crop&w=800&q=80',
+    bentoImageC11: 'https://images.unsplash.com/photo-1582095133179-bfd08e2fc6b3?auto=format&fit=crop&w=800&q=80',
+    bentoImageC12: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80',
     galleryItems: [
       {
         id: 'g1',
