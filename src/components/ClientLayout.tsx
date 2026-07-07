@@ -25,6 +25,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const setCurrentTheme = useUIStore((state) => state.setCurrentTheme);
   const setMenuOpen = useUIStore((state) => state.setMenuOpen);
+  const openBooking = useUIStore((state) => state.openBooking);
   const [mounted, setMounted] = useState(false);
 
   // Load initial data actions from Supabase
@@ -45,6 +46,24 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     fetchSchedules();
     fetchGiftCards();
     fetchContent();
+
+    // Poll every 10 seconds to keep client availability and bookings fresh in the background
+    const interval = setInterval(() => {
+      fetchBookingsAndClients();
+      fetchSchedules();
+    }, 10000);
+
+    // Refresh immediately when client focuses the tab
+    const handleFocus = () => {
+      fetchBookingsAndClients();
+      fetchSchedules();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [
     fetchServicesAndSpecialists,
     fetchBookingsAndClients,
@@ -67,6 +86,16 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     setCurrentTheme(theme);
     setMenuOpen(false); // Auto close mobile menu on route change
   }, [pathname, setCurrentTheme, setMenuOpen]);
+
+  // Auto open booking modal if ?reserva=true is in URL
+  useEffect(() => {
+    if (mounted && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reserva') === 'true') {
+        openBooking();
+      }
+    }
+  }, [mounted, pathname, openBooking]);
 
   if (!mounted) {
     return (

@@ -954,8 +954,45 @@ export default function AdminPage() {
   const [isEmitting, setIsEmitting] = useState(false);
 
   // Stores
-  const { bookings, clients, addBooking, updateBookingStatus, deleteBooking, updateClientNotes, markAsNotGoodClient, deleteClient, updateClient } = useBookingStore();
+  const { 
+    bookings, 
+    clients, 
+    addBooking, 
+    updateBookingStatus, 
+    deleteBooking, 
+    updateClientNotes, 
+    markAsNotGoodClient, 
+    deleteClient, 
+    updateClient,
+    fetchBookingsAndClients 
+  } = useBookingStore();
   const { content, updateContent } = useContentStore();
+  const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
+
+  // Poll and auto-refresh bookings & schedule availability in the background and on focus
+  useEffect(() => {
+    // Initial fetch when landing on admin page
+    fetchBookingsAndClients();
+    fetchSchedules();
+
+    // Poll every 8 seconds for new bookings or blocks
+    const interval = setInterval(() => {
+      fetchBookingsAndClients();
+      fetchSchedules();
+    }, 8000);
+
+    // Fetch immediately when switching back to the tab
+    const handleFocus = () => {
+      fetchBookingsAndClients();
+      fetchSchedules();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchBookingsAndClients, fetchSchedules]);
 
   // Filter Bookings by active business tab
   const filteredBookings = bookings.filter(b => b.category === activeBusinessTab);
@@ -1056,6 +1093,29 @@ export default function AdminPage() {
     checkSession();
   }, [servicesData]);
 
+  const translateAuthError = (msg: string): string => {
+    const lower = msg.toLowerCase();
+    if (lower.includes('invalid login credentials') || lower.includes('invalid_credentials')) {
+      return 'Credenciales inválidas. Verifica tu correo y contraseña.';
+    }
+    if (lower.includes('email not confirmed')) {
+      return 'Tu correo electrónico aún no ha sido confirmado.';
+    }
+    if (lower.includes('user not found')) {
+      return 'El usuario no está registrado.';
+    }
+    if (lower.includes('invalid grant') || lower.includes('invalid password')) {
+      return 'Contraseña incorrecta.';
+    }
+    if (lower.includes('password should be') || lower.includes('password is too short')) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (lower.includes('too many requests') || lower.includes('rate limit')) {
+      return 'Demasiados intentos. Inténtalo de nuevo más tarde.';
+    }
+    return msg;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) return;
@@ -1068,7 +1128,7 @@ export default function AdminPage() {
       });
 
       if (error) {
-        triggerNotification(`Error de acceso: ${error.message}`);
+        triggerNotification(`Error de acceso: ${translateAuthError(error.message)}`);
         setAuthLoading(false);
         return;
       }
@@ -1155,7 +1215,7 @@ export default function AdminPage() {
         redirectTo: `${window.location.origin}/admin`
       });
       if (error) {
-        triggerNotification(`Error: ${error.message}`);
+        triggerNotification(`Error: ${translateAuthError(error.message)}`);
       } else {
         triggerNotification('Enlace de recuperación enviado a tu correo.');
         setAuthView('login');
@@ -1279,7 +1339,7 @@ export default function AdminPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
-        triggerNotification(`Error al restablecer la contraseña: ${error.message}`);
+        triggerNotification(`Error al restablecer la contraseña: ${translateAuthError(error.message)}`);
         return;
       }
 
@@ -1849,8 +1909,7 @@ export default function AdminPage() {
     agendaViewMode === 'manana' ? getFormattedDate(1) :
     agendaCustomDate;
 
-  // Daily timeline grid rows computation
-  const specialistsInUnit = servicesData[activeBusinessTab]?.specialists || [];
+  const specialistsInUnit = (servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false);
   
   // If not admin, Carlos or other staff should only see their own agenda
   const allowedSpecialists = currentUser && currentUser.profileType !== 'admin'
@@ -2381,6 +2440,30 @@ export default function AdminPage() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#070707] flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {notification && (() => {
+            const isError = notification.toLowerCase().includes('error') || notification.toLowerCase().includes('incorrect') || notification.toLowerCase().includes('inválid') || notification.toLowerCase().includes('falló');
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, x: '-50%' }}
+                animate={{ opacity: 1, y: 0, x: '-50%' }}
+                exit={{ opacity: 0, y: -20, x: '-50%' }}
+                className={`fixed top-6 left-1/2 z-50 bg-[#121212] border text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
+                  isError ? 'border-red-500/40 text-red-400 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : 'border-gold/40 text-gold shadow-[0_4px_20px_rgba(198,155,60,0.1)]'
+                }`}
+              >
+                {isError ? (
+                  <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                ) : (
+                  <Sparkles size={14} className="animate-pulse flex-shrink-0 text-gold" />
+                )}
+                <span>{notification}</span>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+
         {/* Decorative background blurs */}
         <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-bronze/5 rounded-full blur-[120px] pointer-events-none" />
@@ -2721,17 +2804,26 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#070707] text-[#F0F0F0] flex flex-col md:flex-row relative">
       {/* Toast Notification */}
       <AnimatePresence>
-        {notification && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-6 left-1/2 z-50 bg-[#121212] border border-gold/40 text-gold text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md"
-          >
-            <Sparkles size={14} className="animate-pulse" />
-            <span>{notification}</span>
-          </motion.div>
-        )}
+        {notification && (() => {
+          const isError = notification.toLowerCase().includes('error') || notification.toLowerCase().includes('incorrect') || notification.toLowerCase().includes('inválid') || notification.toLowerCase().includes('falló');
+          return (
+            <motion.div 
+              initial={{ opacity: 0, y: -20, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -20, x: '-50%' }}
+              className={`fixed top-6 left-1/2 z-50 bg-[#121212] border text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
+                isError ? 'border-red-500/40 text-red-400 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : 'border-gold/40 text-gold shadow-[0_4px_20px_rgba(198,155,60,0.1)]'
+              }`}
+            >
+              {isError ? (
+                <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+              ) : (
+                <Sparkles size={14} className="animate-pulse flex-shrink-0 text-gold" />
+              )}
+              <span>{notification}</span>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Sidebar Navigation (Hidden on mobile) */}
@@ -3434,7 +3526,7 @@ export default function AdminPage() {
                     onChange={(e) => setActiveSpecialistFilter(e.target.value)}
                     className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
                   >
-                    {servicesData[activeBusinessTab]?.specialists.map(sp => (
+                    {(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map(sp => (
                       <option key={sp.id} value={sp.id} className="bg-[#0c0c0c] text-white">
                         {sp.name}
                       </option>
@@ -3513,7 +3605,7 @@ export default function AdminPage() {
                     </span>
                   </button>
 
-                  {servicesData[activeBusinessTab]?.specialists.map((sp) => {
+                  {(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map((sp) => {
                     const isSelected = activeSpecialistFilter === sp.id;
                     const photo = sp.imageUrl || specialistPhotos[sp.id];
                     return (
@@ -9471,17 +9563,26 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 bg-[#070707] text-[#F0F0F0] flex items-center justify-center p-4">
           {/* Toast Notification */}
           <AnimatePresence>
-            {notification && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20, x: '-50%' }}
-                animate={{ opacity: 1, y: 0, x: '-50%' }}
-                exit={{ opacity: 0, y: -20, x: '-50%' }}
-                className="fixed top-6 left-1/2 z-50 bg-[#121212] border border-gold/40 text-gold text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md"
-              >
-                <Sparkles size={14} className="animate-pulse" />
-                <span>{notification}</span>
-              </motion.div>
-            )}
+            {notification && (() => {
+              const isError = notification.toLowerCase().includes('error') || notification.toLowerCase().includes('incorrect') || notification.toLowerCase().includes('inválid') || notification.toLowerCase().includes('falló');
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20, x: '-50%' }}
+                  animate={{ opacity: 1, y: 0, x: '-50%' }}
+                  exit={{ opacity: 0, y: -20, x: '-50%' }}
+                  className={`fixed top-6 left-1/2 z-50 bg-[#121212] border text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
+                    isError ? 'border-red-500/40 text-red-400 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : 'border-gold/40 text-gold shadow-[0_4px_20px_rgba(198,155,60,0.1)]'
+                  }`}
+                >
+                  {isError ? (
+                    <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                  ) : (
+                    <Sparkles size={14} className="animate-pulse flex-shrink-0 text-gold" />
+                  )}
+                  <span>{notification}</span>
+                </motion.div>
+              );
+            })()}
           </AnimatePresence>
 
           <div className="w-full max-w-md bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl space-y-6 text-left relative overflow-hidden">
@@ -9515,7 +9616,7 @@ export default function AdminPage() {
                   });
 
                   if (error) {
-                    triggerNotification(`Error: ${error.message}`);
+                    triggerNotification(`Error: ${translateAuthError(error.message)}`);
                   } else {
                     triggerNotification('Contraseña actualizada con éxito.');
                     setRequirePasswordChange(false);

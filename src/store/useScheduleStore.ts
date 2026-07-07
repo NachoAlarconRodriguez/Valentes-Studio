@@ -271,9 +271,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     const dateObj = new Date(year, month - 1, day);
     const dayOfWeek = dateObj.getDay();
     
-    // 2. Fetch Shift for that day
-    const specialistShifts = state.workShifts[specialistId];
-    if (!specialistShifts) return { available: true };
+    const specialistShifts = state.workShifts[specialistId] || generateDefaultShifts();
     
     const dayShift = specialistShifts.find((s) => s.dayOfWeek === dayOfWeek);
     if (!dayShift || !dayShift.isActive) {

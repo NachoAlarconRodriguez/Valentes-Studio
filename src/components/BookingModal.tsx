@@ -47,10 +47,10 @@ export function BookingModal() {
   const handlePhoneNumChange = (val: string) => {
     const cleaned = val.replace(/\D/g, '').substring(0, 9);
     setPhoneNumOnly(cleaned);
-    validatePhone(cleaned, countryCode);
+    validatePhone(cleaned);
   };
 
-  const validatePhone = (num: string, prefix: string) => {
+  const validatePhone = (num: string) => {
     if (num.length === 0) {
       setPhoneError('Por favor ingresa tu número de WhatsApp');
     } else if (num.length < 9) {
@@ -63,6 +63,7 @@ export function BookingModal() {
   };
   const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('barberia');
   const [serviceId, setServiceId] = useState('');
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [dateType, setDateType] = useState<'hoy' | 'manana' | 'semana' | 'mes' | null>(null);
@@ -71,7 +72,11 @@ export function BookingModal() {
   
   // Gift Card states
   const [giftCardCode, setGiftCardCode] = useState('');
-  const [appliedGiftCard, setAppliedGiftCard] = useState<any | null>(null);
+  interface AppliedGiftCard {
+    code: string;
+    remainingBalance: number;
+  }
+  const [appliedGiftCard, setAppliedGiftCard] = useState<AppliedGiftCard | null>(null);
   const [giftCardError, setGiftCardError] = useState('');
   const [giftCardSuccess, setGiftCardSuccess] = useState('');
 
@@ -82,14 +87,22 @@ export function BookingModal() {
     return parseInt(clean, 10) || 0;
   };
   
-  // Dropdown UI states
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
-  
   // Submission flow
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
+  const [assignedSpecialistName, setAssignedSpecialistName] = useState('');
+
+  const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
+  const fetchBookingsAndClients = useBookingStore(state => state.fetchBookingsAndClients);
+
+  // Fetch real-time schedule and booking data from Supabase when the modal is opened
+  useEffect(() => {
+    if (isBookingOpen) {
+      fetchSchedules();
+      fetchBookingsAndClients();
+    }
+  }, [isBookingOpen, fetchSchedules, fetchBookingsAndClients]);
 
   // Prefill service if passed from CTA
   useEffect(() => {
@@ -103,6 +116,7 @@ export function BookingModal() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCategory(foundCategory);
       setServiceId(selectedServiceForBooking.id);
+      setStep(2);
     } else {
       setServiceId('');
       if (pathname.includes('/peluqueria')) {
@@ -112,6 +126,7 @@ export function BookingModal() {
       } else {
         setCategory('barberia');
       }
+      setStep(1);
     }
   }, [selectedServiceForBooking, isBookingOpen, pathname]);
 
@@ -146,14 +161,14 @@ export function BookingModal() {
     setDateType(null);
   };
 
-  const { servicesData } = useServicesStore();
+  const { servicesData, loading } = useServicesStore();
   // Get current options based on category
   const servicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
   const selectedServiceObj = servicesList.find(s => s.id === serviceId);
   const specialistsList = servicesData[category]?.specialists || [];
 
   // Filter specialists based on business type and eligible services
-  const filteredSpecialistsList = React.useMemo(() => {
+  const filteredSpecialistsList = (() => {
     let list = specialistsList.filter(spec => spec.isActive !== false);
 
     // 1. Filter by business type (profileType)
@@ -164,7 +179,7 @@ export function BookingModal() {
         terapias: ['terapeuta', 'mixto', 'admin']
       };
       const allowed = profileMap[category] || [];
-      return allowed.includes(spec.profileType) && spec.assignedAgendas.includes(category as any);
+      return allowed.includes(spec.profileType) && spec.assignedAgendas.includes(category as 'barberia' | 'peluqueria' | 'terapias');
     });
 
     // 2. Filter by service capability (specialistIds) if a service is selected
@@ -175,13 +190,14 @@ export function BookingModal() {
     }
 
     return list;
-  }, [category, serviceId, selectedServiceObj, specialistsList]);
+  })();
 
   // Reset selected specialist if they are not in the filtered list for the selected service
   useEffect(() => {
     if (specialistId && filteredSpecialistsList.length > 0) {
       const isStillAvailable = filteredSpecialistsList.some(sp => sp.id === specialistId);
       if (!isStillAvailable) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSpecialistId('');
       }
     }
@@ -189,8 +205,8 @@ export function BookingModal() {
 
   const isSpecialistAvailable = useScheduleStore(state => state.isSpecialistAvailable);
 
-  const checkTimeSlotAvailability = (slotTime: string): { available: boolean; reason?: string } => {
-    if (!date) return { available: true };
+  const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
+    if (!checkDate) return { available: true };
     
     // Check if slot is in the past based on system date and time
     const isPast = (() => {
@@ -200,8 +216,8 @@ export function BookingModal() {
       const d = String(today.getDate()).padStart(2, '0');
       const todayStr = `${y}-${m}-${d}`;
       
-      if (date < todayStr) return true;
-      if (date > todayStr) return false;
+      if (checkDate < todayStr) return true;
+      if (checkDate > todayStr) return false;
       
       const timeToMinutes = (tStr: string) => {
         const [h, min] = tStr.split(':').map(Number);
@@ -219,15 +235,59 @@ export function BookingModal() {
 
     const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
     if (specialistId) {
-      return isSpecialistAvailable(specialistId, date, slotTime, dur);
+      return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
     }
     if (filteredSpecialistsList.length === 0) return { available: true };
-    const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, slotTime, dur).available);
+    const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
     if (availableSpecs.length > 0) {
       return { available: true };
     }
     return { available: false, reason: 'No hay profesionales disponibles' };
   };
+
+  const checkTimeSlotAvailability = (slotTime: string): { available: boolean; reason?: string } => {
+    return checkTimeSlotAvailabilityForDate(date, slotTime);
+  };
+
+  // Clear date and time when service or specialist changes so we recalculate the nearest available slot
+  useEffect(() => {
+    setDate('');
+    setTime('');
+    setDateType(null);
+  }, [serviceId, specialistId]);
+
+  // Find and pre-select the nearest available date and time slot
+  useEffect(() => {
+    if (isBookingOpen && step === 3 && (!date || !time)) {
+      const timeSlots = [
+        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+      ];
+      
+      // Search the next 30 days
+      for (let offset = 0; offset < 30; offset++) {
+        const checkDate = getFormattedDate(offset);
+        const firstAvailableSlot = timeSlots.find(slot => 
+          checkTimeSlotAvailabilityForDate(checkDate, slot).available
+        );
+        
+        if (firstAvailableSlot) {
+          setDate(checkDate);
+          setTime(firstAvailableSlot);
+          
+          if (offset === 0) {
+            setDateType('hoy');
+          } else if (offset === 1) {
+            setDateType('manana');
+          } else {
+            setDateType('semana');
+          }
+          break;
+        }
+      }
+    }
+  }, [isBookingOpen, step, serviceId, specialistId, date, time]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,6 +303,26 @@ export function BookingModal() {
     
     try {
       const fullPhone = `${countryCode} ${phoneNumOnly}`;
+      
+      const assignedName = (() => {
+        if (specialistId) {
+          return selectedSpecialistObj?.name || 'Cualquiera';
+        }
+        const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+        const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur).available);
+        if (availableSpecs.length > 0) {
+          // Sort available specialists by their number of bookings on this date (load balance)
+          const bookingsOnDate = useBookingStore.getState().bookings.filter(b => b.date === date);
+          const getBookingCount = (specName: string) => {
+            return bookingsOnDate.filter(b => b.specialistName.trim().toLowerCase() === specName.trim().toLowerCase()).length;
+          };
+          availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
+          return availableSpecs[0].name;
+        }
+        return 'Cualquiera';
+      })();
+      setAssignedSpecialistName(assignedName);
+
       const newBookingId = await useBookingStore.getState().addBooking({
         clientName: name,
         clientPhone: fullPhone,
@@ -250,7 +330,7 @@ export function BookingModal() {
         category: category as 'barberia' | 'peluqueria' | 'terapias',
         serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
         price: finalPriceStr,
-        specialistName: selectedSpecialistObj?.name || 'Cualquiera',
+        specialistName: assignedName,
         date: date,
         time: time,
         giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined
@@ -278,14 +358,14 @@ export function BookingModal() {
     setEmail('');
     setCategory('barberia');
     setServiceId('');
+    setStep(1);
     setSpecialistId('');
     setDate('');
     setTime('');
     setDateType(null);
     setIsSuccess(false);
     setBookingCode('');
-    setIsCategoryDropdownOpen(false);
-    setIsServiceDropdownOpen(false);
+    setAssignedSpecialistName('');
     setGiftCardCode('');
     setAppliedGiftCard(null);
     setGiftCardError('');
@@ -338,7 +418,6 @@ export function BookingModal() {
   const isTerapias = category === 'terapias';
   const themeText = isTerapias ? 'text-platinum' : 'text-gold';
   const themeText80 = isTerapias ? 'text-platinum/80' : 'text-gold/80';
-  const themeText90 = isTerapias ? 'text-platinum/90' : 'text-gold/90';
   const themeBg = isTerapias ? 'bg-platinum' : 'bg-gold';
   const themeBorder25 = isTerapias ? 'border-platinum/25' : 'border-gold/25';
   const themeBorder15 = isTerapias ? 'border-platinum/15' : 'border-gold/15';
@@ -348,11 +427,10 @@ export function BookingModal() {
   // Success styles
   const themeSuccessText = isTerapias ? 'text-platinum' : 'text-gold';
   
-  const modalContainerClass = `relative w-full max-w-4xl bg-black/95 text-white rounded-[32px] overflow-hidden z-10 border ${themeBorder25} shadow-[0_30px_60px_-15px_rgba(0,0,0,0.85)] grid grid-cols-1 md:grid-cols-12 min-h-[580px] max-h-[90vh] md:max-h-[85vh] transition-all duration-500`;
+  const modalContainerClass = `relative w-full max-w-4xl bg-black/95 text-white rounded-none md:rounded-[32px] overflow-hidden z-10 border border-white/5 md:${themeBorder25} shadow-[0_30px_60px_-15px_rgba(0,0,0,0.85)] grid grid-cols-1 md:grid-cols-12 h-[100dvh] md:h-[680px] transition-all duration-500`;
   
   const labelClass = `block text-[9px] uppercase tracking-[0.2em] ${themeText80} font-semibold mb-1`;
   const inputClass = `w-full bg-transparent border-b border-white/10 text-white py-2.5 px-1 text-sm ${themeBorderFocus} focus:outline-none transition-colors`;
-  const subSectionTitleClass = `block text-[10px] uppercase tracking-[0.25em] ${themeText90} font-bold mb-2 border-b border-white/5 pb-1`;
   
   const isFormValid = name.trim() !== '' && 
                       phoneNumOnly.length === 9 && 
@@ -377,7 +455,7 @@ export function BookingModal() {
   return (
     <AnimatePresence>
       {isBookingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -505,17 +583,17 @@ export function BookingModal() {
               </div>
             </div>
 
-            {/* Panel Derecho: Formulario Minimalista */}
-            <div className="col-span-1 md:col-span-7 flex flex-col justify-between p-8 bg-[#070707] relative overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
+            {/* Panel Derecho: Formulario Paso a Paso */}
+            <div className="col-span-1 md:col-span-7 flex flex-col justify-between p-6 md:p-8 bg-[#070707] relative overflow-hidden h-full">
               {/* Botón de cerrar flotante */}
               <button
                 onClick={handleClose}
-                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer z-20"
               >
                 <X size={16} />
               </button>
 
-              <div className="flex-grow flex flex-col justify-center max-w-md w-full mx-auto">
+              <div className="flex-grow flex flex-col max-w-md w-full mx-auto py-4 md:py-0 overflow-hidden h-full">
                 <div className="mb-6">
                   <h3 className={`font-serif text-2xl ${themeText} tracking-wide`}>Completar Ritual</h3>
                   <p className="text-xs text-text-secondary tracking-widest uppercase mt-1">
@@ -528,844 +606,871 @@ export function BookingModal() {
                   </p>
                 </div>
 
-                {!isSuccess ? (
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    
-                    {/* Selector de Ritual */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Área de Bienestar (Custom Selector) */}
-                      <div className="relative">
-                        <label className={labelClass}>Área de Bienestar</label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
-                            setIsServiceDropdownOpen(false);
-                          }}
-                          className={`w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-left flex justify-between items-center transition-colors focus:outline-none ${themeBorderFocus}`}
-                        >
-                          <span className="text-white">
-                            {category === 'barberia'
-                              ? 'Barbería Tradicional'
-                              : category === 'peluqueria'
-                              ? 'Peluquería de Autor'
-                              : 'Terapias Holísticas'}
+                {/* Stepper Progress Bar */}
+                {!isSuccess && (
+                  <div className="flex items-center justify-between mb-8 px-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <React.Fragment key={s}>
+                        <div className="flex items-center">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                            step === s 
+                              ? `${themeBg} text-black font-extrabold shadow-md scale-110` 
+                              : step > s 
+                                ? 'bg-emerald-500 text-white' 
+                                : 'bg-white/10 text-white/50'
+                          }`}>
+                            {step > s ? '✓' : s}
+                          </div>
+                          <span className={`hidden sm:inline text-[9px] uppercase tracking-widest ml-1.5 ${step === s ? themeText : 'text-white/40'} font-bold`}>
+                            {s === 1 ? 'Ritual' : s === 2 ? 'Especialista' : s === 3 ? 'Fecha' : s === 4 ? 'Contacto' : 'Confirmar'}
                           </span>
-                          <ChevronDown
-                            size={16}
-                            className={`text-white/60 transition-transform duration-300 ${
-                              isCategoryDropdownOpen ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </button>
-                        
-                        <AnimatePresence>
-                          {isCategoryDropdownOpen && (
-                            <>
-                              <div 
-                                className="fixed inset-0 z-10" 
-                                onClick={() => setIsCategoryDropdownOpen(false)} 
-                              />
-                              <motion.div
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.15 }}
-                                className="absolute left-0 right-0 mt-2 bg-[#0d0d0d]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20 backdrop-blur-md"
-                              >
-                                {[
-                                  { value: 'barberia', label: 'Barbería Tradicional' },
-                                  { value: 'peluqueria', label: 'Peluquería de Autor' },
-                                  { value: 'terapias', label: 'Terapias Holísticas' },
-                                ].map((opt) => {
-                                  const isSelected = category === opt.value;
+                        </div>
+                        {s < 5 && (
+                          <div className={`flex-1 h-0.5 mx-1 min-w-[8px] transition-all duration-500 ${
+                            step > s ? 'bg-emerald-500' : 'bg-white/10'
+                          }`} />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+
+                {!isSuccess ? (
+                  <form onSubmit={handleSubmit} className="flex-grow flex flex-col justify-between overflow-hidden">
+                    <div className="flex-grow overflow-y-auto pr-1 py-1 space-y-6 scrollbar-thin">
+                      {step === 1 && (
+                        <div className="space-y-5">
+                          {/* Segment Selector for category/welfare area */}
+                          <div>
+                            <label className={labelClass}>Área de Bienestar</label>
+                            <div className="grid grid-cols-3 gap-2 mt-1.5">
+                              {[
+                                { id: 'barberia', name: 'Barbería' },
+                                { id: 'peluqueria', name: 'Peluquería' },
+                                { id: 'terapias', name: 'Terapias' }
+                              ].map((opt) => {
+                                const isSelected = category === opt.id;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleCategoryChange(opt.id as 'barberia' | 'peluqueria' | 'terapias')}
+                                    className={`py-2.5 px-1 text-center rounded-xl border text-[10px] uppercase tracking-wider font-bold transition-all duration-300 focus:outline-none ${
+                                      isSelected
+                                        ? opt.id === 'terapias'
+                                          ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.15)]'
+                                          : 'border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.15)]'
+                                        : 'border-white/5 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/10'
+                                    }`}
+                                  >
+                                    {opt.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Services Cards list */}
+                          <div>
+                            <label className={labelClass}>Selecciona tu Ritual *</label>
+                            <div className="space-y-2.5 max-h-[38vh] overflow-y-auto pr-1 mt-1.5 scrollbar-thin">
+                              {loading ? (
+                                <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                                  <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${category === 'terapias' ? 'border-platinum' : 'border-gold'}`} />
+                                  <p className="text-xs text-white/40 tracking-wider uppercase">Cargando rituales...</p>
+                                </div>
+                              ) : servicesList.length === 0 ? (
+                                <p className="text-xs text-white/40 italic">No hay servicios disponibles en esta área.</p>
+                              ) : (
+                                servicesList.map((service) => {
+                                  const isSelected = serviceId === service.id;
                                   return (
                                     <button
-                                      key={opt.value}
+                                      key={service.id}
                                       type="button"
-                                      onClick={() => {
-                                        handleCategoryChange(opt.value as 'barberia' | 'peluqueria' | 'terapias');
-                                        setIsCategoryDropdownOpen(false);
-                                      }}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5 flex items-center justify-between ${
-                                        isSelected ? `${themeText} font-semibold bg-white/5` : 'text-white/70'
+                                      onClick={() => setServiceId(service.id)}
+                                      className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start justify-between gap-4 ${
+                                        isSelected
+                                          ? isTerapias
+                                            ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.15)]'
+                                            : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
+                                          : 'border-white/5 bg-white/[0.02] text-white/80 hover:border-white/20 hover:bg-white/[0.04]'
                                       }`}
                                     >
-                                      <span>{opt.label}</span>
-                                      {isSelected && (
-                                        <span className={`w-1.5 h-1.5 rounded-full ${themeBg}`} />
-                                      )}
+                                      <div className="space-y-1 pr-2 flex-grow">
+                                        <div className="font-bold text-sm text-white transition-colors">
+                                          {service.name}
+                                        </div>
+                                        {service.description && (
+                                          <p className="text-[11px] text-text-secondary leading-relaxed font-light">
+                                            {service.description}
+                                          </p>
+                                        )}
+                                        <div className="text-[10px] text-text-secondary font-medium uppercase tracking-wider pt-0.5">
+                                          Duración: {service.duration}
+                                        </div>
+                                      </div>
+                                      <div className="text-right flex flex-col items-end justify-between min-w-[70px]">
+                                        <span className={`font-serif text-sm font-bold ${isSelected ? themeText : 'text-white'}`}>
+                                          {service.price}
+                                        </span>
+                                        {isSelected && (
+                                          <span className={`w-2 h-2 rounded-full ${themeBg} mt-3`} />
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 2 && (
+                        <div className="space-y-5 animate-fadeIn">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 2</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">¿Quién te atenderá?</h3>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">Selecciona tu especialista preferido o elige cualquiera para mayor disponibilidad.</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[42vh] overflow-y-auto pr-1 pb-2">
+                            {/* Option: Cualquiera */}
+                            <button
+                              type="button"
+                              onClick={() => setSpecialistId('')}
+                              className={`p-4 rounded-2xl border text-left flex items-center space-x-4 transition-all duration-300 relative ${
+                                specialistId === ''
+                                  ? isTerapias
+                                    ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_15px_rgba(226,224,216,0.2)] scale-[1.02]'
+                                    : 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
+                                  : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 bg-gradient-to-br from-black to-zinc-900 flex-shrink-0 transition-transform duration-300 ${
+                                specialistId === ''
+                                  ? isTerapias ? 'border-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]' : 'border-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                  : 'border-white/10'
+                              }`}>
+                                <Sparkles className={`w-6 h-6 ${themeText}`} />
+                              </div>
+                              <div className="text-left flex-grow">
+                                <div className="font-serif text-sm font-bold tracking-wide text-white">Cualquier Profesional</div>
+                                <span className="text-[10px] text-text-secondary leading-tight mt-1 block font-light">Mayor disponibilidad de horarios</span>
+                              </div>
+                              {specialistId === '' && (
+                                <div className={`absolute top-3 right-3 w-4 h-4 rounded-full ${themeBg} text-black flex items-center justify-center shadow-md animate-scaleIn`}>
+                                  <svg className="w-2.5 h-2.5 stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Real specialists */}
+                            {filteredSpecialistsList.map((specialist) => {
+                              const photo = specialist.imageUrl || specialistPhotos[specialist.id];
+                              const isSelected = specialistId === specialist.id;
+                              return (
+                                <button
+                                  key={specialist.id}
+                                  type="button"
+                                  onClick={() => setSpecialistId(specialist.id)}
+                                  className={`p-4 rounded-2xl border text-left flex items-center space-x-4 transition-all duration-300 relative ${
+                                    isSelected
+                                      ? isTerapias
+                                        ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_15px_rgba(226,224,216,0.2)] scale-[1.02]'
+                                        : 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
+                                      : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.04]'
+                                  }`}
+                                >
+                                  <div className={`relative w-14 h-14 rounded-full overflow-hidden border-2 flex-shrink-0 transition-transform duration-300 ${
+                                    isSelected
+                                      ? isTerapias ? 'border-platinum scale-105 shadow-[0_0_10px_rgba(226,224,216,0.2)]' : 'border-gold scale-105 shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                      : 'border-white/10'
+                                  }`}>
+                                    {photo ? (
+                                      <Image
+                                        src={photo}
+                                        alt={specialist.name}
+                                        fill
+                                        sizes="56px"
+                                        className="object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-platinum text-xs font-semibold">
+                                        {specialist.avatar}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-left flex-grow pr-3">
+                                    <div className={`font-serif text-sm font-bold tracking-wide transition-colors ${isSelected ? themeText : 'text-white'}`}>
+                                      {specialist.name}
+                                    </div>
+                                    <div className={`text-[8px] uppercase tracking-widest font-bold ${isSelected ? themeText : 'text-text-secondary'} mt-0.5`}>
+                                      {specialist.role}
+                                    </div>
+                                    {specialist.specialty && (
+                                      <div className="text-[10px] text-text-secondary/80 font-light mt-1.5 leading-snug line-clamp-2">
+                                        {specialist.specialty}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {isSelected && (
+                                    <div className={`absolute top-3 right-3 w-4 h-4 rounded-full ${themeBg} text-black flex items-center justify-center shadow-md animate-scaleIn`}>
+                                      <svg className="w-2.5 h-2.5 stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 3 && (
+                        <div className="space-y-5 animate-fadeIn">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 3</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">Fecha y Hora</h3>
+                          </div>
+
+                          <div className="space-y-4">
+                            {/* Date selectors buttons */}
+                            <div>
+                              <label className={labelClass}>Selecciona el día</label>
+                              <div className="grid grid-cols-4 gap-2 mt-1.5">
+                                {[
+                                  { type: 'hoy' as const, label: 'Hoy' },
+                                  { type: 'manana' as const, label: 'Mañana' },
+                                  { type: 'semana' as const, label: 'Semana' },
+                                  { type: 'mes' as const, label: 'Mes' }
+                                ].map((item) => {
+                                  const isSelected = dateType === item.type;
+                                  return (
+                                    <button
+                                      key={item.type}
+                                      type="button"
+                                      onClick={() => handleDateTypeSelect(item.type)}
+                                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border aspect-square transition-all duration-300 focus:outline-none cursor-pointer ${
+                                        isSelected 
+                                          ? isTerapias
+                                            ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
+                                            : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
+                                          : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
+                                      }`}
+                                    >
+                                      <Calendar size={18} className={isSelected ? themeText : 'text-white/50'} />
+                                      <span className="text-[10px] font-semibold tracking-wider uppercase mt-1.5">{item.label}</span>
                                     </button>
                                   );
                                 })}
-                              </motion.div>
-                            </>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                              </div>
+                            </div>
 
-                      {/* Seleccionar Ritual (Custom Selector) */}
-                      <div className="relative">
-                        <label className={labelClass}>Seleccionar Ritual *</label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsServiceDropdownOpen(!isServiceDropdownOpen);
-                            setIsCategoryDropdownOpen(false);
-                          }}
-                          className={`w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-left flex justify-between items-center transition-colors focus:outline-none ${themeBorderFocus}`}
-                        >
-                          <span className={selectedServiceObj ? 'text-white' : 'text-white/40'}>
-                            {selectedServiceObj
-                              ? `${selectedServiceObj.name} (${selectedServiceObj.price})`
-                              : '-- Elige un servicio --'}
-                          </span>
-                          <ChevronDown
-                            size={16}
-                            className={`text-white/60 transition-transform duration-300 ${
-                              isServiceDropdownOpen ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </button>
-
-                        <AnimatePresence>
-                          {isServiceDropdownOpen && (
-                            <>
-                              <div 
-                                className="fixed inset-0 z-10" 
-                                onClick={() => setIsServiceDropdownOpen(false)} 
-                              />
+                            {/* Custom week slider */}
+                            {dateType === 'semana' && (
                               <motion.div
-                                initial={{ opacity: 0, y: -8 }}
+                                initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.15 }}
-                                className="absolute left-0 right-0 mt-2 bg-[#0d0d0d]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20 backdrop-blur-md max-h-60 overflow-y-auto"
+                                className="space-y-1.5 pt-1"
                               >
-                                {servicesList.length === 0 ? (
-                                  <div className="px-4 py-3 text-sm text-white/40 italic">
-                                    No hay servicios disponibles
-                                  </div>
-                                ) : (
-                                  servicesList.map((service) => {
-                                    const isSelected = serviceId === service.id;
-                                    return (
-                                      <button
-                                        key={service.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setServiceId(service.id);
-                                          setIsServiceDropdownOpen(false);
-                                        }}
-                                        className={`w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5 flex items-center justify-between ${
-                                          isSelected ? `${themeText} font-semibold bg-white/5` : 'text-white/70'
-                                        }`}
-                                      >
-                                        <div className="flex flex-col">
-                                          <span className="font-medium">{service.name}</span>
-                                          <span className="text-[10px] text-white/40">{service.duration}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <span className={isSelected ? themeText : 'text-white/90'}>
-                                            {service.price}
-                                          </span>
-                                          {isSelected && (
-                                            <span className={`w-1.5 h-1.5 rounded-full ${themeBg}`} />
-                                          )}
-                                        </div>
-                                      </button>
-                                    );
-                                  })
-                                )}
-                              </motion.div>
-                            </>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
+                                <span className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Selecciona el día:</span>
+                                <div className="flex space-x-2 overflow-x-auto scrollbar-none snap-x snap-mandatory py-1">
+                                  {(() => {
+                                    const days = [];
+                                    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                                    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                                    
+                                    for (let i = 0; i < 7; i++) {
+                                      const d = new Date();
+                                      d.setDate(d.getDate() + i);
+                                      const dayOfWeek = daysOfWeek[d.getDay()];
+                                      const dayOfMonth = d.getDate();
+                                      const month = monthNames[d.getMonth()];
+                                      
+                                      const yyyy = d.getFullYear();
+                                      const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                      const dd = String(d.getDate()).padStart(2, '0');
+                                      const dateStr = `${yyyy}-${mm}-${dd}`;
+                                      days.push({
+                                        date: dateStr,
+                                        dayName: i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : dayOfWeek,
+                                        displayDate: `${dayOfMonth} ${month}`,
+                                      });
+                                    }
 
-                    {/* Specialist (Opcional) */}
-                    <div>
-                      <label className={labelClass}>Especialista (Opcional)</label>
-                      <div className="flex flex-wrap items-start gap-3 py-2 justify-start">
-                        {/* Option: Cualquiera */}
-                        <button
-                          type="button"
-                          onClick={() => setSpecialistId('')}
-                          className={`flex flex-col items-center space-y-1.5 focus:outline-none transition-all duration-300 ${
-                            specialistId === '' ? 'scale-105' : 'opacity-70 hover:opacity-100'
-                          }`}
-                        >
-                          <div className={`relative w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-gradient-to-br from-black to-zinc-900 ${
-                            specialistId === ''
-                              ? isTerapias
-                                ? 'border-platinum shadow-[0_0_12px_rgba(226,224,216,0.4)]'
-                                : 'border-gold shadow-[0_0_12px_rgba(198,155,60,0.4)]'
-                              : 'border-white/10'
-                          }`}>
-                            <Sparkles className={`w-5 h-5 animate-pulse ${themeText}`} />
-                          </div>
-                          <span className="text-[10px] tracking-wider text-text-secondary uppercase">Cualq.</span>
-                        </button>
+                                    const countAvailableSlots = (checkDate: string) => {
+                                      const slots = [
+                                        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+                                        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                      ];
+                                      return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
+                                    };
+                                    
+                                    return days.map((d) => {
+                                      const isSelected = date === d.date;
+                                      const availableCount = countAvailableSlots(d.date);
+                                      const isFullyBooked = availableCount === 0;
 
-                        {/* Real specialists */}
-                        {filteredSpecialistsList.map((specialist) => {
-                          const photo = specialist.imageUrl || specialistPhotos[specialist.id];
-                          const isSelected = specialistId === specialist.id;
-                          return (
-                            <button
-                              key={specialist.id}
-                              type="button"
-                              onClick={() => setSpecialistId(specialist.id)}
-                              className={`flex flex-col items-center space-y-1.5 focus:outline-none transition-all duration-300 ${
-                                isSelected ? 'scale-105' : 'opacity-70 hover:opacity-100'
-                              }`}
-                            >
-                              <div className={`relative w-14 h-14 rounded-full overflow-hidden border-2 transition-all duration-300 ${
-                                isSelected
-                                  ? isTerapias
-                                    ? 'border-platinum shadow-[0_0_12px_rgba(226,224,216,0.4)]'
-                                    : 'border-gold shadow-[0_0_12px_rgba(198,155,60,0.4)]'
-                                  : 'border-white/10'
-                              }`}>
-                                {photo ? (
-                                  <Image
-                                    src={photo}
-                                    alt={specialist.name}
-                                    fill
-                                    sizes="56px"
-                                    className="object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-platinum text-xs font-semibold">
-                                    {specialist.avatar}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-center">
-                                <span className={`block text-[10px] tracking-wider font-medium ${isSelected ? themeText : 'text-white/90'}`}>
-                                  {specialist.name.split(' ')[0]}
-                                </span>
-                                <span className="block text-[8px] text-text-secondary tracking-tight">
-                                  {specialist.role.split(' ')[0]}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Fecha */}
-                    <div>
-                      <label className={labelClass}>Fecha *</label>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { type: 'hoy' as const, label: 'Hoy' },
-                            { type: 'manana' as const, label: 'Mañana' },
-                            { type: 'semana' as const, label: 'Semana' },
-                            { type: 'mes' as const, label: 'Mes' }
-                          ].map((item) => {
-                            const isSelected = dateType === item.type;
-                            return (
-                              <button
-                                key={item.type}
-                                type="button"
-                                onClick={() => handleDateTypeSelect(item.type)}
-                                className={`flex flex-col items-center justify-center p-3 rounded-2xl border aspect-square transition-all duration-300 focus:outline-none ${
-                                  isSelected 
-                                    ? isTerapias
-                                      ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
-                                      : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
-                                    : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
-                                }`}
-                              >
-                                <Calendar size={18} className={isSelected ? themeText : 'text-white/50'} />
-                                <span className="text-[10px] font-semibold tracking-wider uppercase mt-1.5">{item.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Conditional Date Picker for Semana and Mes */}
-                        {dateType === 'semana' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="space-y-1.5 pt-1"
-                          >
-                            <span className="block text-[8px] uppercase tracking-wider text-text-secondary font-bold">Selecciona el día:</span>
-                            <div className="flex space-x-2 overflow-x-auto scrollbar-none snap-x snap-mandatory py-1">
-                              {(() => {
-                                const days = [];
-                                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-                                const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                                
-                                for (let i = 0; i < 7; i++) {
-                                  const d = new Date();
-                                  d.setDate(d.getDate() + i);
-                                  const dayOfWeek = daysOfWeek[d.getDay()];
-                                  const dayOfMonth = d.getDate();
-                                  const month = monthNames[d.getMonth()];
-                                  
-                                  const yyyy = d.getFullYear();
-                                  const mm = String(d.getMonth() + 1).padStart(2, '0');
-                                  const dd = String(d.getDate()).padStart(2, '0');
-                                  const dateStr = `${yyyy}-${mm}-${dd}`;
-                                  
-                                  days.push({
-                                    date: dateStr,
-                                    dayName: i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : dayOfWeek,
-                                    displayDate: `${dayOfMonth} ${month}`,
-                                  });
-                                }
-
-                                const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
-                                  if (!checkDate) return { available: true };
-                                  const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
-                                  if (specialistId) {
-                                    return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
-                                  }
-                                  if (filteredSpecialistsList.length === 0) return { available: true };
-                                  const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
-                                  if (availableSpecs.length > 0) {
-                                    return { available: true };
-                                  }
-                                  return { available: false, reason: 'No hay profesionales disponibles' };
-                                };
-
-                                const countAvailableSlots = (checkDate: string) => {
-                                  const slots = [
-                                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                                    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-                                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
-                                  ];
-                                  return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
-                                };
-                                
-                                return days.map((d) => {
-                                  const isSelected = date === d.date;
-                                  const availableCount = countAvailableSlots(d.date);
-                                  const isFullyBooked = availableCount === 0;
-
-                                  return (
-                                    <button
-                                      key={d.date}
-                                      type="button"
-                                      disabled={isFullyBooked}
-                                      onClick={() => {
-                                        setDate(d.date);
-                                        setTime(''); // Clear selected slot when date changes
-                                      }}
-                                      className={`flex-shrink-0 w-[72px] h-[78px] rounded-2xl border flex flex-col justify-center items-center transition-all duration-300 snap-start ${
-                                        isFullyBooked
-                                          ? 'border-white/5 bg-black/20 text-white/20 opacity-30 cursor-not-allowed'
-                                          : isSelected
-                                            ? isTerapias
-                                              ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
-                                              : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]'
-                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20 text-white/70 hover:text-white cursor-pointer'
-                                      }`}
-                                    >
-                                      <span className="text-[9px] font-semibold uppercase tracking-wider">{d.dayName}</span>
-                                      <span className="text-[11px] font-bold mt-1 font-mono">{d.displayDate}</span>
-                                      <span className={`text-[8px] mt-1 font-medium ${
-                                        isFullyBooked
-                                          ? 'text-red-400/70 font-semibold'
-                                          : isSelected
-                                            ? isTerapias ? 'text-platinum/80' : 'text-gold/80'
-                                            : 'text-text-secondary/60'
-                                      }`}>
-                                        {isFullyBooked ? 'Agotado' : `${availableCount} disp.`}
-                                      </span>
-                                    </button>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {dateType === 'mes' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="bg-black/40 border border-white/10 rounded-2xl p-4 space-y-3 mt-2"
-                          >
-                            {/* Month Navigator Header */}
-                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const prev = new Date(currentCalendarDate);
-                                  prev.setMonth(prev.getMonth() - 1);
-                                  setCurrentCalendarDate(prev);
-                                }}
-                                className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
-                              >
-                                <ChevronLeft size={16} />
-                              </button>
-                              <span className="text-[11px] font-serif font-bold text-white uppercase tracking-wider">
-                                {currentCalendarDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = new Date(currentCalendarDate);
-                                  next.setMonth(next.getMonth() + 1);
-                                  setCurrentCalendarDate(next);
-                                }}
-                                className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
-                              >
-                                <ChevronRight size={16} />
-                              </button>
-                            </div>
-
-                            {/* Weekday Labels */}
-                            <div className="grid grid-cols-7 gap-1 text-center text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                              {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((day) => (
-                                <div key={day} className="py-1">{day}</div>
-                              ))}
-                            </div>
-
-                            {/* Days Grid */}
-                            <div className="grid grid-cols-7 gap-1">
-                              {(() => {
-                                const year = currentCalendarDate.getFullYear();
-                                const month = currentCalendarDate.getMonth();
-                                
-                                const firstDay = new Date(year, month, 1);
-                                const lastDay = new Date(year, month + 1, 0);
-                                
-                                let firstDayOfWeek = firstDay.getDay();
-                                firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-                                
-                                const grid = [];
-                                for (let i = 0; i < firstDayOfWeek; i++) {
-                                  grid.push(null);
-                                }
-                                for (let d = 1; d <= lastDay.getDate(); d++) {
-                                  grid.push(new Date(year, month, d));
-                                }
-
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-                                const maxDate = new Date();
-                                maxDate.setDate(maxDate.getDate() + 30);
-                                maxDate.setHours(23, 59, 59, 999);
-
-                                const isDateDisabled = (d: Date | null) => {
-                                  if (!d) return true;
-                                  const checkD = new Date(d);
-                                  checkD.setHours(0, 0, 0, 0);
-                                  return checkD < today || checkD > maxDate;
-                                };
-
-                                const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
-                                  if (!checkDate) return { available: true };
-                                  const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
-                                  if (specialistId) {
-                                    return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
-                                  }
-                                  if (filteredSpecialistsList.length === 0) return { available: true };
-                                  const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
-                                  if (availableSpecs.length > 0) {
-                                    return { available: true };
-                                  }
-                                  return { available: false, reason: 'No hay profesionales disponibles' };
-                                };
-
-                                const countAvailableSlots = (checkDate: string) => {
-                                  const slots = [
-                                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                                    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-                                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
-                                  ];
-                                  return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
-                                };
-
-                                return grid.map((d, index) => {
-                                  if (!d) {
-                                    return <div key={`empty-${index}`} />;
-                                  }
-
-                                  const yyyy = d.getFullYear();
-                                  const mm = String(d.getMonth() + 1).padStart(2, '0');
-                                  const dd = String(d.getDate()).padStart(2, '0');
-                                  const dateStr = `${yyyy}-${mm}-${dd}`;
-                                  
-                                  const isSelected = date === dateStr;
-                                  const isDisabled = isDateDisabled(d);
-                                  const availableCount = isDisabled ? 0 : countAvailableSlots(dateStr);
-                                  const isFullyBooked = !isDisabled && availableCount === 0;
-
-                                  return (
-                                    <button
-                                      key={dateStr}
-                                      type="button"
-                                      disabled={isDisabled || isFullyBooked}
-                                      onClick={() => {
-                                        setDate(dateStr);
-                                        setTime('');
-                                      }}
-                                      className={`h-9 rounded-xl flex flex-col justify-center items-center text-[11px] font-mono transition-all duration-300 relative ${
-                                        isDisabled || isFullyBooked
-                                          ? 'text-white/20 bg-black/20 opacity-30 cursor-not-allowed'
-                                          : isSelected
-                                            ? isTerapias
-                                              ? 'border border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.25)] font-bold'
-                                              : 'border border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.25)] font-bold'
-                                            : 'border border-transparent bg-white/[0.02] hover:border-white/20 text-white/80 hover:text-white cursor-pointer'
-                                      }`}
-                                    >
-                                      <span>{d.getDate()}</span>
-                                      {!isDisabled && !isFullyBooked && (
-                                        <span className={`w-1 h-1 rounded-full absolute bottom-1 ${
-                                          isSelected
-                                            ? isTerapias ? 'bg-platinum' : 'bg-gold'
-                                            : 'bg-emerald-400/50'
-                                        }`} />
-                                      )}
-                                    </button>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Hora */}
-                    {date && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-2"
-                      >
-                        <label className={labelClass}>Hora *</label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { value: '08:00', label: '08:00 AM' },
-                            { value: '08:30', label: '08:30 AM' },
-                            { value: '09:00', label: '09:00 AM' },
-                            { value: '09:30', label: '09:30 AM' },
-                            { value: '10:00', label: '10:00 AM' },
-                            { value: '10:30', label: '10:30 AM' },
-                            { value: '11:00', label: '11:00 AM' },
-                            { value: '11:30', label: '11:30 AM' },
-                            { value: '12:00', label: '12:00 PM' },
-                            { value: '12:30', label: '12:30 PM' },
-                            { value: '13:00', label: '01:00 PM' },
-                            { value: '13:30', label: '01:30 PM' },
-                            { value: '14:00', label: '02:00 PM' },
-                            { value: '14:30', label: '02:30 PM' },
-                            { value: '15:00', label: '03:00 PM' },
-                            { value: '15:30', label: '03:30 PM' },
-                            { value: '16:00', label: '04:00 PM' },
-                            { value: '16:30', label: '04:30 PM' },
-                            { value: '17:00', label: '05:00 PM' },
-                            { value: '17:30', label: '05:30 PM' },
-                            { value: '18:00', label: '06:00 PM' },
-                            { value: '18:30', label: '06:30 PM' },
-                            { value: '19:00', label: '07:00 PM' },
-                            { value: '19:30', label: '07:30 PM' },
-                            { value: '20:00', label: '08:00 PM' },
-                            { value: '20:30', label: '08:30 PM' }
-                          ].map((slot) => {
-                            const isSelected = time === slot.value;
-                            const availability = checkTimeSlotAvailability(slot.value);
-                            return (
-                              <button
-                                key={slot.value}
-                                type="button"
-                                disabled={!availability.available}
-                                title={availability.reason}
-                                onClick={() => setTime(slot.value)}
-                                className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none cursor-pointer ${
-                                  !availability.available
-                                    ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
-                                    : isSelected
-                                      ? isTerapias
-                                        ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]'
-                                        : 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
-                                      : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
-                                }`}
-                              >
-                                {slot.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Contact details */}
-                    <div className="space-y-4 pt-2">
-                      <span className={subSectionTitleClass}>Tus Datos de Contacto</span>
-                      
-                      <div>
-                        <label className={labelClass}>Nombre Completo *</label>
-                        <input
-                          type="text"
-                          placeholder="Escribe tu nombre"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          required
-                          className={inputClass}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className={labelClass}>WhatsApp *</label>
-                          <div className="flex space-x-2 relative">
-                            {/* Country Prefix Dropdown */}
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                                className="h-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 rounded-xl px-3 text-[11px] text-white flex items-center space-x-1.5 focus:outline-none min-w-[70px] justify-between cursor-pointer"
-                              >
-                                <span className="font-mono">{countryCode}</span>
-                                <ChevronDown size={10} className="text-text-secondary" />
-                              </button>
-                              
-                              <AnimatePresence>
-                                {isCountryDropdownOpen && (
-                                  <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
-                                    <motion.div
-                                      initial={{ opacity: 0, y: -5 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, y: -5 }}
-                                      className="absolute left-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 w-28 max-h-40 overflow-y-auto"
-                                    >
-                                      {[
-                                        { code: '+56', label: 'Chile' },
-                                        { code: '+54', label: 'Argentina' },
-                                        { code: '+51', label: 'Perú' },
-                                        { code: '+57', label: 'Colombia' },
-                                        { code: '+52', label: 'México' },
-                                        { code: '+598', label: 'Uruguay' },
-                                        { code: '+1', label: 'USA' },
-                                        { code: '+34', label: 'España' }
-                                      ].map((item) => (
+                                      return (
                                         <button
-                                          key={item.code}
+                                          key={d.date}
                                           type="button"
+                                          disabled={isFullyBooked}
                                           onClick={() => {
-                                            setCountryCode(item.code);
-                                            setIsCountryDropdownOpen(false);
-                                            validatePhone(phoneNumOnly, item.code);
+                                            setDate(d.date);
+                                            setTime('');
                                           }}
-                                          className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
-                                            countryCode === item.code ? 'text-gold font-bold' : 'text-white/80'
+                                          className={`flex-shrink-0 w-[72px] h-[78px] rounded-2xl border flex flex-col justify-center items-center transition-all duration-300 snap-start ${
+                                            isFullyBooked
+                                              ? 'border-white/5 bg-black/20 text-white/20 opacity-30 cursor-not-allowed'
+                                              : isSelected
+                                                ? isTerapias
+                                                  ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
+                                                  : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]'
+                                                : 'border-white/10 bg-white/[0.02] hover:border-white/20 text-white/70 hover:text-white cursor-pointer'
                                           }`}
                                         >
-                                          <span className="font-mono">{item.code}</span>
-                                          <span className="text-[9px] text-text-secondary">{item.label}</span>
+                                          <span className="text-[9px] font-semibold uppercase tracking-wider">{d.dayName}</span>
+                                          <span className="text-[11px] font-bold mt-1 font-mono">{d.displayDate}</span>
+                                          <span className={`text-[8px] mt-1 font-medium ${
+                                            isFullyBooked
+                                              ? 'text-red-400/70 font-semibold'
+                                              : isSelected
+                                                ? isTerapias ? 'text-platinum/80' : 'text-gold/80'
+                                                : 'text-text-secondary/60'
+                                          }`}>
+                                            {isFullyBooked ? 'Agotado' : `${availableCount} disp.`}
+                                          </span>
                                         </button>
-                                      ))}
-                                    </motion.div>
-                                  </>
-                                )}
-                              </AnimatePresence>
-                            </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+                              </motion.div>
+                            )}
 
-                            {/* Phone number input */}
-                            <input
-                              type="tel"
-                              placeholder="912345678"
-                              value={phoneNumOnly}
-                              onChange={(e) => handlePhoneNumChange(e.target.value)}
-                              required
-                              className={`${inputClass} flex-1 ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                            />
-                          </div>
-                          {phoneError && (
-                            <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className={labelClass}>Correo Electrónico</label>
-                          <input
-                            type="email"
-                            placeholder="tu@correo.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                                  {/* Gift Card validation section */}
-                    {selectedServiceObj && (
-                      <div className={`p-4 rounded-2xl bg-white/[0.02] border ${themeBorder15} space-y-3 mt-4`}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-semibold text-white">¿Tienes una Gift Card?</span>
-                          {appliedGiftCard && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAppliedGiftCard(null);
-                                setGiftCardCode('');
-                                setGiftCardSuccess('');
-                              }}
-                              className={`text-[10px] ${themeText} hover:underline`}
-                            >
-                              Quitar
-                            </button>
-                          )}
-                        </div>
-                        
-                        {!appliedGiftCard ? (
-                          <div className="flex space-x-2">
-                            <input
-                              type="text"
-                              placeholder="Ej: SAN-GIFT-30K"
-                              value={giftCardCode}
-                              onChange={(e) => {
-                                setGiftCardCode(e.target.value);
-                                setGiftCardError('');
-                              }}
-                              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 uppercase font-mono"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleApplyGiftCard}
-                              className={`px-4 py-2 rounded-xl ${themeBg} text-black text-xs font-semibold hover:opacity-90 transition-all cursor-pointer`}
-                            >
-                              Aplicar
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-emerald-400">
-                            <div className="flex flex-col text-left">
-                              <span className="font-semibold font-mono">{appliedGiftCard.code}</span>
-                              <span className="text-[10px] opacity-80">Saldo disponible: ${appliedGiftCard.remainingBalance.toLocaleString('es-CL')} CLP</span>
-                            </div>
-                            <span className="font-bold">Aplicada</span>
-                          </div>
-                        )}
-                        
-                        {giftCardError && (
-                          <p className="text-[10px] text-rose-500 text-left">{giftCardError}</p>
-                        )}
-                        {giftCardSuccess && (
-                          <p className="text-[10px] text-emerald-400 text-left">{giftCardSuccess}</p>
-                        )}
-                      </div>
-                    )}
+                            {/* Custom calendar grid for mes */}
+                            {dateType === 'mes' && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-black/40 border border-white/10 rounded-2xl p-4 space-y-3 mt-2"
+                              >
+                                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const prev = new Date(currentCalendarDate);
+                                      prev.setMonth(prev.getMonth() - 1);
+                                      setCurrentCalendarDate(prev);
+                                    }}
+                                    className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    <ChevronLeft size={16} />
+                                  </button>
+                                  <span className="text-[11px] font-serif font-bold text-white uppercase tracking-wider">
+                                    {currentCalendarDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = new Date(currentCalendarDate);
+                                      next.setMonth(next.getMonth() + 1);
+                                      setCurrentCalendarDate(next);
+                                    }}
+                                    className="p-1 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    <ChevronRight size={16} />
+                                  </button>
+                                </div>
 
-                    {/* Price Breakdown */}
-                    {selectedServiceObj && (
-                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
-                        <div className="flex justify-between">
-                          <span>Valor de Servicio</span>
-                          <span className="text-white font-medium">{selectedServiceObj.price}</span>
-                        </div>
-                        {appliedGiftCard && (
-                          <div className="flex justify-between text-emerald-400">
-                            <span>Descuento Gift Card</span>
-                            <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-sm font-semibold">
-                          <span className="text-white">Total a Pagar</span>
-                          <span className={`${themeText} font-serif text-base`}>{finalPriceStr} CLP</span>
-                        </div>
-                      </div>
-                    )}
+                                <div className="grid grid-cols-7 gap-1 text-center text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                                  {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((day) => (
+                                    <div key={day} className="py-1">{day}</div>
+                                  ))}
+                                </div>
 
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || !isFormValid}
-                      className={submitButtonClass}
-                    >
-                      {isSubmitting ? (
-                        <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Sparkles size={14} />
-                          <span>Confirmar Experiencia ({selectedServiceObj ? finalPriceStr : '$0'})</span>
-                        </>
+                                <div className="grid grid-cols-7 gap-1">
+                                  {(() => {
+                                    const year = currentCalendarDate.getFullYear();
+                                    const month = currentCalendarDate.getMonth();
+                                    
+                                    const firstDay = new Date(year, month, 1);
+                                    const lastDay = new Date(year, month + 1, 0);
+                                    
+                                    let firstDayOfWeek = firstDay.getDay();
+                                    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+                                    
+                                    const grid = [];
+                                    for (let i = 0; i < firstDayOfWeek; i++) {
+                                      grid.push(null);
+                                    }
+                                    for (let d = 1; d <= lastDay.getDate(); d++) {
+                                      grid.push(new Date(year, month, d));
+                                    }
+
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    const maxDate = new Date();
+                                    maxDate.setDate(maxDate.getDate() + 30);
+                                    maxDate.setHours(23, 59, 59, 999);
+
+                                    const isDateDisabled = (d: Date | null) => {
+                                      if (!d) return true;
+                                      const checkD = new Date(d);
+                                      checkD.setHours(0, 0, 0, 0);
+                                      return checkD < today || checkD > maxDate;
+                                    };
+
+                                    const countAvailableSlots = (checkDate: string) => {
+                                      const slots = [
+                                        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+                                        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                      ];
+                                      return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
+                                    };
+
+                                    return grid.map((d, index) => {
+                                      if (!d) {
+                                        return <div key={`empty-${index}`} />;
+                                      }
+
+                                      const yyyy = d.getFullYear();
+                                      const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                      const dd = String(d.getDate()).padStart(2, '0');
+                                      const dateStr = `${yyyy}-${mm}-${dd}`;
+                                      
+                                      const isSelected = date === dateStr;
+                                      const isDisabled = isDateDisabled(d);
+                                      const availableCount = isDisabled ? 0 : countAvailableSlots(dateStr);
+                                      const isFullyBooked = !isDisabled && availableCount === 0;
+
+                                      return (
+                                        <button
+                                          key={dateStr}
+                                          type="button"
+                                          disabled={isDisabled || isFullyBooked}
+                                          onClick={() => {
+                                            setDate(dateStr);
+                                            setTime('');
+                                          }}
+                                          className={`h-9 rounded-xl flex flex-col justify-center items-center text-[11px] font-mono transition-all duration-300 relative ${
+                                            isDisabled || isFullyBooked
+                                              ? 'text-white/20 bg-black/20 opacity-30 cursor-not-allowed'
+                                              : isSelected
+                                                ? isTerapias
+                                                  ? 'border border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.25)] font-bold'
+                                                  : 'border border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.25)] font-bold'
+                                                : 'border border-transparent bg-white/[0.02] hover:border-white/20 text-white/80 hover:text-white cursor-pointer'
+                                          }`}
+                                        >
+                                          <span>{d.getDate()}</span>
+                                          {!isDisabled && !isFullyBooked && (
+                                            <span className={`w-1 h-1 rounded-full absolute bottom-1 ${
+                                              isSelected
+                                                ? isTerapias ? 'bg-platinum' : 'bg-gold'
+                                                : 'bg-emerald-400/50'
+                                            }`} />
+                                          )}
+                                        </button>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Hours selectors */}
+                            {date && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-2"
+                              >
+                                <label className={labelClass}>Hora disponible *</label>
+                                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                                  {[
+                                    { value: '08:00', label: '08:00 AM' },
+                                    { value: '08:30', label: '08:30 AM' },
+                                    { value: '09:00', label: '09:00 AM' },
+                                    { value: '09:30', label: '09:30 AM' },
+                                    { value: '10:00', label: '10:00 AM' },
+                                    { value: '10:30', label: '10:30 AM' },
+                                    { value: '11:00', label: '11:00 AM' },
+                                    { value: '11:30', label: '11:30 AM' },
+                                    { value: '12:00', label: '12:00 PM' },
+                                    { value: '12:30', label: '12:30 PM' },
+                                    { value: '13:00', label: '01:00 PM' },
+                                    { value: '13:30', label: '01:30 PM' },
+                                    { value: '14:00', label: '02:00 PM' },
+                                    { value: '14:30', label: '02:30 PM' },
+                                    { value: '15:00', label: '03:00 PM' },
+                                    { value: '15:30', label: '03:30 PM' },
+                                    { value: '16:00', label: '04:00 PM' },
+                                    { value: '16:30', label: '04:30 PM' },
+                                    { value: '17:00', label: '05:00 PM' },
+                                    { value: '17:30', label: '05:30 PM' },
+                                    { value: '18:00', label: '06:00 PM' },
+                                    { value: '18:30', label: '06:30 PM' },
+                                    { value: '19:00', label: '07:00 PM' },
+                                    { value: '19:30', label: '07:30 PM' },
+                                    { value: '20:00', label: '08:00 PM' },
+                                    { value: '20:30', label: '08:30 PM' }
+                                  ].map((slot) => {
+                                    const isSelected = time === slot.value;
+                                    const availability = checkTimeSlotAvailability(slot.value);
+                                    return (
+                                      <button
+                                        key={slot.value}
+                                        type="button"
+                                        disabled={!availability.available}
+                                        title={availability.reason}
+                                        onClick={() => setTime(slot.value)}
+                                        className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none cursor-pointer ${
+                                          !availability.available
+                                            ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
+                                            : isSelected
+                                              ? isTerapias
+                                                ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]'
+                                                : 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                              : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
+                                        }`}
+                                      >
+                                        {slot.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </button>
+
+                      {step === 4 && (
+                        <div className="space-y-5 animate-fadeIn">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 4</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">Datos de Contacto</h3>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className={labelClass}>Nombre Completo *</label>
+                              <input
+                                type="text"
+                                placeholder="Escribe tu nombre"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                                className={inputClass}
+                              />
+                            </div>
+
+                            <div>
+                              <label className={labelClass}>WhatsApp *</label>
+                              <div className="flex space-x-2 relative">
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                                    className="h-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 rounded-xl px-3 text-[11px] text-white flex items-center space-x-1.5 focus:outline-none min-w-[70px] justify-between cursor-pointer"
+                                  >
+                                    <span className="font-mono">{countryCode}</span>
+                                    <ChevronDown size={10} className="text-text-secondary" />
+                                  </button>
+                                  
+                                  <AnimatePresence>
+                                    {isCountryDropdownOpen && (
+                                      <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setIsCountryDropdownOpen(false)} />
+                                        <motion.div
+                                          initial={{ opacity: 0, y: -5 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          exit={{ opacity: 0, y: -5 }}
+                                          className="absolute left-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 w-28 max-h-40 overflow-y-auto"
+                                        >
+                                          {[
+                                            { code: '+56', label: 'Chile' },
+                                            { code: '+54', label: 'Argentina' },
+                                            { code: '+51', label: 'Perú' },
+                                            { code: '+57', label: 'Colombia' },
+                                            { code: '+52', label: 'México' },
+                                            { code: '+598', label: 'Uruguay' },
+                                            { code: '+1', label: 'USA' },
+                                            { code: '+34', label: 'España' }
+                                          ].map((item) => (
+                                            <button
+                                              key={item.code}
+                                              type="button"
+                                              onClick={() => {
+                                                setCountryCode(item.code);
+                                                setIsCountryDropdownOpen(false);
+                                                validatePhone(phoneNumOnly);
+                                              }}
+                                              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
+                                                countryCode === item.code ? 'text-gold font-bold' : 'text-white/80'
+                                              }`}
+                                            >
+                                              <span className="font-mono">{item.code}</span>
+                                              <span className="text-[9px] text-text-secondary">{item.label}</span>
+                                            </button>
+                                          ))}
+                                        </motion.div>
+                                      </>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+
+                                <input
+                                  type="tel"
+                                  placeholder="912345678"
+                                  value={phoneNumOnly}
+                                  onChange={(e) => handlePhoneNumChange(e.target.value)}
+                                  required
+                                  className={`${inputClass} flex-1 ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                                />
+                              </div>
+                              {phoneError && (
+                                <p className="text-[10px] text-red-400 mt-1 font-light text-left">{phoneError}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className={labelClass}>Correo Electrónico (Opcional)</label>
+                              <input
+                                type="email"
+                                placeholder="tu@correo.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className={inputClass}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {step === 5 && (
+                        <div className="space-y-5 animate-fadeIn">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 5</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">Confirmar Reserva</h3>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">Por favor revisa los detalles de tu ritual antes de finalizar.</p>
+                          </div>
+
+                          {/* Gift Card Selector */}
+                          {selectedServiceObj && (
+                            <div className={`p-4 rounded-2xl bg-white/[0.02] border ${themeBorder15} space-y-3 mt-4`}>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-semibold text-white">¿Tienes una Gift Card?</span>
+                                {appliedGiftCard && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAppliedGiftCard(null);
+                                      setGiftCardCode('');
+                                      setGiftCardSuccess('');
+                                    }}
+                                    className={`text-[10px] ${themeText} hover:underline`}
+                                  >
+                                    Quitar
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {!appliedGiftCard ? (
+                                <div className="flex space-x-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Ej: SAN-GIFT-30K"
+                                    value={giftCardCode}
+                                    onChange={(e) => {
+                                      setGiftCardCode(e.target.value);
+                                      setGiftCardError('');
+                                    }}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 uppercase font-mono"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleApplyGiftCard}
+                                    className={`px-4 py-2 rounded-xl ${themeBg} text-black text-xs font-semibold hover:opacity-90 transition-all cursor-pointer`}
+                                  >
+                                    Aplicar
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-emerald-400">
+                                  <div className="flex flex-col text-left">
+                                    <span className="font-mono font-semibold">{appliedGiftCard.code}</span>
+                                    <span className="text-[10px] opacity-80">Saldo disponible: ${appliedGiftCard.remainingBalance.toLocaleString('es-CL')} CLP</span>
+                                  </div>
+                                  <span className="font-bold">Aplicada</span>
+                                </div>
+                              )}
+                              {giftCardError && <p className="text-[10px] text-rose-500 text-left">{giftCardError}</p>}
+                              {giftCardSuccess && <p className="text-[10px] text-emerald-400 text-left">{giftCardSuccess}</p>}
+                            </div>
+                          )}
+
+                          {/* Final Summary Box */}
+                          {selectedServiceObj && (
+                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
+                              <div className="flex justify-between">
+                                <span>Ritual</span>
+                                <span className="text-white font-medium">{selectedServiceObj.name}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Especialista</span>
+                                <span className="text-white font-medium">{selectedSpecialistObj?.name || 'Cualquier Profesional'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Cita</span>
+                                <span className="text-white font-medium">{formatDateToDMY(date)} a las {time} hrs</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Valor de Servicio</span>
+                                <span className="text-white font-medium">{selectedServiceObj.price}</span>
+                              </div>
+                              {appliedGiftCard && (
+                                <div className="flex justify-between text-emerald-400">
+                                  <span>Descuento Gift Card</span>
+                                  <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-sm font-semibold">
+                                <span className="text-white font-bold">Total a Pagar</span>
+                                <span className={`${themeText} font-serif text-base font-bold`}>{finalPriceStr} CLP</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step Navigation Bar */}
+                    <div className="flex items-center space-x-4 pt-6 border-t border-white/5 flex-shrink-0 mt-4">
+                      {step > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4 | 5)}
+                          className="flex-1 py-3.5 rounded-full border border-white/10 text-white text-xs uppercase tracking-wider font-semibold hover:bg-white/5 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                        >
+                          <ChevronLeft size={14} />
+                          <span>Atrás</span>
+                        </button>
+                      )}
+                      
+                      {step < 5 ? (
+                        <button
+                          type="button"
+                          disabled={
+                            (step === 1 && !serviceId) ||
+                            (step === 3 && (!date || !time)) ||
+                            (step === 4 && (name.trim() === '' || phoneNumOnly.length !== 9 || !!phoneError))
+                          }
+                          onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4 | 5)}
+                          className={`flex-1 py-3.5 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <span>Siguiente</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={isSubmitting || !isFormValid}
+                          className={submitButtonClass}
+                        >
+                          {isSubmitting ? (
+                            <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              <span>Confirmar Experiencia</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </form>
                 ) : (
                   /* Success Screen inside Split layout */
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="py-4 text-center flex flex-col items-center"
-                  >
-                    <div className={`${themeText} mb-4`}>
-                      <CheckCircle2 size={54} className="stroke-[1.5]" />
-                    </div>
-
-                    <h4 className={successTitleClass}>¡Ritual Agendado!</h4>
-                    <p className={successTextClass}>
-                      Tu espacio ha sido reservado. Recibirás una confirmación por WhatsApp en unos minutos.
-                    </p>
-
-                    <div className={summaryBoxClass}>
-                      <div className={summaryBorderClass}>
-                        <span className={summaryLabelClass}>Código</span>
-                        <span className={summaryCodeClass}>{bookingCode}</span>
-                      </div>
-                      <div className={summaryBorderClass}>
-                        <span className={summaryLabelClass}>Ritual</span>
-                        <span className={summaryValClass} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedServiceObj?.name}</span>
-                      </div>
-                      {selectedSpecialistObj && (
-                        <div className={summaryBorderClass}>
-                          <span className={summaryLabelClass}>Especialista</span>
-                          <span className={summaryValClass}>{selectedSpecialistObj.name}</span>
-                        </div>
-                      )}
-                      <div className={summaryBorderClass}>
-                        <span className={summaryLabelClass}>Fecha</span>
-                        <span className={summaryValClass + " flex items-center"}>
-                          <Calendar size={14} className={summaryIconClass} />
-                          {formatDateToDMY(date)}
-                        </span>
-                      </div>
-                      <div className={summaryBorderClass}>
-                        <span className={summaryLabelClass}>Hora</span>
-                        <span className={summaryValClass + " flex items-center"}>
-                          <Clock size={14} className={summaryIconClass} />
-                          {time}
-                        </span>
-                      </div>
-                      {appliedGiftCard && (
-                        <div className={summaryBorderClass}>
-                          <span className={summaryLabelClass}>Gift Card Usada</span>
-                          <span className="font-mono text-emerald-400 font-semibold">{appliedGiftCard.code}</span>
-                        </div>
-                      )}
-                      {appliedGiftCard && (
-                        <div className={summaryBorderClass}>
-                          <span className={summaryLabelClass}>Descuento</span>
-                          <span className="text-emerald-400 font-semibold">-${discountAmount.toLocaleString('es-CL')} CLP</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between pt-1 border-t border-white/5">
-                        <span className={summaryLabelClass}>Total Pagado</span>
-                        <span className="text-white font-bold">{finalPriceStr} CLP</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleClose}
-                      className={successCloseClass}
+                  <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="py-4 text-center flex flex-col items-center"
                     >
-                      Cerrar
-                    </button>
-                  </motion.div>
+                      <div className={`${themeText} mb-4`}>
+                        <CheckCircle2 size={54} className="stroke-[1.5]" />
+                      </div>
+
+                      <h4 className={successTitleClass}>¡Ritual Agendado!</h4>
+                      <p className={successTextClass}>
+                        Tu espacio ha sido reservado. Recibirás una confirmación por WhatsApp en unos minutos.
+                      </p>
+
+                      <div className={summaryBoxClass}>
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Código</span>
+                          <span className={summaryCodeClass}>{bookingCode}</span>
+                        </div>
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Ritual</span>
+                          <span className={summaryValClass} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedServiceObj?.name}</span>
+                        </div>
+                        {(selectedSpecialistObj || assignedSpecialistName) && (
+                          <div className={summaryBorderClass}>
+                            <span className={summaryLabelClass}>Especialista</span>
+                            <span className={summaryValClass}>{selectedSpecialistObj?.name || assignedSpecialistName}</span>
+                          </div>
+                        )}
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Fecha</span>
+                          <span className={summaryValClass + " flex items-center"}>
+                            <Calendar size={14} className={summaryIconClass} />
+                            {formatDateToDMY(date)}
+                          </span>
+                        </div>
+                        <div className={summaryBorderClass}>
+                          <span className={summaryLabelClass}>Hora</span>
+                          <span className={summaryValClass + " flex items-center"}>
+                            <Clock size={14} className={summaryIconClass} />
+                            {time}
+                          </span>
+                        </div>
+                        {appliedGiftCard && (
+                          <div className={summaryBorderClass}>
+                            <span className={summaryLabelClass}>Gift Card Usada</span>
+                            <span className="font-mono text-emerald-400 font-semibold">{appliedGiftCard.code}</span>
+                          </div>
+                        )}
+                        {appliedGiftCard && (
+                          <div className={summaryBorderClass}>
+                            <span className={summaryLabelClass}>Descuento</span>
+                            <span className="text-emerald-400 font-semibold">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between pt-1 border-t border-white/5">
+                          <span className={summaryLabelClass}>Total Pagado</span>
+                          <span className="text-white font-bold">{finalPriceStr} CLP</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleClose}
+                        className={successCloseClass}
+                      >
+                        Cerrar
+                      </button>
+                    </motion.div>
+                  </div>
                 )}
               </div>
             </div>
