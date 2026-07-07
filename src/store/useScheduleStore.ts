@@ -185,7 +185,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
   updateWorkShift: async (specialistId, dayOfWeek, updatedShift) => {
     try {
-      const payload: any = {};
+      const payload: any = {
+        id: `${specialistId}_shift_${dayOfWeek}`,
+        specialist_id: specialistId,
+        day_of_week: dayOfWeek
+      };
       if (updatedShift.isActive !== undefined) payload.is_active = updatedShift.isActive;
       if (updatedShift.startTime !== undefined) payload.start_time = updatedShift.startTime;
       if (updatedShift.endTime !== undefined) payload.end_time = updatedShift.endTime;
@@ -195,9 +199,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
       const { error } = await supabase
         .from('work_shifts')
-        .update(payload)
-        .eq('specialist_id', specialistId)
-        .eq('day_of_week', dayOfWeek);
+        .upsert(payload, { onConflict: 'specialist_id,day_of_week' });
 
       if (error) throw error;
 
