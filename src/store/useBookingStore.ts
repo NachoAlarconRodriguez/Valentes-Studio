@@ -54,7 +54,10 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   loading: false,
 
   fetchBookingsAndClients: async () => {
-    set({ loading: true });
+    const hasData = get().bookings.length > 0;
+    if (!hasData) {
+      set({ loading: true });
+    }
     try {
       const { data: dbBookings, error: bErr } = await supabase
         .from('bookings')

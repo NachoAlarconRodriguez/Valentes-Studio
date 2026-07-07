@@ -92,7 +92,12 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
   loading: false,
 
   fetchServicesAndSpecialists: async () => {
-    set({ loading: true });
+    const currentSpecs = get().specialistsList;
+    const hasData = currentSpecs && currentSpecs.length > 0;
+
+    if (!hasData) {
+      set({ loading: true });
+    }
     try {
       // 1. Fetch Specialists
       const { data: dbSpecs, error: specsErr } = await supabase
