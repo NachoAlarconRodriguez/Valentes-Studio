@@ -437,7 +437,7 @@ export async function POST(req: Request) {
         subtitle: brand.description,
         bodyContentHtml: `<p>Hola, <strong>${clientName}</strong>.</p>
         <p>Tu ritual en <strong>${brand.name}</strong> ha sido agendado exitosamente. Te esperamos en la fecha y hora seleccionadas para ofrecerte un momento único de bienestar.</p>
-        <p>Si deseas realizar cambios o cancelar tu cita, puedes hacerlo de forma autónoma haciendo clic en el botón de abajo o contactándonos directamente.</p>`,
+        <p>Si deseas realizar cambios o cancelar tu cita, por favor contáctanos directamente a nuestro canal de WhatsApp correspondiente.</p>`,
         detailsHtml: `
           <div class="details-title">Resumen de tu Ritual</div>
           <div class="details-row">
@@ -464,9 +464,7 @@ export async function POST(req: Request) {
             <div class="details-label">Valor</div>
             <div class="details-value">${price}</div>
           </div>
-        `,
-        buttonText: 'Ver o Modificar Reserva',
-        buttonUrl: `${brand.domain}/reservas/${id}`
+        `
       });
 
       // Send to Client (if email is provided)
