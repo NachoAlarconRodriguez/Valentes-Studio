@@ -33,7 +33,7 @@ const formatDateToDMY = (dateStr: string) => {
 };
 
 export function BookingModal() {
-  const { isBookingOpen, closeBooking, selectedServiceForBooking } = useUIStore();
+  const { isBookingOpen, closeBooking, selectedServiceForBooking, bookingCategory } = useUIStore();
   const pathname = usePathname();
   
   // Form states
@@ -107,7 +107,7 @@ export function BookingModal() {
     }
   }, [isBookingOpen, fetchSchedules, fetchBookingsAndClients, fetchServicesAndSpecialists]);
 
-  // Prefill service/category if passed from CTA or based on the host/pathname
+  // Prefill service/category if passed from CTA or based on the host/pathname/bookingCategory
   useEffect(() => {
     if (selectedServiceForBooking) {
       // Find category
@@ -120,6 +120,10 @@ export function BookingModal() {
       setCategory(foundCategory);
       setServiceId(selectedServiceForBooking.id);
       setStep(2);
+    } else if (bookingCategory) {
+      setCategory(bookingCategory);
+      setServiceId('');
+      setStep(1);
     } else {
       setServiceId('');
       
@@ -158,7 +162,7 @@ export function BookingModal() {
       }
       setStep(1);
     }
-  }, [selectedServiceForBooking, isBookingOpen, pathname, fetchServicesAndSpecialists]);
+  }, [selectedServiceForBooking, bookingCategory, isBookingOpen, pathname, fetchServicesAndSpecialists]);
 
   // Helper to format date with offset in YYYY-MM-DD
   const getFormattedDate = (daysOffset = 0) => {
