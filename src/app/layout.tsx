@@ -31,11 +31,11 @@ export default async function RootLayout({
   const headersList = await headers();
   const host = headersList.get("host") || "";
 
-  let faviconPath = "/favicon-jefferson.png"; // default
+  let faviconPath = "/favicon-jefferson.svg"; // default
   if (host.includes("valentes.cl")) {
-    faviconPath = "/favicon-valentes.png";
+    faviconPath = "/favicon-valentes.svg";
   } else if (host.includes("almabela.cl")) {
-    faviconPath = "/favicon-almabela.png";
+    faviconPath = "/favicon-almabela.svg";
   }
 
   return (

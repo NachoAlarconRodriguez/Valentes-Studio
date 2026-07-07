@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import { uploadImageAction } from './actions';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -837,7 +837,7 @@ export default function AdminPage() {
     }
   }, [specialistsList, selectedScheduleStaffId, activeScheduleBusinessFilter]);
 
-  const [blockFormDate, setBlockFormDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [blockFormDate, setBlockFormDate] = useState(() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; });
   const [blockFormStart, setBlockFormStart] = useState('10:00');
   const [blockFormEnd, setBlockFormEnd] = useState('11:00');
   const [blockFormReason, setBlockFormReason] = useState<string>('Asunto Personal');
@@ -852,10 +852,11 @@ export default function AdminPage() {
   const [dbStartDate, setDbStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   });
   const [dbEndDate, setDbEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    const _d = new Date();
+    return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
   });
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
@@ -882,7 +883,7 @@ export default function AdminPage() {
 
   // Agenda Filter States
   const [agendaViewMode, setAgendaViewMode] = useState<'hoy' | 'manana' | 'semana' | 'prox_semana' | 'fecha'>('hoy');
-  const [agendaCustomDate, setAgendaCustomDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [agendaCustomDate, setAgendaCustomDate] = useState(() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; });
   const [activeSpecialistFilter, setActiveSpecialistFilter] = useState<string>('all');
 
   const [profileName, setProfileName] = useState('Sofia Valente');
@@ -1412,8 +1413,19 @@ export default function AdminPage() {
               try {
                 const formData = new FormData();
                 formData.append('file', blob, 'image.jpg');
-                const publicUrl = await uploadImageAction(formData);
-                resolve(publicUrl);
+                
+                const response = await fetch('/api/upload', {
+                  method: 'POST',
+                  body: formData
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({}));
+                  throw new Error(errorData.error || 'Error al subir la imagen al servidor');
+                }
+                
+                const responseData = await response.json();
+                resolve(responseData.url);
               } catch (uploadError) {
                 reject(uploadError);
               }
@@ -1574,11 +1586,19 @@ export default function AdminPage() {
     );
   };
 
+  // Helper: returns local date string in YYYY-MM-DD format (avoids UTC offset bug for Santiago, Chile)
+  const toLocalDateStr = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Helpers to format card labels dynamically based on current date
   const getFormattedDate = (offset = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return toLocalDateStr(d);
   };
 
   const formatDateToDMY = (dateStr: string) => {
@@ -1806,8 +1826,8 @@ export default function AdminPage() {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     return {
-      start: monday.toISOString().split('T')[0],
-      end: sunday.toISOString().split('T')[0]
+      start: toLocalDateStr(monday),
+      end: toLocalDateStr(sunday)
     };
   };
 
@@ -1820,8 +1840,8 @@ export default function AdminPage() {
     const sundayNext = new Date(mondayNext);
     sundayNext.setDate(mondayNext.getDate() + 6);
     return {
-      start: mondayNext.toISOString().split('T')[0],
-      end: sundayNext.toISOString().split('T')[0]
+      start: toLocalDateStr(mondayNext),
+      end: toLocalDateStr(sundayNext)
     };
   };
 
@@ -2113,7 +2133,9 @@ export default function AdminPage() {
   });
 
   // Calculate Metrics for Dashboard based on filters
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Helper: local date to avoid UTC offset bug in Santiago (UTC-3/-4)
+  const _toLocalStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayStr = _toLocalStr(new Date());
   let filterStartDate = '';
   let filterEndDate = todayStr;
 
@@ -2123,11 +2145,11 @@ export default function AdminPage() {
   } else if (dbDateFilter === 'semana') {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    filterStartDate = d.toISOString().split('T')[0];
+    filterStartDate = _toLocalStr(d);
   } else if (dbDateFilter === 'mes') {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    filterStartDate = d.toISOString().split('T')[0];
+    filterStartDate = _toLocalStr(d);
   } else if (dbDateFilter === 'personalizado') {
     filterStartDate = dbStartDate;
     filterEndDate = dbEndDate;
@@ -2175,12 +2197,12 @@ export default function AdminPage() {
   let prevStartDate = '';
   let prevEndDate = '';
   const todayDateObj = new Date();
-  const todayStrOnly = todayDateObj.toISOString().split('T')[0];
+  const todayStrOnly = _toLocalStr(todayDateObj);
   
   if (dbDateFilter === 'hoy') {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    const yesterdayStr = d.toISOString().split('T')[0];
+    const yesterdayStr = _toLocalStr(d);
     prevStartDate = yesterdayStr;
     prevEndDate = yesterdayStr;
   } else if (dbDateFilter === 'semana') {
@@ -2188,21 +2210,21 @@ export default function AdminPage() {
     dStart.setDate(dStart.getDate() - 14);
     const dEnd = new Date();
     dEnd.setDate(dEnd.getDate() - 8);
-    prevStartDate = dStart.toISOString().split('T')[0];
-    prevEndDate = dEnd.toISOString().split('T')[0];
+    prevStartDate = _toLocalStr(dStart);
+    prevEndDate = _toLocalStr(dEnd);
   } else if (dbDateFilter === 'mes') {
     const dStart = new Date();
     dStart.setDate(dStart.getDate() - 60);
     const dEnd = new Date();
     dEnd.setDate(dEnd.getDate() - 31);
-    prevStartDate = dStart.toISOString().split('T')[0];
-    prevEndDate = dEnd.toISOString().split('T')[0];
+    prevStartDate = _toLocalStr(dStart);
+    prevEndDate = _toLocalStr(dEnd);
   } else if (dbDateFilter === 'personalizado' && dbStartDate && dbEndDate) {
-    const startMs = new Date(dbStartDate).getTime();
-    const endMs = new Date(dbEndDate).getTime();
+    const startMs = new Date(dbStartDate + 'T12:00:00').getTime();
+    const endMs = new Date(dbEndDate + 'T12:00:00').getTime();
     const diff = endMs - startMs;
-    prevEndDate = new Date(startMs - 86400000).toISOString().split('T')[0];
-    prevStartDate = new Date(startMs - 86400000 - diff).toISOString().split('T')[0];
+    prevEndDate = _toLocalStr(new Date(startMs - 86400000));
+    prevStartDate = _toLocalStr(new Date(startMs - 86400000 - diff));
   }
 
   const prevPeriodBookings = prevStartDate ? bookings.filter(b => {
@@ -2311,7 +2333,7 @@ export default function AdminPage() {
         const d = new Date();
         d.setDate(d.getDate() - i);
         days.push({
-          dateStr: d.toISOString().split('T')[0],
+          dateStr: _toLocalStr(d),
           label: weekdayNames[d.getDay()]
         });
       }
@@ -2335,8 +2357,8 @@ export default function AdminPage() {
         const dStart = new Date(dEnd);
         dStart.setDate(dStart.getDate() - 4);
         
-        const endStr = dEnd.toISOString().split('T')[0];
-        const startStr = dStart.toISOString().split('T')[0];
+        const endStr = _toLocalStr(dEnd);
+        const startStr = _toLocalStr(dStart);
         
         const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
         const label = `${dStart.getDate()} - ${dEnd.getDate()} ${months[dEnd.getMonth()]}`;
@@ -2367,7 +2389,7 @@ export default function AdminPage() {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
         days.push({
-          dateStr: d.toISOString().split('T')[0],
+          dateStr: _toLocalStr(d),
           label: `${d.getDate()} ${months[d.getMonth()]}`
         });
       }
@@ -2392,8 +2414,8 @@ export default function AdminPage() {
         dEnd.setDate(dEnd.getDate() + (i + 1) * step - 1);
         const finalEnd = dEnd > end ? end : dEnd;
         
-        const startStr = dStart.toISOString().split('T')[0];
-        const endStr = finalEnd.toISOString().split('T')[0];
+        const startStr = _toLocalStr(dStart);
+        const endStr = _toLocalStr(finalEnd);
         const label = `${dStart.getDate()} ${months[dStart.getMonth()]} - ${finalEnd.getDate()} ${months[finalEnd.getMonth()]}`;
         intervals.push({ startStr, endStr, label });
       }
@@ -8365,7 +8387,7 @@ export default function AdminPage() {
             {/* Sub-tab Content: BLOQUEOS DE HORAS */}
             {activeScheduleSubTab === 'bloqueos' && (() => {
               const currentYear = new Date().getFullYear();
-              const todayDateStr = new Date().toISOString().split('T')[0];
+              const todayDateStr = (() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; })();
               const allChileHolidays = [
                 { date: `${currentYear}-01-01`, name: 'Año Nuevo', isIrrenunciable: true },
                 { date: `${currentYear}-04-03`, name: 'Viernes Santo', isIrrenunciable: false },
@@ -8732,7 +8754,20 @@ export default function AdminPage() {
                           try {
                             const formData = new FormData();
                             formData.append('file', file);
-                            const publicUrl = await uploadImageAction(formData);
+                            
+                            const response = await fetch('/api/upload', {
+                              method: 'POST',
+                              body: formData
+                            });
+                            
+                            if (!response.ok) {
+                              const errorData = await response.json().catch(() => ({}));
+                              throw new Error(errorData.error || 'Error al subir el video al servidor');
+                            }
+                            
+                            const responseData = await response.json();
+                            const publicUrl = responseData.url;
+                            
                             setEditingAsset(prev => prev ? { ...prev, currentValue: publicUrl } : null);
                             triggerNotification('Video subido con éxito.');
                           } catch (err: any) {

@@ -298,7 +298,11 @@ export function ManualBookingModal({
   const getFormattedDate = (daysOffset = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + daysOffset);
-    return d.toISOString().split('T')[0];
+    // Use local date components to avoid UTC offset shifting the day (e.g. in Chile UTC-3/-4)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Availability checking
