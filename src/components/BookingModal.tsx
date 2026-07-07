@@ -43,6 +43,7 @@ export function BookingModal() {
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handlePhoneNumChange = (val: string) => {
     const cleaned = val.replace(/\D/g, '').substring(0, 9);
@@ -327,6 +328,7 @@ export function BookingModal() {
       return;
     }
     setPhoneError(null);
+    setSubmitError(null);
 
     setIsSubmitting(true);
     
@@ -372,8 +374,9 @@ export function BookingModal() {
       
       setBookingCode(newBookingId);
       setIsSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating booking:', err);
+      setSubmitError(err.message || 'Error al agendar la cita. Por favor intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -384,6 +387,7 @@ export function BookingModal() {
     setCountryCode('+56');
     setPhoneNumOnly('');
     setPhoneError(null);
+    setSubmitError(null);
     setEmail('');
     setCategory('barberia');
     setServiceId('');
@@ -1377,6 +1381,11 @@ export function BookingModal() {
                                 <span className="text-white font-bold">Total a Pagar</span>
                                 <span className={`${themeText} font-serif text-base font-bold`}>{finalPriceStr} CLP</span>
                               </div>
+                            </div>
+                          )}
+                          {submitError && (
+                            <div className="p-3.5 bg-red-950/40 border border-red-500/20 rounded-2xl text-[11px] text-red-300 text-left mt-4 font-light leading-relaxed">
+                              {submitError}
                             </div>
                           )}
                         </div>

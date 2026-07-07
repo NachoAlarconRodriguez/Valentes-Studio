@@ -2,6 +2,30 @@ import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
 import { useServicesStore } from './useServicesStore';
 
+const parseDurationToMinutes = (durationStr: string): number => {
+  if (!durationStr) return 60;
+  const clean = durationStr.toLowerCase().trim();
+  let totalMinutes = 0;
+  const hourMatch = clean.match(/(\d+)\s*(?:hrs|hr|hora|horas)/);
+  if (hourMatch) totalMinutes += parseInt(hourMatch[1], 10) * 60;
+  const minMatch = clean.match(/(\d+)\s*(?:min|mins|minutos)/);
+  if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
+  if (totalMinutes === 0) {
+    const fallbackMatch = clean.match(/(\d+)/);
+    if (fallbackMatch) {
+      totalMinutes = parseInt(fallbackMatch[1], 10);
+      if (totalMinutes < 5) totalMinutes *= 60;
+    }
+  }
+  return totalMinutes > 0 ? totalMinutes : 60;
+};
+
+const timeToMinutes = (timeStr: string): number => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
 export interface Booking {
   id: string;
   clientName: string;
@@ -119,6 +143,51 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     const createdAt = new Date().toISOString();
 
     try {
+      // 0. Verificar traslapes de último segundo (Prevención de Doble Reserva / Race Condition)
+      const { data: conflictingBookings, error: checkErr } = await supabase
+        .from('bookings')
+        .select('id, time, service_name')
+        .eq('date', bookingData.date)
+        .eq('specialist_name', bookingData.specialistName)
+        .neq('status', 'bloqueado');
+
+      if (checkErr) throw checkErr;
+
+      if (conflictingBookings && conflictingBookings.length > 0) {
+        let allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
+          cat => useServicesStore.getState().servicesData[cat].services
+        );
+
+        if (allServices.length === 0) {
+          const { data: dbServices } = await supabase.from('services').select('*');
+          if (dbServices) {
+            allServices = dbServices.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              price: s.price,
+              duration: s.duration,
+              category: s.category
+            }));
+          }
+        }
+
+        const newService = allServices.find(s => s.name.trim().toLowerCase() === bookingData.serviceName.trim().toLowerCase());
+        const newServiceDuration = newService ? parseDurationToMinutes(newService.duration) : 60;
+        const slotStart = timeToMinutes(bookingData.time);
+        const slotEnd = slotStart + newServiceDuration;
+
+        for (const existing of conflictingBookings) {
+          const existingStart = timeToMinutes(existing.time);
+          const existingService = allServices.find(s => s.name.trim().toLowerCase() === existing.service_name.trim().toLowerCase());
+          const existingDuration = existingService ? parseDurationToMinutes(existingService.duration) : 60;
+          const existingEnd = existingStart + existingDuration;
+
+          if (slotStart < existingEnd && slotEnd > existingStart) {
+            throw new Error(`El horario de las ${bookingData.time} hrs para ${bookingData.specialistName} acaba de ser reservado. Por favor, selecciona otro bloque.`);
+          }
+        }
+      }
+
       // 1. Insert Booking in Supabase
       const { error: bErr } = await supabase.from('bookings').insert({
         id: randomCode,
