@@ -47,16 +47,18 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     fetchGiftCards();
     fetchContent();
 
-    // Poll every 10 seconds to keep client availability and bookings fresh in the background
+    // Poll every 10 seconds to keep client availability, bookings, and specialists list fresh
     const interval = setInterval(() => {
       fetchBookingsAndClients();
       fetchSchedules();
+      fetchServicesAndSpecialists();
     }, 10000);
 
     // Refresh immediately when client focuses the tab
     const handleFocus = () => {
       fetchBookingsAndClients();
       fetchSchedules();
+      fetchServicesAndSpecialists();
     };
     window.addEventListener('focus', handleFocus);
 

@@ -95,16 +95,18 @@ export function BookingModal() {
 
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
   const fetchBookingsAndClients = useBookingStore(state => state.fetchBookingsAndClients);
+  const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
 
-  // Fetch real-time schedule and booking data from Supabase when the modal is opened
+  // Fetch real-time schedule, booking and specialist data from Supabase when the modal is opened
   useEffect(() => {
     if (isBookingOpen) {
       fetchSchedules();
       fetchBookingsAndClients();
+      fetchServicesAndSpecialists();
     }
-  }, [isBookingOpen, fetchSchedules, fetchBookingsAndClients]);
+  }, [isBookingOpen, fetchSchedules, fetchBookingsAndClients, fetchServicesAndSpecialists]);
 
-  // Prefill service if passed from CTA
+  // Prefill service/category if passed from CTA or based on the host/pathname
   useEffect(() => {
     if (selectedServiceForBooking) {
       // Find category
@@ -119,16 +121,43 @@ export function BookingModal() {
       setStep(2);
     } else {
       setServiceId('');
-      if (pathname.includes('/peluqueria')) {
-        setCategory('peluqueria');
-      } else if (pathname.includes('/terapias')) {
-        setCategory('terapias');
+      
+      // Check hostname first for multi-domain routing
+      if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host.includes('almabela.cl')) {
+          setCategory('peluqueria');
+        } else if (host.includes('valentes.cl')) {
+          setCategory('barberia');
+        } else if (host.includes('jeffersonlopes.cl')) {
+          if (pathname.includes('/terapias')) {
+            setCategory('terapias');
+          } else {
+            setCategory('barberia');
+          }
+        } else {
+          // Fallback to pathnames (for localhost development)
+          if (pathname.includes('/peluqueria')) {
+            setCategory('peluqueria');
+          } else if (pathname.includes('/terapias')) {
+            setCategory('terapias');
+          } else {
+            setCategory('barberia');
+          }
+        }
       } else {
-        setCategory('barberia');
+        // Fallback for SSR
+        if (pathname.includes('/peluqueria')) {
+          setCategory('peluqueria');
+        } else if (pathname.includes('/terapias')) {
+          setCategory('terapias');
+        } else {
+          setCategory('barberia');
+        }
       }
       setStep(1);
     }
-  }, [selectedServiceForBooking, isBookingOpen, pathname]);
+  }, [selectedServiceForBooking, isBookingOpen, pathname, fetchServicesAndSpecialists]);
 
   // Helper to format date with offset in YYYY-MM-DD
   const getFormattedDate = (daysOffset = 0) => {
