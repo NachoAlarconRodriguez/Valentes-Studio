@@ -137,13 +137,7 @@ export default function HomePage() {
                 <span className="text-[9px] uppercase tracking-[0.3em] font-bold leading-none mb-1 shadow-sm transition-colors duration-500 text-gold">
                   {panel.businessCategory}
                 </span>
-                <span className={`font-serif text-xs sm:text-sm font-semibold text-white tracking-wider leading-none shadow-sm transition-colors duration-500 uppercase ${
-                  panel.id === 1 
-                    ? 'group-hover:text-[#D48C37]' 
-                    : panel.id === 2 
-                    ? 'group-hover:text-[#D4AF37]' 
-                    : 'group-hover:text-[#D4AF37]'
-                }`}>
+                <span className="font-serif text-xs sm:text-sm font-semibold text-white tracking-wider leading-none shadow-sm transition-colors duration-500 uppercase group-hover:text-[#D48C37]">
                   {panel.businessName}
                 </span>
               </div>
