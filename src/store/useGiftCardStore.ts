@@ -101,6 +101,22 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
       set((state) => ({
         giftCards: [newCard, ...state.giftCards]
       }));
+
+      // Disparar correo de entrega de Gift Card (Destinatario + Comprobante Comprador)
+      try {
+        fetch('/api/email', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: 'giftcard_purchase',
+            data: newCard
+          })
+        }).catch(err => console.error('Error enviando mail de gift card:', err));
+      } catch (emailErr) {
+        console.error('Error al disparar correo de gift card:', emailErr);
+      }
     } catch (err) {
       console.error('Error buying gift card:', err);
     }

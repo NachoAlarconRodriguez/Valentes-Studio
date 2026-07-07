@@ -34,7 +34,8 @@ export default function HomePage() {
       logoUrl: '/hands-logo-v4.png',
       businessName: 'Valentes Studio',
       businessCategory: 'Barbería',
-      logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
+      logoSize: 'w-24 h-24 sm:w-32 sm:h-32',
+      logoSizeMobile: 'w-24 h-24'
     },
     {
       id: 2,
@@ -46,7 +47,8 @@ export default function HomePage() {
       logoUrl: '/peluqueria-logo-v4.png',
       businessName: 'Alma Bela Studio',
       businessCategory: 'Peluquería',
-      logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
+      logoSize: 'w-24 h-24 sm:w-32 sm:h-32',
+      logoSizeMobile: 'w-24 h-24'
     },
     {
       id: 3,
@@ -58,7 +60,8 @@ export default function HomePage() {
       logoUrl: '/terapias-logo-v7.png',
       businessName: 'Jefito Lopes Studio',
       businessCategory: 'Terapias Holísticas',
-      logoSize: 'w-24 h-24 sm:w-32 sm:h-32'
+      logoSize: 'w-24 h-24 sm:w-32 sm:h-32',
+      logoSizeMobile: 'w-24 h-24'
     }
   ];
 
@@ -83,19 +86,19 @@ export default function HomePage() {
           >
             {/* MOBILE LAYOUT (Centered, logo above title, no description) */}
             <div className="lg:hidden flex flex-col items-center justify-center space-y-4 z-10 relative text-center w-full">
-              <div className="relative w-24 h-24 select-none pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+              <div className={`relative ${panel.logoSizeMobile} select-none pointer-events-none drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]`}>
                 <Image
                   src={panel.logoUrl}
                   alt={panel.businessName}
                   fill
                   sizes="96px"
-                  className="object-contain filter brightness-100"
+                  className={`object-contain filter brightness-100 ${
+                    panel.id === 3 ? 'scale-[1.35]' : ''
+                  }`}
                 />
               </div>
               <div className="space-y-1">
-                <span className={`text-[8px] uppercase tracking-[0.3em] font-bold leading-none block ${
-                  panel.id === 3 ? 'text-platinum' : 'text-gold'
-                }`}>
+                <span className="text-[8px] uppercase tracking-[0.3em] font-bold leading-none block text-gold">
                   {panel.businessCategory} {panel.businessName}
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-semibold block">
@@ -123,15 +126,15 @@ export default function HomePage() {
                   alt={panel.businessName}
                   fill
                   sizes="128px"
-                  className="object-contain filter brightness-100 group-hover:brightness-110 transition-all duration-500"
+                  className={`object-contain filter brightness-100 group-hover:brightness-110 transition-all duration-500 ${
+                    panel.id === 3 ? 'scale-[1.35]' : ''
+                  }`}
                 />
               </div>
               <div className={`flex flex-col items-center text-center transition-transform duration-500 ease-out ${
                 isHovered ? 'translate-y-3.5' : 'translate-y-0'
               }`}>
-                <span className={`text-[9px] uppercase tracking-[0.3em] font-bold leading-none mb-1 shadow-sm transition-colors duration-500 ${
-                  panel.id === 3 ? 'text-platinum' : 'text-gold'
-                }`}>
+                <span className="text-[9px] uppercase tracking-[0.3em] font-bold leading-none mb-1 shadow-sm transition-colors duration-500 text-gold">
                   {panel.businessCategory}
                 </span>
                 <span className={`font-serif text-xs sm:text-sm font-semibold text-white tracking-wider leading-none shadow-sm transition-colors duration-500 uppercase ${
@@ -139,7 +142,7 @@ export default function HomePage() {
                     ? 'group-hover:text-[#D48C37]' 
                     : panel.id === 2 
                     ? 'group-hover:text-[#D4AF37]' 
-                    : 'group-hover:text-platinum'
+                    : 'group-hover:text-[#D4AF37]'
                 }`}>
                   {panel.businessName}
                 </span>

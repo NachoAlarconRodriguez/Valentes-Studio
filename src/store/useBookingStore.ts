@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
+import { useServicesStore } from './useServicesStore';
 
 export interface Booking {
   id: string;
@@ -223,6 +224,29 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         };
       });
 
+      // Disparar correo de confirmación de reserva (Cliente + Staff/Admin)
+      try {
+        const allSpecs = useServicesStore.getState().specialistsList || [];
+        const spec = allSpecs.find(s => s.name.trim().toLowerCase() === bookingData.specialistName.trim().toLowerCase());
+        const specialistEmail = spec ? spec.email : '';
+
+        fetch('/api/email', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: 'booking_confirmation',
+            data: {
+              ...newBooking,
+              specialistEmail
+            }
+          })
+        }).catch(err => console.error('Error enviando mail de confirmacion:', err));
+      } catch (emailErr) {
+        console.error('Error al resolver mail del especialista o disparar email:', emailErr);
+      }
+
     } catch (err) {
       console.error('Error adding booking:', err);
     }
@@ -249,6 +273,13 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
   deleteBooking: async (id) => {
     try {
+      // Obtener detalles de la reserva antes de eliminarla para enviar correo de cancelación
+      const { data: bookingToCancel } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('bookings')
         .delete()
@@ -259,6 +290,39 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       set((state) => ({
         bookings: state.bookings.filter(b => b.id !== id)
       }));
+
+      // Disparar correo de cancelación si la reserva existía
+      if (bookingToCancel) {
+        try {
+          const allSpecs = useServicesStore.getState().specialistsList || [];
+          const spec = allSpecs.find(s => s.name.trim().toLowerCase() === bookingToCancel.specialist_name.trim().toLowerCase());
+          const specialistEmail = spec ? spec.email : '';
+
+          fetch('/api/email', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              type: 'booking_cancelled',
+              data: {
+                id,
+                clientName: bookingToCancel.client_name,
+                clientEmail: bookingToCancel.client_email,
+                clientPhone: bookingToCancel.client_phone,
+                category: bookingToCancel.category,
+                serviceName: bookingToCancel.service_name,
+                date: bookingToCancel.date,
+                time: bookingToCancel.time,
+                specialistName: bookingToCancel.specialist_name,
+                specialistEmail
+              }
+            })
+          }).catch(err => console.error('Error enviando mail de cancelacion:', err));
+        } catch (emailErr) {
+          console.error('Error al disparar correo de cancelacion:', emailErr);
+        }
+      }
     } catch (err) {
       console.error('Error deleting booking:', err);
     }
