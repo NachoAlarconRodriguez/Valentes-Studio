@@ -21,16 +21,31 @@ export const metadata: Metadata = {
   keywords: ["santuario de bienestar", "barberia de lujo", "peluqueria de autor", "masajes relajantes", "terapias holísticas", "reiki", "experiencia zen", "corte de cabello"],
 };
 
-export default function RootLayout({
+import { headers } from "next/headers";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+
+  let faviconPath = "/favicon-jefferson.png"; // default
+  if (host.includes("valentes.cl")) {
+    faviconPath = "/favicon-valentes.png";
+  } else if (host.includes("almabela.cl")) {
+    faviconPath = "/favicon-almabela.png";
+  }
+
   return (
     <html
       lang="es"
       className={`${cinzel.variable} ${inter.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="icon" href={faviconPath} />
+      </head>
       <body className="min-h-full flex flex-col font-sans text-text-primary">
         <ClientLayout>{children}</ClientLayout>
       </body>
