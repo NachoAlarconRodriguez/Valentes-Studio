@@ -1466,86 +1466,26 @@ export default function AdminPage() {
   };
 
   const optimizeAndUploadImage = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new window.Image();
-        img.onload = () => {
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = Math.round((height * MAX_WIDTH) / width);
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = Math.round((width * MAX_HEIGHT) / height);
-              height = MAX_HEIGHT;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('No se pudo obtener el contexto del canvas'));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          const saveBlob = (mimeType: string, quality: number) => {
-            canvas.toBlob(
-              async (blob) => {
-                if (!blob) {
-                  if (mimeType === 'image/webp') {
-                    // Fallback to jpeg if WebP is not supported or fails
-                    saveBlob('image/jpeg', 0.82);
-                  } else {
-                    reject(new Error('Fallo al comprimir la imagen'));
-                  }
-                  return;
-                }
-
-                try {
-                  const formData = new FormData();
-                  const fileExt = mimeType === 'image/webp' ? 'webp' : 'jpg';
-                  formData.append('file', blob, `image.${fileExt}`);
-                  
-                  const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                  });
-                  
-                  if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Error al subir la imagen al servidor');
-                  }
-                  
-                  const responseData = await response.json();
-                  resolve(responseData.url);
-                } catch (uploadError) {
-                  reject(uploadError);
-                }
-              },
-              mimeType,
-              quality
-            );
-          };
-          saveBlob('image/webp', 0.75);
-        };
-        img.onerror = () => reject(new Error('Error al cargar la imagen'));
-        img.src = event.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error('Error al leer el archivo'));
-      reader.readAsDataURL(file);
-    });
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al subir la imagen al servidor');
+      }
+      
+      const responseData = await response.json();
+      return responseData.url;
+    } catch (err: any) {
+      console.error('Error in optimizeAndUploadImage:', err);
+      throw err;
+    }
   };
 
   const handleVsmSave = async () => {
