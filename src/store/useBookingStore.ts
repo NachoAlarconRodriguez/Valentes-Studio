@@ -61,6 +61,7 @@ interface BookingStore {
   
   // Actions
   fetchBookingsAndClients: () => Promise<void>;
+  fetchPublicBookings: () => Promise<void>;
   addBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'channel' | 'status'> & Partial<Pick<Booking, 'channel' | 'status'>>) => Promise<string>;
   updateBookingStatus: (id: string, status: Booking['status']) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
@@ -84,7 +85,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     }
     try {
       const { data: dbBookings, error: bErr } = await supabase
-        .from('bookings')
+        .from('admin_bookings')
         .select('*')
         .order('date', { ascending: false })
         .order('time', { ascending: false });
@@ -93,7 +94,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
       const { data: dbClients, error: cErr } = await supabase
         .from('clients')
-        .select('*');
+        .select('phone, name, email, businesses, total_spent, last_visit, notes, not_so_good_client');
 
       if (cErr) throw cErr;
 
@@ -104,7 +105,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         clientEmail: b.client_email || '',
         category: b.category,
         serviceName: b.service_name,
-        price: b.price,
+        price: typeof b.price === 'number' ? `$${b.price.toLocaleString('es-CL')}` : b.price,
         specialistName: b.specialist_name,
         date: b.date,
         time: b.time,
@@ -131,6 +132,51 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       set({ loading: false });
     }
   },
+  
+  fetchPublicBookings: async () => {
+    const hasData = get().bookings.length > 0;
+    if (!hasData) {
+      set({ loading: true });
+    }
+    try {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const maxDate = new Date(today);
+      maxDate.setDate(today.getDate() + 30);
+      const maxDateStr = maxDate.toISOString().split('T')[0];
+
+      const { data: dbBookings, error: bErr } = await supabase
+        .from('public_bookings')
+        .select('id, specialist_name, date, time, service_name, status')
+        .gte('date', todayStr)
+        .lte('date', maxDateStr);
+
+      if (bErr) throw bErr;
+
+      const bookings: Booking[] = (dbBookings || []).map((b: any) => ({
+        id: b.id,
+        clientName: 'Reservado',
+        clientPhone: '',
+        clientEmail: '',
+        category: 'barberia', // dummy
+        serviceName: b.service_name,
+        price: '',
+        specialistName: b.specialist_name,
+        date: b.date,
+        time: b.time,
+        channel: 'Web',
+        status: b.status,
+        createdAt: '',
+        giftCardUsed: ''
+      }));
+
+      set({ bookings, clients: [], loading: false });
+    } catch (error) {
+      console.error('Error fetching public bookings:', error);
+      set({ loading: false });
+    }
+  },
 
   addBooking: async (bookingData) => {
     const prefix = 
@@ -141,6 +187,10 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     const channel = bookingData.channel || (Math.random() > 0.4 ? 'Web' : 'WhatsApp');
     const status = bookingData.status || 'confirmado';
     const createdAt = new Date().toISOString();
+
+    const bookingPrice = typeof bookingData.price === 'number'
+      ? bookingData.price
+      : parseInt(bookingData.price.replace(/[^0-9]/g, ''), 10) || 0;
 
     try {
       // 0. Verificar traslapes de último segundo (Prevención de Doble Reserva / Race Condition)
@@ -172,14 +222,18 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         }
 
         const newService = allServices.find(s => s.name.trim().toLowerCase() === bookingData.serviceName.trim().toLowerCase());
-        const newServiceDuration = newService ? parseDurationToMinutes(newService.duration) : 60;
+        const newServiceDuration = newService 
+          ? (typeof newService.duration === 'number' ? newService.duration : parseDurationToMinutes(newService.duration)) 
+          : 60;
         const slotStart = timeToMinutes(bookingData.time);
         const slotEnd = slotStart + newServiceDuration;
 
         for (const existing of conflictingBookings) {
           const existingStart = timeToMinutes(existing.time);
           const existingService = allServices.find(s => s.name.trim().toLowerCase() === existing.service_name.trim().toLowerCase());
-          const existingDuration = existingService ? parseDurationToMinutes(existingService.duration) : 60;
+          const existingDuration = existingService 
+            ? (typeof existingService.duration === 'number' ? existingService.duration : parseDurationToMinutes(existingService.duration)) 
+            : 60;
           const existingEnd = existingStart + existingDuration;
 
           if (slotStart < existingEnd && slotEnd > existingStart) {
@@ -188,15 +242,13 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         }
       }
 
-      // 1. Insert Booking in Supabase
+      // 1. Insert Booking in Supabase (Omit client_name and client_email, prices are INTEGER)
       const { error: bErr } = await supabase.from('bookings').insert({
         id: randomCode,
-        client_name: bookingData.clientName,
         client_phone: bookingData.clientPhone,
-        client_email: bookingData.clientEmail || '',
         category: bookingData.category,
         service_name: bookingData.serviceName,
-        price: bookingData.price,
+        price: bookingPrice,
         specialist_name: bookingData.specialistName,
         date: bookingData.date,
         time: bookingData.time,
@@ -208,48 +260,57 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
       if (bErr) throw bErr;
 
-      // 2. Fetch or update CRM Client details in Supabase
-      const { data: existingClient, error: cFetchErr } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('phone', bookingData.clientPhone)
-        .maybeSingle();
-
-      if (cFetchErr) throw cFetchErr;
-
-      const bookingPrice = parseInt(bookingData.price.replace(/[^0-9]/g, ''), 10) || 0;
-
-      if (existingClient) {
-        // Merge businesses array
-        const businessesSet = new Set(existingClient.businesses || []);
-        businessesSet.add(bookingData.category);
-        const updatedBusinesses = Array.from(businessesSet);
-
-        const { error: cUpdateErr } = await supabase
+      // 2. Fetch or update CRM Client details in Supabase (Non-blocking to ensure emails are sent)
+      try {
+        const { data: existingClient, error: cFetchErr } = await supabase
           .from('clients')
-          .update({
+          .select('*')
+          .eq('phone', bookingData.clientPhone)
+          .maybeSingle();
+
+        if (cFetchErr) throw cFetchErr;
+
+        if (existingClient) {
+          // Merge businesses array
+          const businessesSet = new Set(existingClient.businesses || []);
+          businessesSet.add(bookingData.category);
+          const updatedBusinesses = Array.from(businessesSet);
+
+          const { error: cUpdateErr } = await supabase
+            .from('clients')
+            .update({
+              name: bookingData.clientName,
+              email: bookingData.clientEmail || existingClient.email || '',
+              businesses: updatedBusinesses,
+              total_spent: (existingClient.total_spent || 0) + bookingPrice,
+              last_visit: bookingData.date
+            })
+            .eq('phone', bookingData.clientPhone);
+
+          if (cUpdateErr) throw cUpdateErr;
+        } else {
+          const { error: cInsertErr } = await supabase.from('clients').insert({
+            phone: bookingData.clientPhone,
             name: bookingData.clientName,
-            email: bookingData.clientEmail || existingClient.email || '',
-            businesses: updatedBusinesses,
-            total_spent: (existingClient.total_spent || 0) + bookingPrice,
-            last_visit: bookingData.date
-          })
-          .eq('phone', bookingData.clientPhone);
+            email: bookingData.clientEmail || '',
+            businesses: [bookingData.category],
+            total_spent: bookingPrice,
+            last_visit: bookingData.date,
+            notes: '',
+            not_so_good_client: false
+          });
 
-        if (cUpdateErr) throw cUpdateErr;
-      } else {
-        const { error: cInsertErr } = await supabase.from('clients').insert({
-          phone: bookingData.clientPhone,
-          name: bookingData.clientName,
-          email: bookingData.clientEmail || '',
-          businesses: [bookingData.category],
-          total_spent: bookingPrice,
-          last_visit: bookingData.date,
-          notes: '',
-          not_so_good_client: false
-        });
-
-        if (cInsertErr) throw cInsertErr;
+          if (cInsertErr) {
+            // Handle RLS invisible client duplicate key error (code 23505)
+            if (cInsertErr.code === '23505') {
+              console.log('Client already exists in database (hidden by RLS), ignoring insert duplicate error.');
+            } else {
+              throw cInsertErr;
+            }
+          }
+        }
+      } catch (clientErr) {
+        console.error('Non-blocking CRM Client sync error:', clientErr);
       }
 
       // 3. Update local state
@@ -463,17 +524,6 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         .eq('phone', oldPhone);
 
       if (cErr) throw cErr;
-
-      const { error: bErr } = await supabase
-        .from('bookings')
-        .update({
-          client_phone: updatedFields.phone,
-          client_name: updatedFields.name,
-          client_email: updatedFields.email
-        })
-        .eq('client_phone', oldPhone);
-
-      if (bErr) throw bErr;
 
       set((state) => ({
         clients: state.clients.map(c => c.phone === oldPhone ? { ...c, ...updatedFields } : c),

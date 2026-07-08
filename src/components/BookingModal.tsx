@@ -95,17 +95,17 @@ export function BookingModal() {
   const [assignedSpecialistName, setAssignedSpecialistName] = useState('');
 
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
-  const fetchBookingsAndClients = useBookingStore(state => state.fetchBookingsAndClients);
+  const fetchPublicBookings = useBookingStore(state => state.fetchPublicBookings);
   const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
 
   // Fetch real-time schedule, booking and specialist data from Supabase when the modal is opened
   useEffect(() => {
     if (isBookingOpen) {
       fetchSchedules();
-      fetchBookingsAndClients();
+      fetchPublicBookings();
       fetchServicesAndSpecialists();
     }
-  }, [isBookingOpen, fetchSchedules, fetchBookingsAndClients, fetchServicesAndSpecialists]);
+  }, [isBookingOpen, fetchSchedules, fetchPublicBookings, fetchServicesAndSpecialists]);
 
   // Prefill service/category if passed from CTA or based on the host/pathname/bookingCategory
   useEffect(() => {
@@ -267,7 +267,9 @@ export function BookingModal() {
       return { available: false, reason: 'El horario ya pasó' };
     }
 
-    const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+    const dur = selectedServiceObj 
+      ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
+      : 60;
     if (specialistId) {
       return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
     }
@@ -293,8 +295,14 @@ export function BookingModal() {
   // Find and pre-select the nearest available date and time slot
   useEffect(() => {
     if (isBookingOpen && step === 3 && (!date || !time)) {
+      // If the user has explicitly selected 'semana' or 'mes' and cleared the date to pick a new one,
+      // do not auto-override it!
+      if (dateType === 'semana' || dateType === 'mes') {
+        return;
+      }
+
       const timeSlots = [
-        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
         '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
         '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
       ];
@@ -321,7 +329,8 @@ export function BookingModal() {
         }
       }
     }
-  }, [isBookingOpen, step, serviceId, specialistId, date, time]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBookingOpen, step, serviceId, specialistId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,7 +352,9 @@ export function BookingModal() {
         if (specialistId) {
           return selectedSpecialistObj?.name || 'Cualquiera';
         }
-        const dur = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+        const dur = selectedServiceObj 
+          ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
+          : 60;
         const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur).available);
         if (availableSpecs.length > 0) {
           // Sort available specialists by their number of bookings on this date (load balance)
@@ -416,7 +427,9 @@ export function BookingModal() {
 
   const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
 
-  const originalPriceNumber = parsePrice(selectedServiceObj?.price);
+  const originalPriceNumber = selectedServiceObj 
+    ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
+    : 0;
   
   // Calculate discount & remaining balance
   const discountAmount = appliedGiftCard 
@@ -426,12 +439,12 @@ export function BookingModal() {
   const finalPriceNumber = originalPriceNumber - discountAmount;
   const finalPriceStr = `$${finalPriceNumber.toLocaleString('es-CL')}`;
 
-  const handleApplyGiftCard = () => {
+  const handleApplyGiftCard = async () => {
     if (!giftCardCode.trim()) {
       setGiftCardError('Por favor ingresa un código.');
       return;
     }
-    const result = useGiftCardStore.getState().validateGiftCard(giftCardCode);
+    const result = await useGiftCardStore.getState().validateGiftCard(giftCardCode);
     if (result.status === 'inexistente') {
       setGiftCardError('El código no existe.');
       setGiftCardSuccess('');
@@ -573,7 +586,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/terapias-logo-v7.png"
+                        src="/terapias-logo-v8.png"
                         alt="Jefito Lopes Studio Logo"
                         fill
                         sizes="64px"
@@ -942,7 +955,7 @@ export function BookingModal() {
 
                                     const countAvailableSlots = (checkDate: string) => {
                                       const slots = [
-                                        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
                                         '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
                                         '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
                                       ];
@@ -1067,7 +1080,7 @@ export function BookingModal() {
 
                                     const countAvailableSlots = (checkDate: string) => {
                                       const slots = [
-                                        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                                        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
                                         '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
                                         '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
                                       ];
@@ -1134,6 +1147,8 @@ export function BookingModal() {
                                 <label className={labelClass}>Hora disponible *</label>
                                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
                                   {[
+                                    { value: '07:00', label: '07:00 AM' },
+                                    { value: '07:30', label: '07:30 AM' },
                                     { value: '08:00', label: '08:00 AM' },
                                     { value: '08:30', label: '08:30 AM' },
                                     { value: '09:00', label: '09:00 AM' },

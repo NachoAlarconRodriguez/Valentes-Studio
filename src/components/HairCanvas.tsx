@@ -108,7 +108,7 @@ interface HairSegment {
   p2: HairPoint;
 }
 
-function HairLines({ segments }: { segments: HairSegment[] }) {
+function HairLines({ segments, isIntersecting }: { segments: HairSegment[]; isIntersecting: boolean }) {
   const linesRef = useRef<THREE.LineSegments>(null);
   const geometryRef = useRef<THREE.BufferGeometry>(null);
   const mouse3D = useRef(new THREE.Vector3(999, 999, 999));
@@ -222,6 +222,8 @@ function HairLines({ segments }: { segments: HairSegment[] }) {
   }), []);
 
   useFrame((state) => {
+    if (!isIntersecting) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     if (!linesRef.current) return;
     const material = linesRef.current.material as THREE.ShaderMaterial;
     const u = material.uniforms;
@@ -276,7 +278,10 @@ function HairLines({ segments }: { segments: HairSegment[] }) {
 
 // --- MAIN EXPORTED CANVAS COMPONENT ---
 
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
+
 export default function HairCanvas() {
+  const [containerRef, isIntersecting] = useIntersectionObserver({ threshold: 0.01 });
   const [segments, setSegments] = useState<HairSegment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -308,21 +313,16 @@ export default function HairCanvas() {
           const ny = (0.5 - y / height) * 2.3 * (img.height / img.width);
           
           // Map coordinates relative to the face profile
-          // Face profile (nose, lips, chin) is generally situated around:
-          // x between -0.45 and -0.05, y between -0.22 and 0.28
           const isFace = nx < -0.05 && ny > -0.22 && ny < 0.28;
           
           let hairStrength = 0.0;
           if (!isFace) {
-            // Strength of waving effect (0.1 to 1.0)
-            // Hair waves more towards the right (back flow) and down (ends)
             hairStrength = Math.min(1.0, Math.max(0.1, (nx + 0.1) * 0.8 + Math.max(0, -ny) * 0.6));
           }
           
           pts.push({ x: nx, y: ny, hairStrength });
         }
         
-        // Ensure the end point is included
         const lastX = endX;
         const lastNx = (lastX / width - 0.5) * 2.3;
         const lastNy = (0.5 - y / height) * 2.3 * (img.height / img.width);
@@ -385,10 +385,10 @@ export default function HairCanvas() {
   }
 
   return (
-    <div className="w-full h-full min-h-[500px] relative select-none">
+    <div ref={containerRef} className="w-full h-full min-h-[500px] relative select-none">
       <Canvas camera={{ position: [0, 0, 2.5], fov: 60 }}>
         <ambientLight intensity={0.5} />
-        <HairLines segments={segments} />
+        <HairLines segments={segments} isIntersecting={isIntersecting} />
       </Canvas>
     </div>
   );

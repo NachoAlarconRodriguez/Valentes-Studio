@@ -40,23 +40,23 @@ export default function HomePage() {
       <header className="absolute top-0 left-0 w-full z-50 pt-5 pb-24 px-6 md:px-12 flex items-center justify-between bg-gradient-to-b from-black via-black/80 via-black/45 to-transparent">
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
-          <span className="font-serif text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#D4AF37] transition-all duration-300 group-hover:brightness-110">
+          <span className="font-serif text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C5A059] transition-all duration-300 group-hover:brightness-110">
             JEFÏTO LOPÊS
           </span>
-          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.45em] text-[#D4AF37]/80 mt-1 font-semibold block transition-colors">
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.45em] text-[#C5A059]/80 mt-1 font-semibold block transition-colors">
             ━ TERAPIA HOLÍSTICA ━
           </span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center space-x-8 xl:space-x-12">
-          <Link href="/barberia" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D4AF37] transition-colors pb-1">
+          <Link href="/barberia" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#C5A059] transition-colors pb-1">
             BARBERIA
           </Link>
-          <Link href="/peluqueria" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D4AF37] transition-colors pb-1">
+          <Link href="/peluqueria" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#C5A059] transition-colors pb-1">
             PELUQUERÍA
           </Link>
-          <Link href="/terapias" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D4AF37] transition-colors pb-1">
+          <Link href="/terapias" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#C5A059] transition-colors pb-1">
             TERAPIAS HOLÍSTICAS
           </Link>
         </nav>
@@ -68,7 +68,7 @@ export default function HomePage() {
             href="https://wa.me/56971465202"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#D4AF37] hover:text-white transition-all duration-300 hover:scale-110 active:scale-90 flex items-center justify-center p-2"
+            className="text-[#C5A059] hover:text-white transition-all duration-300 hover:scale-110 active:scale-90 flex items-center justify-center p-2"
             aria-label="WhatsApp"
           >
             <svg className="w-7 h-7 fill-current filter drop-shadow-[0_0_8px_rgba(212,175,55,0.4)]" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@ export default function HomePage() {
           {/* Agendar Button */}
           <button 
             onClick={() => openBooking()} 
-            className="text-xs tracking-[0.2em] uppercase font-bold bg-[#D4AF37] text-black px-6 py-2.5 rounded-full hover:bg-white hover:text-black transition-all duration-300 shadow-lg shadow-[#D4AF37]/20 hover:scale-[1.03] active:scale-95 cursor-pointer focus:outline-none"
+            className="text-xs tracking-[0.2em] uppercase font-bold bg-[#C5A059] text-black px-6 py-2.5 rounded-full hover:bg-white hover:text-black transition-all duration-300 shadow-lg shadow-[#C5A059]/20 hover:scale-[1.03] active:scale-95 cursor-pointer focus:outline-none"
           >
             AGENDAR
           </button>
@@ -88,7 +88,7 @@ export default function HomePage() {
         {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileMenuOpen(true)}
-          className="lg:hidden p-2 text-white hover:text-[#D4AF37] transition-colors focus:outline-none"
+          className="lg:hidden p-2 text-white hover:text-[#C5A059] transition-colors focus:outline-none"
         >
           <Menu size={28} />
         </button>
@@ -99,7 +99,7 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 bg-black flex flex-col justify-center px-8 relative">
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-6 right-6 p-2 text-white hover:text-[#D4AF37] transition-colors focus:outline-none"
+            className="absolute top-6 right-6 p-2 text-white hover:text-[#C5A059] transition-colors focus:outline-none"
           >
             <X size={28} />
           </button>
@@ -107,21 +107,21 @@ export default function HomePage() {
             <Link
               href="/barberia"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#D4AF37] transition-colors"
+              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
             >
               BARBERIA
             </Link>
             <Link
               href="/peluqueria"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#D4AF37] transition-colors"
+              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
             >
               PELUQUERÍA
             </Link>
             <Link
               href="/terapias"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#D4AF37] transition-colors"
+              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
             >
               TERAPIAS HOLÍSTICAS
             </Link>
@@ -130,7 +130,7 @@ export default function HomePage() {
                 setMobileMenuOpen(false);
                 openBooking();
               }}
-              className="text-2xl font-serif tracking-[0.2em] text-black bg-[#D4AF37] px-8 py-3 rounded-full hover:bg-white hover:text-black transition-colors cursor-pointer text-center w-full max-w-xs mx-auto focus:outline-none font-bold"
+              className="text-2xl font-serif tracking-[0.2em] text-black bg-[#C5A059] px-8 py-3 rounded-full hover:bg-white hover:text-black transition-colors cursor-pointer text-center w-full max-w-xs mx-auto focus:outline-none font-bold"
             >
               AGENDAR
             </button>
@@ -138,7 +138,7 @@ export default function HomePage() {
               <a
                 href="https://wa.me/56971465202"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-[#D4AF37] hover:text-white transition-all duration-300 hover:scale-110 active:scale-90 flex items-center justify-center p-2"
+                className="text-[#C5A059] hover:text-white transition-all duration-300 hover:scale-110 active:scale-90 flex items-center justify-center p-2"
                 aria-label="WhatsApp"
               >
                 <svg className="w-10 h-10 fill-current filter drop-shadow-[0_0_12px_rgba(212,175,55,0.4)]" viewBox="0 0 24 24">
@@ -192,21 +192,21 @@ export default function HomePage() {
             </div>
 
             {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D4AF37] font-bold block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.35em] text-[#C5A059] font-bold block mb-1">
               BARBEARIA
             </span>
 
             {/* Title */}
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white tracking-wider font-normal uppercase leading-none">
               VALENTES
-              <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D4AF37]/90 mt-1.5 font-sans font-bold">STUDIO</span>
+              <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#C5A059]/90 mt-1.5 font-sans font-bold">STUDIO</span>
             </h2>
 
             {/* Divider */}
             <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
-              <span className="text-[9px] text-[#D4AF37]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
+              <span className="text-[9px] text-[#C5A059]">❖</span>
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
             </div>
 
             {/* Description */}
@@ -217,7 +217,7 @@ export default function HomePage() {
             {/* CTA Button */}
             <Link
               href="/barberia"
-              className="border border-[#D4AF37]/50 text-[#D4AF37] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D4AF37] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              className="border border-[#C5A059]/50 text-[#C5A059] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#C5A059] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
             >
               <span>RESERVAR HORA</span>
               <Calendar size={12} />
@@ -265,7 +265,7 @@ export default function HomePage() {
             </div>
 
             {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D4AF37] font-bold block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.35em] text-[#C5A059] font-bold block mb-1">
               PELUQUERÍA
             </span>
 
@@ -277,9 +277,9 @@ export default function HomePage() {
 
             {/* Divider */}
             <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
-              <span className="text-[9px] text-[#D4AF37]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
+              <span className="text-[9px] text-[#C5A059]">❖</span>
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
             </div>
 
             {/* Description */}
@@ -290,7 +290,7 @@ export default function HomePage() {
             {/* CTA Button */}
             <Link
               href="/peluqueria"
-              className="border border-[#D4AF37]/50 text-[#D4AF37] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D4AF37] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              className="border border-[#C5A059]/50 text-[#C5A059] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#C5A059] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
             >
               <span>VER SERVICIOS</span>
               <ChevronRight size={12} className="transform group-hover:translate-x-0.5 transition-transform" />
@@ -329,7 +329,7 @@ export default function HomePage() {
             {/* Logo */}
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none scale-[1.1]">
               <Image
-                src="/terapias-logo-v7.png"
+                src="/terapias-logo-v8.png"
                 alt="Jefito Lopes Studio Logo"
                 fill
                 sizes="144px"
@@ -338,7 +338,7 @@ export default function HomePage() {
             </div>
 
             {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D4AF37] font-bold block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.35em] text-[#C5A059] font-bold block mb-1">
               TERAPIAS HOLÍSTICAS
             </span>
 
@@ -349,9 +349,9 @@ export default function HomePage() {
 
             {/* Divider */}
             <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
-              <span className="text-[9px] text-[#D4AF37]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D4AF37]/40" />
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
+              <span className="text-[9px] text-[#C5A059]">❖</span>
+              <div className="w-8 h-[1px] bg-[#C5A059]/40" />
             </div>
 
             {/* Description */}
@@ -362,7 +362,7 @@ export default function HomePage() {
             {/* CTA Button */}
             <Link
               href="/terapias"
-              className="border border-[#D4AF37]/50 text-[#D4AF37] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D4AF37] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              className="border border-[#C5A059]/50 text-[#C5A059] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#C5A059] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
             >
               <span>AGENDAR TERAPIA</span>
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -376,7 +376,7 @@ export default function HomePage() {
       {/* 3. BOTTOM FOOTER VALUES SECTION */}
       <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative overflow-hidden flex-shrink-0">
         {/* Decorative backdrop glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] h-[70px] bg-[#D4AF37]/5 rounded-full blur-[50px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] h-[70px] bg-[#C5A059]/5 rounded-full blur-[50px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-1.5 items-center text-center">
           {/* Value 1: EQUILIBRIO */}
@@ -400,7 +400,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold block">
+              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
                 EQUILÍBRIO
               </span>
               <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
@@ -427,7 +427,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold block">
+              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
                 BIENESTAR
               </span>
               <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
@@ -444,7 +444,7 @@ export default function HomePage() {
               aria-label="Panel de Administración"
             >
               {/* Glowing aura */}
-              <div className="absolute inset-0 bg-[#D4AF37]/15 rounded-full blur-xl animate-pulse" />
+              <div className="absolute inset-0 bg-[#C5A059]/15 rounded-full blur-xl animate-pulse" />
               {/* Lotus Image */}
               <div className="relative w-full h-full select-none">
                 <Image
@@ -481,7 +481,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold block">
+              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
                 TRANSFORMACIÓN
               </span>
               <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
@@ -508,7 +508,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold block">
+              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
                 PROPÓSITO
               </span>
               <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">

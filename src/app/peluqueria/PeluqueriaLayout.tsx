@@ -127,7 +127,12 @@ export default function PeluqueriaLayout() {
     {
       id: 'c1',
       type: 'service',
-      service: allActiveServices[0] ? { id: allActiveServices[0].id, name: allActiveServices[0].name, price: allActiveServices[0].price, duration: allActiveServices[0].duration } : undefined,
+      service: allActiveServices[0] ? { 
+        id: allActiveServices[0].id, 
+        name: allActiveServices[0].name, 
+        price: typeof allActiveServices[0].price === 'number' ? `$${allActiveServices[0].price.toLocaleString('es-CL')}` : allActiveServices[0].price, 
+        duration: typeof allActiveServices[0].duration === 'number' ? `${allActiveServices[0].duration} min` : allActiveServices[0].duration 
+      } : undefined,
       imageUrl: content.peluqueria.bentoImageC1 || 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
@@ -140,7 +145,12 @@ export default function PeluqueriaLayout() {
     {
       id: 'c3',
       type: 'service',
-      service: allActiveServices[1] ? { id: allActiveServices[1].id, name: allActiveServices[1].name, price: allActiveServices[1].price, duration: allActiveServices[1].duration } : undefined,
+      service: allActiveServices[1] ? { 
+        id: allActiveServices[1].id, 
+        name: allActiveServices[1].name, 
+        price: typeof allActiveServices[1].price === 'number' ? `$${allActiveServices[1].price.toLocaleString('es-CL')}` : allActiveServices[1].price, 
+        duration: typeof allActiveServices[1].duration === 'number' ? `${allActiveServices[1].duration} min` : allActiveServices[1].duration 
+      } : undefined,
       imageUrl: content.peluqueria.bentoImageC3 || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
@@ -154,7 +164,12 @@ export default function PeluqueriaLayout() {
     {
       id: 'c5',
       type: 'service',
-      service: allActiveServices[2] ? { id: allActiveServices[2].id, name: allActiveServices[2].name, price: allActiveServices[2].price, duration: allActiveServices[2].duration } : undefined,
+      service: allActiveServices[2] ? { 
+        id: allActiveServices[2].id, 
+        name: allActiveServices[2].name, 
+        price: typeof allActiveServices[2].price === 'number' ? `$${allActiveServices[2].price.toLocaleString('es-CL')}` : allActiveServices[2].price, 
+        duration: typeof allActiveServices[2].duration === 'number' ? `${allActiveServices[2].duration} min` : allActiveServices[2].duration 
+      } : undefined,
       imageUrl: content.peluqueria.bentoImageC5 || 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-2'
     },
@@ -174,7 +189,12 @@ export default function PeluqueriaLayout() {
     {
       id: 'c8',
       type: 'service',
-      service: allActiveServices[3] ? { id: allActiveServices[3].id, name: allActiveServices[3].name, price: allActiveServices[3].price, duration: allActiveServices[3].duration } : undefined,
+      service: allActiveServices[3] ? { 
+        id: allActiveServices[3].id, 
+        name: allActiveServices[3].name, 
+        price: typeof allActiveServices[3].price === 'number' ? `$${allActiveServices[3].price.toLocaleString('es-CL')}` : allActiveServices[3].price, 
+        duration: typeof allActiveServices[3].duration === 'number' ? `${allActiveServices[3].duration} min` : allActiveServices[3].duration 
+      } : undefined,
       imageUrl: content.peluqueria.bentoImageC8 || 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80',
       gridClass: 'md:col-span-1 md:row-span-1'
     },
@@ -629,7 +649,7 @@ export default function PeluqueriaLayout() {
                         openBooking({
                           id: serviceObj.id,
                           name: serviceObj.name,
-                          price: serviceObj.price
+                          price: typeof serviceObj.price === 'number' ? `$${serviceObj.price.toLocaleString('es-CL')}` : serviceObj.price
                         });
                       }
                     }}
@@ -813,7 +833,7 @@ export default function PeluqueriaLayout() {
                               openBooking({
                                 id: service.id,
                                 name: service.name,
-                                price: service.price
+                                price: typeof service.price === 'number' ? `$${service.price.toLocaleString('es-CL')}` : service.price
                               });
                             }}
                             className="group text-left bg-[#0c0c0c] border border-white/5 hover:border-gold/30 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-gold/5 cursor-pointer focus:outline-none"
@@ -831,13 +851,13 @@ export default function PeluqueriaLayout() {
                                 <div className="flex items-center gap-3 pt-1">
                                   <span className="flex items-center gap-1 text-[9px] text-white/40 uppercase tracking-wider font-semibold">
                                     <Clock size={9} />
-                                    {service.duration}
+                                    {typeof service.duration === 'number' ? `${service.duration} min` : service.duration}
                                   </span>
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                 <span className="font-serif text-sm font-bold text-gold whitespace-nowrap">
-                                  {service.price}
+                                  {typeof service.price === 'number' ? `$${service.price.toLocaleString('es-CL')}` : service.price}
                                 </span>
                                 <span className="text-[8px] uppercase tracking-widest border border-gold/30 text-gold px-2.5 py-1 rounded-full group-hover:bg-gold group-hover:text-black group-hover:border-gold transition-all duration-300 font-semibold whitespace-nowrap">
                                   Reservar

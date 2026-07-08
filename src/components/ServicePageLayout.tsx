@@ -279,7 +279,7 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
                         openBooking({
                           id: service.id,
                           name: service.name,
-                          price: service.price
+                          price: typeof service.price === 'number' ? `$${service.price.toLocaleString('es-CL')}` : service.price
                         });
                       }}
                       className={`px-4 py-2 rounded-full text-bg-base text-xs uppercase tracking-widest font-bold transition-all duration-300 flex items-center space-x-1 hover:scale-105 active:scale-95 shadow-md cursor-pointer shimmer-button ${s.bg} ${s.bgHover} ${s.shadowBtn}`}
@@ -482,7 +482,7 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
                           openBooking({
                             id: serviceObj.id,
                             name: serviceObj.name,
-                            price: serviceObj.price
+                            price: typeof serviceObj.price === 'number' ? `$${serviceObj.price.toLocaleString('es-CL')}` : serviceObj.price
                           });
                         }}
                         className="px-6 py-2 rounded-full border border-platinum/30 text-platinum text-[9px] uppercase tracking-widest font-bold hover:bg-platinum hover:text-black transition-all duration-300 hover:scale-[1.03] active:scale-95 shimmer-button animate-pulse-slow"

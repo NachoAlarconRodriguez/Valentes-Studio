@@ -337,7 +337,9 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         
         // Find booking service duration
         const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-        const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+        const bookingDuration = bookedService 
+          ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
+          : 60;
         const bookingEnd = bookingStart + bookingDuration;
         
         // Check for overlap

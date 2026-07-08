@@ -30,9 +30,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   // Load initial data actions from Supabase
   const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
-  const fetchBookingsAndClients = useBookingStore(state => state.fetchBookingsAndClients);
-  const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
-  const fetchGiftCards = useGiftCardStore(state => state.fetchGiftCards);
   const fetchContent = useContentStore(state => state.fetchContent);
   const hasFetched = useContentStore(state => state.hasFetched);
 
@@ -40,37 +37,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
-    // Fetch all data from Supabase
+    // Fetch public data only
     fetchServicesAndSpecialists();
-    fetchBookingsAndClients();
-    fetchSchedules();
-    fetchGiftCards();
     fetchContent();
-
-    // Poll every 10 seconds to keep client availability, bookings, and specialists list fresh
-    const interval = setInterval(() => {
-      fetchBookingsAndClients();
-      fetchSchedules();
-      fetchServicesAndSpecialists();
-    }, 10000);
-
-    // Refresh immediately when client focuses the tab
-    const handleFocus = () => {
-      fetchBookingsAndClients();
-      fetchSchedules();
-      fetchServicesAndSpecialists();
-    };
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
   }, [
     fetchServicesAndSpecialists,
-    fetchBookingsAndClients,
-    fetchSchedules,
-    fetchGiftCards,
     fetchContent
   ]);
 
@@ -118,47 +89,31 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="fixed inset-0 z-[999] bg-[#070707] flex flex-col items-center justify-center"
+            className="fixed inset-0 z-[999] bg-black flex flex-col items-center justify-center"
           >
             {/* Elegant vignette overlay */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.85)_100%)] pointer-events-none" />
 
-            <div className="relative flex flex-col items-center space-y-8 z-10">
-              {/* Golden pulsing logo */}
+            <div className="relative flex flex-col items-center justify-center z-10">
+              {/* Golden pulsing branding image */}
               <motion.div
                 animate={{
-                  scale: [1, 1.05, 1],
-                  opacity: [0.8, 1, 0.8]
+                  scale: [0.97, 1.01, 0.97],
+                  opacity: [0.85, 1, 0.85]
                 }}
                 transition={{
-                  duration: 2.5,
+                  duration: 3,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className="relative w-28 h-28 select-none pointer-events-none"
+                className="relative w-72 h-72 sm:w-96 sm:h-96 md:w-[450px] md:h-[450px] select-none pointer-events-none"
               >
                 <img
-                  src="/lotus-transparent.png"
-                  alt="Santuario Logo"
-                  className="object-contain w-full h-full filter brightness-95 contrast-105"
+                  src="/loading-logo-v1.jpg"
+                  alt="Santuario de Bienestar Logo"
+                  className="object-contain w-full h-full filter brightness-110 contrast-105"
                 />
               </motion.div>
-
-              {/* Brand Title */}
-              <div className="flex flex-col items-center space-y-3 text-center">
-                <span className="font-serif text-3xl md:text-4xl font-bold tracking-[0.25em] text-gold-gradient bg-clip-text text-transparent bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa7c11] select-none uppercase">
-                  Santuario
-                </span>
-                <span className="text-[9px] uppercase tracking-[0.5em] text-white/50 font-light select-none">
-                  DE BIENESTAR & AUTORÍA
-                </span>
-              </div>
-
-              {/* Elegant golden spinning line */}
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <div className="absolute inset-0 border-2 border-gold/10 rounded-full" />
-                <div className="absolute inset-0 border-2 border-t-gold/70 border-r-gold/30 border-b-transparent border-l-transparent rounded-full animate-spin" />
-              </div>
             </div>
           </motion.div>
         )}

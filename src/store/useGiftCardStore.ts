@@ -22,7 +22,7 @@ interface GiftCardStore {
   // Actions
   fetchGiftCards: () => Promise<void>;
   buyGiftCard: (cardData: Omit<GiftCard, 'code' | 'remainingBalance' | 'createdAt' | 'expiresAt'>) => Promise<string>;
-  validateGiftCard: (code: string) => { status: 'valida' | 'inexistente' | 'expirada' | 'sin_saldo'; card?: GiftCard };
+  validateGiftCard: (code: string) => Promise<{ status: 'valida' | 'inexistente' | 'expirada' | 'sin_saldo'; card?: GiftCard }>;
   redeemGiftCard: (code: string, amount: number) => Promise<boolean>;
 }
 
@@ -124,31 +124,55 @@ export const useGiftCardStore = create<GiftCardStore>((set, get) => ({
     return code;
   },
 
-  validateGiftCard: (code) => {
+  validateGiftCard: async (code) => {
     const cleanCode = code.trim().toUpperCase();
-    const card = get().giftCards.find(c => c.code.toUpperCase() === cleanCode);
+    try {
+      const { data: dbCard, error } = await supabase
+        .from('gift_cards')
+        .select('*')
+        .eq('code', cleanCode)
+        .maybeSingle();
 
-    if (!card) {
+      if (error) throw error;
+      if (!dbCard) {
+        return { status: 'inexistente' };
+      }
+
+      const card: GiftCard = {
+        code: dbCard.code,
+        originalAmount: dbCard.original_amount,
+        remainingBalance: dbCard.remaining_balance,
+        senderName: dbCard.sender_name,
+        senderEmail: dbCard.sender_email,
+        recipientName: dbCard.recipient_name,
+        recipientEmail: dbCard.recipient_email,
+        theme: dbCard.theme,
+        message: dbCard.message || '',
+        createdAt: dbCard.created_at,
+        expiresAt: dbCard.expires_at
+      };
+
+      const now = new Date();
+      const expires = new Date(card.expiresAt);
+
+      if (now > expires) {
+        return { status: 'expirada', card };
+      }
+
+      if (card.remainingBalance <= 0) {
+        return { status: 'sin_saldo', card };
+      }
+
+      return { status: 'valida', card };
+    } catch (err) {
+      console.error('Error validating gift card:', err);
       return { status: 'inexistente' };
     }
-
-    const now = new Date();
-    const expires = new Date(card.expiresAt);
-
-    if (now > expires) {
-      return { status: 'expirada', card };
-    }
-
-    if (card.remainingBalance <= 0) {
-      return { status: 'sin_saldo', card };
-    }
-
-    return { status: 'valida', card };
   },
 
   redeemGiftCard: async (code, amount) => {
     const cleanCode = code.trim().toUpperCase();
-    const validation = get().validateGiftCard(cleanCode);
+    const validation = await get().validateGiftCard(cleanCode);
 
     if (validation.status !== 'valida' || !validation.card) {
       return false;

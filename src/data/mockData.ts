@@ -43,7 +43,7 @@ export const servicesData: Record<string, ServiceSection> = {
     title: "Barbería Tradicional",
     description: "Cortes de autor, afeitados con navaja libre y rituales de toallas calientes diseñados para el caballero contemporáneo en un ambiente de calma absoluta.",
     path: "/barberia",
-    color: "#D4AF37", // Dorado
+    color: "#C5A059", // Dorado
     accentColor: "#CD7F32", // Bronce
     services: [
       {
@@ -183,7 +183,7 @@ export const servicesData: Record<string, ServiceSection> = {
     description: "Un espacio de empatía, técnica y cuidado donde transformamos vidas. Entendemos que la belleza es mucho más que apariencia: es identidad, expresión, confianza y, sobre todo, tu autoestima.",
     path: "/peluqueria",
     color: "#CD7F32", // Bronce
-    accentColor: "#D4AF37", // Dorado
+    accentColor: "#C5A059", // Dorado
     services: [
       {
         id: "p1",

@@ -93,8 +93,8 @@ export default function BarberiaLayout() {
       id: s.id,
       name: shortName,
       label: s.name,
-      price: s.price,
-      duration: s.duration,
+      price: typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CL')}` : s.price,
+      duration: typeof s.duration === 'number' ? `${s.duration} min` : s.duration,
       notice: (s.description || '').includes('VÁLIDO') ? 'VÁLIDO SOLO CON PAGO EN EFECTIVO O TRANSFERENCIA' : undefined
     };
     

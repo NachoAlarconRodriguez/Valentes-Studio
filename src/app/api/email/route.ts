@@ -69,7 +69,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     senderEmail: 'contacto@almabela.cl',
     domain: 'https://www.almabela.cl',
     logoUrl: 'https://www.almabela.cl/peluqueria-logo-v4.png',
-    color: '#D4AF37', // Dorado Brillante
+    color: '#C5A059', // Dorado Brillante
     accentColor: '#CD7F32',
     description: 'Peluquería de Autor'
   },
@@ -77,7 +77,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     name: 'Jefferson Lopes Studio',
     senderEmail: 'contacto@jeffersonlopes.cl',
     domain: 'https://www.jeffersonlopes.cl',
-    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v7.png',
+    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v8.png',
     color: '#E2E0D8', // Platino/Plata
     accentColor: '#9CA3AF',
     description: 'Terapias Holísticas'
@@ -89,7 +89,7 @@ const DEFAULT_BRAND: BrandConfig = {
   senderEmail: 'contacto@valentes.cl',
   domain: 'https://www.valentes.cl',
   logoUrl: 'https://www.valentes.cl/hands-logo-v4.png',
-  color: '#D4AF37',
+  color: '#C5A059',
   accentColor: '#CD7F32',
   description: 'Santuario de Bienestar'
 };

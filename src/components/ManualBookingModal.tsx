@@ -336,7 +336,9 @@ export function ManualBookingModal({
       return { available: false, reason: 'El horario ya pasó' };
     }
     
-    const duration = selectedServiceObj ? parseDurationToMinutes(selectedServiceObj.duration) : 60;
+    const duration = selectedServiceObj 
+      ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
+      : 60;
 
     const checkAvailabilityForSpec = (spId: string) => {
       const res = isSpecialistAvailable(spId, date, slotTime, duration);
@@ -370,7 +372,9 @@ export function ManualBookingModal({
     setForceBooking(false);
   }, [specialistId, date, time]);
 
-  const originalPriceNumber = parsePrice(selectedServiceObj?.price);
+  const originalPriceNumber = selectedServiceObj 
+    ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
+    : 0;
   
   // Calculate discount & remaining balance
   const discountAmount = appliedGiftCard 
@@ -380,12 +384,12 @@ export function ManualBookingModal({
   const finalPriceNumber = originalPriceNumber - discountAmount;
   const finalPriceStr = `$${finalPriceNumber.toLocaleString('es-CL')}`;
 
-  const handleApplyGiftCard = () => {
+  const handleApplyGiftCard = async () => {
     if (!giftCardCode.trim()) {
       setGiftCardError('Por favor ingresa un código.');
       return;
     }
-    const result = useGiftCardStore.getState().validateGiftCard(giftCardCode);
+    const result = await useGiftCardStore.getState().validateGiftCard(giftCardCode);
     if (result.status === 'inexistente') {
       setGiftCardError('El código no existe.');
       setGiftCardSuccess('');
@@ -529,7 +533,7 @@ export function ManualBookingModal({
 
   // Color styling helpers matching business themes
   const isTerapias = category === 'terapias';
-  const themeGold = isTerapias ? '#E2E0D8' : '#D4AF37';
+  const themeGold = isTerapias ? '#E2E0D8' : '#C5A059';
   const textGoldClass = isTerapias ? 'text-platinum' : 'text-gold';
   const borderFocusClass = isTerapias ? 'focus:border-platinum/50' : 'focus:border-gold/50';
   const bgThemeClass = isTerapias ? 'bg-platinum' : 'bg-gold';
@@ -1134,7 +1138,7 @@ export function ManualBookingModal({
                           
                           <div className="grid grid-cols-4 gap-1.5 mb-2">
                             {[
-                              '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                              '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
                               '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
                               '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
                             ].map((slot) => {

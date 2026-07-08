@@ -165,7 +165,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/terapias-logo-v7.png"
+                    src="/terapias-logo-v8.png"
                     alt="Jefito Lopes Studio Logo"
                     fill
                     sizes="44px"

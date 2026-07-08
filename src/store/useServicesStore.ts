@@ -4,9 +4,9 @@ import { createClient } from '@/utils/supabase/client';
 export interface ServiceItem {
   id: string;
   name: string;
-  price: string;
+  price: number;
   description: string;
-  duration: string;
+  duration: number;
   specialistIds?: string[];
   isActive?: boolean;
 }
@@ -61,7 +61,7 @@ const defaultServicesData: Record<string, Omit<ServiceSection, 'specialists'> & 
     title: "Barbería Tradicional",
     description: "Cortes de autor, afeitados con navaja libre y rituales de toallas calientes diseñados para el caballero contemporáneo en un ambiente de calma absoluta.",
     path: "/barberia",
-    color: "#D4AF37",
+    color: "#C5A059",
     accentColor: "#CD7F32",
     services: [],
     specialists: []
@@ -71,7 +71,7 @@ const defaultServicesData: Record<string, Omit<ServiceSection, 'specialists'> & 
     description: "Un espacio de empatía, técnica y cuidado donde transformamos vidas. Entendemos que la belleza es mucho más que apariencia: es identidad, expresión, confianza y, sobre todo, tu autoestima.",
     path: "/peluqueria",
     color: "#CD7F32",
-    accentColor: "#D4AF37",
+    accentColor: "#C5A059",
     services: [],
     specialists: []
   },
@@ -106,35 +106,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       if (specsErr) throw specsErr;
 
-      // Fetch specialists metadata (phone/is_active) from page_content table
-      let metadata: Record<string, { phone?: string; is_active?: boolean }> = {};
-      try {
-        const { data: metaRow } = await supabase
-          .from('page_content')
-          .select('content')
-          .eq('key', 'specialists_metadata')
-          .maybeSingle();
-        if (metaRow && metaRow.content) {
-          metadata = metaRow.content as any;
-        }
-      } catch (err) {
-        console.error('Error fetching specialists metadata from DB:', err);
-      }
-
       const specialistsList: Specialist[] = (dbSpecs || []).map((sp: any) => {
-        const specMeta = metadata[sp.id] || {};
-        let localPhone = specMeta.phone || '';
-        let localActive = specMeta.is_active !== undefined ? specMeta.is_active : true;
-
-        if (typeof window !== 'undefined') {
-          if (!localPhone) {
-            localPhone = localStorage.getItem(`sp_phone_${sp.id}`) || '';
-          }
-          const localActiveStr = localStorage.getItem(`sp_active_${sp.id}`);
-          if (specMeta.is_active === undefined && localActiveStr !== null) {
-            localActive = localActiveStr === 'true';
-          }
-        }
         return {
           id: sp.id,
           name: sp.name,
@@ -146,8 +118,8 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
           profileType: sp.profile_type,
           assignedAgendas: sp.assigned_agendas,
           imageUrl: sp.image_url,
-          phone: localPhone || sp.phone || '',
-          isActive: localActive
+          phone: sp.phone || '',
+          isActive: sp.is_active !== false
         };
       });
 
@@ -175,8 +147,6 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
         servicesData[category] = {
           ...section,
           services: servicesList.filter((s: any) => {
-            // Match category. In seed, id starts with b_ for barberia, or category column is set.
-            // Let's rely on the 'category' column from DB.
             const sDb = dbServices?.find((dbS: any) => dbS.id === s.id);
             return sDb?.category === category;
           }),
@@ -367,35 +337,6 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
     };
 
     try {
-      if (typeof window !== 'undefined') {
-        if (specialist.phone) {
-          localStorage.setItem(`sp_phone_${id}`, specialist.phone);
-        }
-        localStorage.setItem(`sp_active_${id}`, specialist.isActive !== false ? 'true' : 'false');
-      }
-
-      // Save phone and is_active in page_content metadata table
-      try {
-        const { data: metaRow } = await supabase
-          .from('page_content')
-          .select('content')
-          .eq('key', 'specialists_metadata')
-          .maybeSingle();
-        const currentMeta = (metaRow && metaRow.content) ? (metaRow.content as any) : {};
-        currentMeta[id] = {
-          phone: specialist.phone || '',
-          is_active: specialist.isActive !== false
-        };
-        await supabase
-          .from('page_content')
-          .upsert({
-            key: 'specialists_metadata',
-            content: currentMeta
-          });
-      } catch (err) {
-        console.error('Error saving specialist metadata to DB:', err);
-      }
-
       const { error } = await supabase.from('specialists').insert({
         id,
         name: specialist.name,
@@ -406,7 +347,9 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
         email: specialist.email,
         profile_type: specialist.profileType,
         assigned_agendas: specialist.assignedAgendas,
-        image_url: specialist.imageUrl || ''
+        image_url: specialist.imageUrl || '',
+        phone: specialist.phone || '',
+        is_active: specialist.isActive !== false
       });
 
       if (error) throw error;
@@ -477,43 +420,6 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
   updateSpecialist: async (category, specialistId, updatedFields) => {
     try {
-      if (typeof window !== 'undefined') {
-        if (updatedFields.phone !== undefined) {
-          localStorage.setItem(`sp_phone_${specialistId}`, updatedFields.phone);
-        }
-        if (updatedFields.isActive !== undefined) {
-          localStorage.setItem(`sp_active_${specialistId}`, updatedFields.isActive ? 'true' : 'false');
-        }
-      }
-
-      // Save phone and is_active in page_content metadata table
-      if (updatedFields.phone !== undefined || updatedFields.isActive !== undefined) {
-        try {
-          const { data: metaRow } = await supabase
-            .from('page_content')
-            .select('content')
-            .eq('key', 'specialists_metadata')
-            .maybeSingle();
-          const currentMeta = (metaRow && metaRow.content) ? (metaRow.content as any) : {};
-          const specMeta = currentMeta[specialistId] || {};
-          if (updatedFields.phone !== undefined) {
-            specMeta.phone = updatedFields.phone;
-          }
-          if (updatedFields.isActive !== undefined) {
-            specMeta.is_active = updatedFields.isActive;
-          }
-          currentMeta[specialistId] = specMeta;
-          await supabase
-            .from('page_content')
-            .upsert({
-              key: 'specialists_metadata',
-              content: currentMeta
-            });
-        } catch (err) {
-          console.error('Error updating specialist metadata in DB:', err);
-        }
-      }
-
       const payload: any = {};
       if (updatedFields.name !== undefined) payload.name = updatedFields.name;
       if (updatedFields.role !== undefined) payload.role = updatedFields.role;
@@ -524,6 +430,8 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       if (updatedFields.profileType !== undefined) payload.profile_type = updatedFields.profileType;
       if (updatedFields.assignedAgendas !== undefined) payload.assigned_agendas = updatedFields.assignedAgendas;
       if (updatedFields.imageUrl !== undefined) payload.image_url = updatedFields.imageUrl;
+      if (updatedFields.phone !== undefined) payload.phone = updatedFields.phone;
+      if (updatedFields.isActive !== undefined) payload.is_active = updatedFields.isActive;
 
       // Only update the specialists table if there are fields to update there
       if (Object.keys(payload).length > 0) {
@@ -566,27 +474,6 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
   deleteSpecialist: async (category, specialistId) => {
     try {
-      // Clean up metadata from page_content table
-      try {
-        const { data: metaRow } = await supabase
-          .from('page_content')
-          .select('content')
-          .eq('key', 'specialists_metadata')
-          .maybeSingle();
-        if (metaRow && metaRow.content) {
-          const currentMeta = metaRow.content as any;
-          delete currentMeta[specialistId];
-          await supabase
-            .from('page_content')
-            .upsert({
-              key: 'specialists_metadata',
-              content: currentMeta
-            });
-        }
-      } catch (err) {
-        console.error('Error deleting specialist metadata from DB:', err);
-      }
-
       const { error } = await supabase
         .from('specialists')
         .delete()

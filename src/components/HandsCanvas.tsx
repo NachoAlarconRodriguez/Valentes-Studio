@@ -115,7 +115,7 @@ function generateBarberPolePoints(): BarberPolePoint[] {
   const cylinderHeight = 1.5;
   
   // Colors (Luxury gold theme)
-  const colorGold: [number, number, number] = [0.831, 0.686, 0.216]; // #D4AF37 (Warm Luxury Gold)
+  const colorGold: [number, number, number] = [0.773, 0.627, 0.349]; // #D4AF37 (Warm Luxury Gold)
   const colorBronze: [number, number, number] = [0.55, 0.43, 0.28]; // #8C6E47 (Warm Bronze)
   const colorLightGold: [number, number, number] = [0.88, 0.82, 0.68]; // #E2D3B8 (Light Champagne Gold)
   
@@ -253,7 +253,9 @@ function generateBarberPolePoints(): BarberPolePoint[] {
   return points;
 }
 
-function HandsParticles({ points }: { points: BarberPolePoint[] }) {
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
+
+function HandsParticles({ points, isIntersecting }: { points: BarberPolePoint[]; isIntersecting: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
   const geometryRef = useRef<THREE.BufferGeometry>(null);
   const mouse3D = useRef(new THREE.Vector3(999, 999, 999));
@@ -331,6 +333,8 @@ function HandsParticles({ points }: { points: BarberPolePoint[] }) {
   }), []);
 
   useFrame((state) => {
+    if (!isIntersecting) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     if (!pointsRef.current) return;
     const material = pointsRef.current.material as THREE.ShaderMaterial;
     const u = material.uniforms;
@@ -386,13 +390,14 @@ function HandsParticles({ points }: { points: BarberPolePoint[] }) {
 // --- MAIN EXPORTED CANVAS COMPONENT ---
 
 export default function HandsCanvas() {
+  const [containerRef, isIntersecting] = useIntersectionObserver({ threshold: 0.01 });
   const points = useMemo(() => generateBarberPolePoints(), []);
 
   return (
-    <div className="w-full h-full min-h-[500px] relative select-none">
+    <div ref={containerRef} className="w-full h-full min-h-[500px] relative select-none">
       <Canvas camera={{ position: [0, 0, 2.5], fov: 60 }}>
         <ambientLight intensity={0.5} />
-        <HandsParticles points={points} />
+        <HandsParticles points={points} isIntersecting={isIntersecting} />
       </Canvas>
     </div>
   );

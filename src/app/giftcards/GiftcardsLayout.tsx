@@ -116,7 +116,7 @@ export default function GiftcardsLayout() {
       cardBg: 'bg-gradient-to-br from-[#1f1e1c] via-[#0c0c0c] to-[#2e2d2b]',
       border: 'border-[#E2E0D8]/30',
       glow: 'shadow-[#E2E0D8]/5',
-      logo: '/terapias-logo-v7.png',
+      logo: '/terapias-logo-v8.png',
       textColor: 'text-[#E2E0D8]',
       buttonBg: 'bg-[#E2E0D8] hover:bg-[#E2E0D8]/90 text-black',
       gradientClip: 'bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent',

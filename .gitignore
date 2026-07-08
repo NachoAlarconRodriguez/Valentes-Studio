@@ -43,4 +43,6 @@ next-env.d.ts
 # scratch/helper scripts
 *.py
 /*.html
+/scratch/
+/supabase_update.sql
 

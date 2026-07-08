@@ -309,6 +309,91 @@ function CalendarPicker({ value, onChange, onClose, minDate, maxDate }: Calendar
   );
 }
 
+interface CustomTimeSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  className?: string;
+  isSmall?: boolean;
+}
+
+function CustomTimeSelect({ value, onChange, options, className = "", isSmall = false }: CustomTimeSelectProps) {
+  const finalOptions = options.includes(value) ? options : [value, ...options];
+
+  const handleStep = (direction: 'up' | 'down') => {
+    const currentIndex = finalOptions.indexOf(value);
+    if (currentIndex === -1) return;
+
+    let nextIndex = currentIndex;
+    if (direction === 'up') {
+      if (currentIndex < finalOptions.length - 1) {
+        nextIndex = currentIndex + 1;
+      }
+    } else {
+      if (currentIndex > 0) {
+        nextIndex = currentIndex - 1;
+      }
+    }
+
+    if (nextIndex !== currentIndex) {
+      onChange(finalOptions[nextIndex]);
+    }
+  };
+
+  const isAtMin = finalOptions.indexOf(value) === 0;
+  const isAtMax = finalOptions.indexOf(value) === finalOptions.length - 1;
+
+  return (
+    <div className={`flex items-center bg-[#050505] border border-white/5 rounded-lg text-white font-mono select-none overflow-hidden ${
+      isSmall ? 'w-[85px] h-6 px-1' : 'w-[90px] h-7 px-1.5'
+    } ${className}`}>
+      {/* Time Display */}
+      <span className={`flex-1 text-center font-bold tracking-wider ${
+        isSmall ? 'text-[10px]' : 'text-[11px]'
+      }`}>
+        {value}
+      </span>
+
+      {/* Up / Down Controls */}
+      <div className="flex flex-col justify-center items-center border-l border-white/10 pl-1 h-full space-y-[1px]">
+        {/* Up Arrow */}
+        <button
+          type="button"
+          disabled={isAtMax}
+          onClick={() => handleStep('up')}
+          className={`flex items-center justify-center transition-all ${
+            isAtMax 
+              ? 'text-white/10 cursor-not-allowed' 
+              : 'text-text-secondary hover:text-gold cursor-pointer hover:scale-110'
+          }`}
+          style={{ height: '10px' }}
+        >
+          <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 8l-6 6h12z" />
+          </svg>
+        </button>
+
+        {/* Down Arrow */}
+        <button
+          type="button"
+          disabled={isAtMin}
+          onClick={() => handleStep('down')}
+          className={`flex items-center justify-center transition-all ${
+            isAtMin 
+              ? 'text-white/10 cursor-not-allowed' 
+              : 'text-text-secondary hover:text-gold cursor-pointer hover:scale-110'
+          }`}
+          style={{ height: '10px' }}
+        >
+          <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 16l-6-6h12z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { 
     servicesData, 
@@ -613,8 +698,8 @@ export default function AdminPage() {
 
     const serviceDataPayload = {
       name: serviceFormName.trim(),
-      price: formattedPrice,
-      duration: serviceFormDuration,
+      price: parseInt(formattedPrice.replace(/[^0-9]/g, ''), 10) || 0,
+      duration: parseInt(serviceFormDuration.toString().replace(/[^0-9]/g, ''), 10) || 0,
       description: serviceFormDescription.trim(),
       specialistIds: serviceFormSpecialists,
       ...(customId ? { id: customId } : {})
@@ -976,11 +1061,22 @@ export default function AdminPage() {
     fetchBookingsAndClients();
     fetchSchedules();
 
-    // Poll every 8 seconds for new bookings or blocks
-    const interval = setInterval(() => {
-      fetchBookingsAndClients();
-      fetchSchedules();
-    }, 8000);
+    // Set up Realtime listener for immediate updates without polling database
+    const channel = supabase
+      .channel('admin-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        fetchBookingsAndClients();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+        fetchBookingsAndClients();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_blocks' }, () => {
+        fetchSchedules();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_shifts' }, () => {
+        fetchSchedules();
+      })
+      .subscribe();
 
     // Fetch immediately when switching back to the tab
     const handleFocus = () => {
@@ -990,10 +1086,10 @@ export default function AdminPage() {
     window.addEventListener('focus', handleFocus);
 
     return () => {
-      clearInterval(interval);
+      supabase.removeChannel(channel);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchBookingsAndClients, fetchSchedules]);
+  }, [fetchBookingsAndClients, fetchSchedules, supabase]);
 
   // Filter Bookings by active business tab
   const filteredBookings = bookings.filter(b => b.category === activeBusinessTab);
@@ -1403,36 +1499,46 @@ export default function AdminPage() {
           }
 
           ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(
-            async (blob) => {
-              if (!blob) {
-                reject(new Error('Fallo al comprimir la imagen'));
-                return;
-              }
-
-              try {
-                const formData = new FormData();
-                formData.append('file', blob, 'image.jpg');
-                
-                const response = await fetch('/api/upload', {
-                  method: 'POST',
-                  body: formData
-                });
-                
-                if (!response.ok) {
-                  const errorData = await response.json().catch(() => ({}));
-                  throw new Error(errorData.error || 'Error al subir la imagen al servidor');
+          
+          const saveBlob = (mimeType: string, quality: number) => {
+            canvas.toBlob(
+              async (blob) => {
+                if (!blob) {
+                  if (mimeType === 'image/webp') {
+                    // Fallback to jpeg if WebP is not supported or fails
+                    saveBlob('image/jpeg', 0.82);
+                  } else {
+                    reject(new Error('Fallo al comprimir la imagen'));
+                  }
+                  return;
                 }
-                
-                const responseData = await response.json();
-                resolve(responseData.url);
-              } catch (uploadError) {
-                reject(uploadError);
-              }
-            },
-            'image/jpeg',
-            0.82
-          );
+
+                try {
+                  const formData = new FormData();
+                  const fileExt = mimeType === 'image/webp' ? 'webp' : 'jpg';
+                  formData.append('file', blob, `image.${fileExt}`);
+                  
+                  const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                  });
+                  
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Error al subir la imagen al servidor');
+                  }
+                  
+                  const responseData = await response.json();
+                  resolve(responseData.url);
+                } catch (uploadError) {
+                  reject(uploadError);
+                }
+              },
+              mimeType,
+              quality
+            );
+          };
+          saveBlob('image/webp', 0.75);
         };
         img.onerror = () => reject(new Error('Error al cargar la imagen'));
         img.src = event.target?.result as string;
@@ -2014,7 +2120,9 @@ export default function AdminPage() {
             cat => servicesData[cat].services || []
           );
           const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
-          const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+          const bookingDuration = bookedService 
+            ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
+            : 60;
           if (bookingMins + bookingDuration > maxMins) maxMins = bookingMins + bookingDuration;
         }
       }
@@ -2052,7 +2160,9 @@ export default function AdminPage() {
             cat => servicesData[cat].services || []
           );
           const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
-          const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+          const bookingDuration = bookedService 
+            ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
+            : 60;
           const bookingEnd = bookingMin + bookingDuration;
 
           return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
@@ -3887,7 +3997,9 @@ export default function AdminPage() {
                                     cat => servicesData[cat].services || []
                                   );
                                   const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
-                                  const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+                                  const bookingDuration = bookedService 
+                                    ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
+                                    : 60;
                                   const bookingEnd = bookingMin + bookingDuration;
 
                                   return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
@@ -3951,7 +4063,9 @@ export default function AdminPage() {
                                     cat => servicesData[cat].services || []
                                   );
                                   const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-                                  const bookingDuration = bookedService ? parseDurationToMinutes(bookedService.duration) : 60;
+                                  const bookingDuration = bookedService 
+                                    ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
+                                    : 60;
                                   const bookingEnd = localTimeToMinutes(booking.time) + bookingDuration;
                                   const slotMins = localTimeToMinutes(time);
                                   const isEndSlot = slotMins + 30 >= bookingEnd;
@@ -5284,8 +5398,8 @@ export default function AdminPage() {
                                   if (s) {
                                     handleGalleryItemChange(currentItem.id, 'serviceId', selectedId);
                                     handleGalleryItemChange(currentItem.id, 'title', s.name);
-                                    handleGalleryItemChange(currentItem.id, 'price', s.price);
-                                    handleGalleryItemChange(currentItem.id, 'duration', s.duration);
+                                    handleGalleryItemChange(currentItem.id, 'price', typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CL')}` : s.price);
+                                    handleGalleryItemChange(currentItem.id, 'duration', typeof s.duration === 'number' ? `${s.duration} min` : s.duration);
                                   }
                                 } else {
                                   // Unlink serviceId
@@ -8242,147 +8356,138 @@ export default function AdminPage() {
             </div>
 
             {/* Sub-tab Content: JORNADAS */}
-            {activeScheduleSubTab === 'jornadas' && (
-              <div className="grid grid-cols-1 gap-6 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl">
-                <div>
-                  <h3 className="font-serif text-lg text-white font-bold tracking-wide">Configuración de Jornada Laboral</h3>
-                  <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5 mb-6">
-                    Define los días laborables, horarios de atención y horas de colación obligatoria.
-                  </p>
-                </div>
+            {activeScheduleSubTab === 'jornadas' && (() => {
+              const timeOptions = [
+                '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+                '20:00', '20:30', '21:00', '21:30', '22:00'
+              ];
+              return (
+                <div className="grid grid-cols-1 gap-6 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 shadow-xl">
+                  <div>
+                    <h3 className="font-serif text-lg text-white font-bold tracking-wide">Configuración de Jornada Laboral</h3>
+                    <p className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5 mb-6">
+                      Define los días laborables, horarios de atención y horas de colación obligatoria.
+                    </p>
+                  </div>
 
-                <div className="space-y-4">
-                  {/* Monday (1) to Saturday (6) and Sunday (0) */}
-                  {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
-                    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                    const dayLabel = dayNames[dayNum];
-                    
-                    // Fetch shift from store
-                    const specialistShifts = workShifts[selectedScheduleStaffId] || [];
-                    const shift = specialistShifts.find((s) => s.dayOfWeek === dayNum) || {
-                      dayOfWeek: dayNum,
-                      isActive: dayNum !== 0,
-                      startTime: '09:00',
-                      endTime: '18:00',
-                      hasBreak: true,
-                      breakStartTime: '13:00',
-                      breakEndTime: '14:00'
-                    };
+                  <div className="space-y-4">
+                    {/* Monday (1) to Saturday (6) and Sunday (0) */}
+                    {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
+                      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                      const dayLabel = dayNames[dayNum];
+                      
+                      // Fetch shift from store
+                      const specialistShifts = workShifts[selectedScheduleStaffId] || [];
+                      const shift = specialistShifts.find((s) => s.dayOfWeek === dayNum) || {
+                        dayOfWeek: dayNum,
+                        isActive: dayNum !== 0,
+                        startTime: '09:00',
+                        endTime: '18:00',
+                        hasBreak: true,
+                        breakStartTime: '13:00',
+                        breakEndTime: '14:00'
+                      };
 
-                    const handleToggleActive = (checked: boolean) => {
-                      updateWorkShift(selectedScheduleStaffId, dayNum, { isActive: checked });
-                      triggerNotification(`Jornada del ${dayLabel} actualizada.`);
-                    };
+                      const handleToggleActive = (checked: boolean) => {
+                        updateWorkShift(selectedScheduleStaffId, dayNum, { isActive: checked });
+                        triggerNotification(`Jornada del ${dayLabel} actualizada.`);
+                      };
 
-                    const handleToggleBreak = (checked: boolean) => {
-                      updateWorkShift(selectedScheduleStaffId, dayNum, { hasBreak: checked });
-                      triggerNotification(`Colación del ${dayLabel} actualizada.`);
-                    };
+                      const handleToggleBreak = (checked: boolean) => {
+                        updateWorkShift(selectedScheduleStaffId, dayNum, { hasBreak: checked });
+                        triggerNotification(`Colación del ${dayLabel} actualizada.`);
+                      };
 
-                    const handleShiftTimeChange = (field: keyof DailyShift, val: string) => {
-                      const digits = val.replace(/\D/g, '').slice(0, 4);
-                      const formatted = digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
-                      updateWorkShift(selectedScheduleStaffId, dayNum, { [field]: formatted });
-                    };
-
-                    return (
-                      <div 
-                        key={dayNum}
-                        className={`flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
-                          shift.isActive 
-                            ? 'bg-[#0f0f0f]/60 border-white/5 hover:border-white/10' 
-                            : 'bg-black/40 border-white/5 opacity-50'
-                        }`}
-                      >
-                        {/* Day Name and Main Toggle */}
-                        <div className="flex items-center space-x-4 min-w-[200px] mb-3 lg:mb-0">
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={shift.isActive}
-                              onChange={(e) => handleToggleActive(e.target.checked)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#080808] after:border-white/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gold"></div>
-                          </label>
-                          <span className={`text-xs font-bold uppercase tracking-wider ${shift.isActive ? 'text-white' : 'text-text-secondary'}`}>
-                            {dayLabel}
-                          </span>
-                          {!shift.isActive && (
-                            <span className="text-[8px] bg-red-950/40 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">
-                              Cerrado
+                      return (
+                        <div 
+                          key={dayNum}
+                          className={`flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                            shift.isActive 
+                              ? 'bg-[#0f0f0f]/60 border-white/5 hover:border-white/10' 
+                              : 'bg-black/40 border-white/5 opacity-50'
+                          }`}
+                        >
+                          {/* Day Name and Main Toggle */}
+                          <div className="flex items-center space-x-4 min-w-[200px] mb-3 lg:mb-0">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={shift.isActive}
+                                onChange={(e) => handleToggleActive(e.target.checked)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#080808] after:border-white/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gold"></div>
+                            </label>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${shift.isActive ? 'text-white' : 'text-text-secondary'}`}>
+                              {dayLabel}
                             </span>
+                            {!shift.isActive && (
+                              <span className="text-[8px] bg-red-950/40 border border-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">
+                                Cerrado
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Working Hours configuration */}
+                          {shift.isActive && (
+                            <div className="flex flex-wrap items-center gap-4 lg:gap-8 flex-1 justify-start lg:justify-end">
+                              {/* Working Times */}
+                              <div className="flex items-center space-x-2">
+                                <span className="text-[10px] text-text-secondary uppercase tracking-widest font-semibold">Jornada:</span>
+                                <CustomTimeSelect
+                                  value={shift.startTime}
+                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { startTime: val })}
+                                  options={timeOptions}
+                                />
+                                <span className="text-text-secondary text-xs">-</span>
+                                <CustomTimeSelect
+                                  value={shift.endTime}
+                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { endTime: val })}
+                                  options={timeOptions}
+                                />
+                              </div>
+
+                              {/* Break Toggle and Times */}
+                              <div className="flex items-center space-x-3 bg-black/40 border border-white/5 rounded-xl px-3 py-1.5">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={shift.hasBreak}
+                                    onChange={(e) => handleToggleBreak(e.target.checked)}
+                                    className="sr-only peer"
+                                  />
+                                  <div className="w-7 h-4 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#080808] after:border-white/20 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-gold/80"></div>
+                                </label>
+                                <span className="text-[9px] text-text-secondary uppercase tracking-widest font-bold font-serif">Hora Colación</span>
+                                
+                                {shift.hasBreak && (
+                                  <div className="flex items-center space-x-1 ml-2">
+                                    <CustomTimeSelect
+                                      value={shift.breakStartTime}
+                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakStartTime: val })}
+                                      options={timeOptions}
+                                      isSmall={true}
+                                    />
+                                    <span className="text-text-secondary text-[10px]">-</span>
+                                    <CustomTimeSelect
+                                      value={shift.breakEndTime}
+                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakEndTime: val })}
+                                      options={timeOptions}
+                                      isSmall={true}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
-
-                        {/* Working Hours configuration */}
-                        {shift.isActive && (
-                          <div className="flex flex-wrap items-center gap-4 lg:gap-8 flex-1 justify-start lg:justify-end">
-                            {/* Working Times */}
-                            <div className="flex items-center space-x-2">
-                              <span className="text-[10px] text-text-secondary uppercase tracking-widest font-semibold">Jornada:</span>
-                              <input
-                                type="text"
-                                placeholder="09:00"
-                                maxLength={5}
-                                value={shift.startTime}
-                                onChange={(e) => handleShiftTimeChange('startTime', e.target.value)}
-                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono w-[65px] text-center"
-                              />
-                              <span className="text-text-secondary text-xs">-</span>
-                              <input
-                                type="text"
-                                placeholder="18:00"
-                                maxLength={5}
-                                value={shift.endTime}
-                                onChange={(e) => handleShiftTimeChange('endTime', e.target.value)}
-                                className="bg-[#050505] border border-white/5 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-gold/30 font-mono w-[65px] text-center"
-                              />
-                            </div>
-
-                            {/* Break Toggle and Times */}
-                            <div className="flex items-center space-x-3 bg-black/40 border border-white/5 rounded-xl px-3 py-1.5">
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={shift.hasBreak}
-                                  onChange={(e) => handleToggleBreak(e.target.checked)}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-7 h-4 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#080808] after:border-white/20 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-gold/80"></div>
-                              </label>
-                              <span className="text-[9px] text-text-secondary uppercase tracking-widest font-bold font-serif">Hora Colación</span>
-                              
-                              {shift.hasBreak && (
-                                <div className="flex items-center space-x-1 ml-2">
-                                  <input
-                                    type="text"
-                                    placeholder="13:00"
-                                    maxLength={5}
-                                    value={shift.breakStartTime}
-                                    onChange={(e) => handleShiftTimeChange('breakStartTime', e.target.value)}
-                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] text-center font-mono"
-                                  />
-                                  <span className="text-text-secondary text-[10px]">-</span>
-                                  <input
-                                    type="text"
-                                    placeholder="14:00"
-                                    maxLength={5}
-                                    value={shift.breakEndTime}
-                                    onChange={(e) => handleShiftTimeChange('breakEndTime', e.target.value)}
-                                    className="bg-[#050505] border border-white/5 rounded-lg px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-gold/30 w-[65px] text-center font-mono"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Sub-tab Content: BLOQUEOS DE HORAS */}
             {activeScheduleSubTab === 'bloqueos' && (() => {
@@ -8750,6 +8855,24 @@ export default function AdminPage() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
+                          // Validate video size (15 MB limit)
+                          const MAX_VIDEO_SIZE = 15 * 1024 * 1024;
+                          if (file.size > MAX_VIDEO_SIZE) {
+                            triggerNotification('El video supera el límite permitido de 15 MB. Por favor, comprímelo antes de subirlo.');
+                            e.target.value = '';
+                            return;
+                          }
+
+                          // Validate video format (mp4, webm, mov)
+                          const validFormats = ['video/mp4', 'video/webm', 'video/quicktime'];
+                          const ext = file.name.split('.').pop()?.toLowerCase();
+                          const isValidFormat = validFormats.includes(file.type) || ['mp4', 'webm', 'mov'].includes(ext || '');
+                          if (!isValidFormat) {
+                            triggerNotification('Formato de video no válido. Por favor sube archivos mp4, webm o mov.');
+                            e.target.value = '';
+                            return;
+                          }
+
                           setIsUploadingAsset(true);
                           try {
                             const formData = new FormData();

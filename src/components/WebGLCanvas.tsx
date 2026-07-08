@@ -81,7 +81,7 @@ const bgFragmentShader = `
     fluidPattern = smoothstep(-0.6, 0.8, fluidPattern);
 
     vec3 baseBg = vec3(0.067, 0.067, 0.067); // #111111
-    vec3 goldColor = vec3(0.831, 0.686, 0.216); // #D4AF37
+    vec3 goldColor = vec3(0.773, 0.627, 0.349); // #D4AF37
     vec3 bronzeColor = vec3(0.80, 0.50, 0.20); // #CD7F32
     
     vec3 fluidColor = mix(bronzeColor * 0.15, goldColor * 0.4, fluidPattern);
@@ -213,7 +213,7 @@ const particleVertexShader = `
     gl_PointSize = (12.0 + aRand.x * 8.0) * sizeModifier / -mvPosition.z;
 
     // 6. Color and Alpha mapping (Dynamic shift to copper on Peluquería, silver on Terapias)
-    vec3 goldColor = vec3(0.831, 0.686, 0.216); // #D4AF37 (Warm Luxury Gold)
+    vec3 goldColor = vec3(0.773, 0.627, 0.349); // #D4AF37 (Warm Luxury Gold)
     vec3 bronzeColor = vec3(0.80, 0.50, 0.20); // #CD7F32 (Bronze)
     vec3 copperColor = vec3(0.72, 0.38, 0.18); // #B8612E (Deep Copper)
     vec3 silverColor = vec3(0.88, 0.88, 0.85); // #E2E0D8 (Platinum/Silver)
@@ -315,6 +315,7 @@ function BackgroundQuad() {
   }, []);
 
   useFrame((state) => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     if (!materialRef.current) return;
     
     const u = materialRef.current.uniforms;
@@ -552,6 +553,7 @@ function Particles({ count, isMobile }: ParticlesProps) {
   }), []);
 
   useFrame((state) => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     if (!pointsRef.current) return;
 
     const material = pointsRef.current.material as THREE.ShaderMaterial;
