@@ -1118,7 +1118,7 @@ export default function AdminPage() {
       const isVideo = isVideoUrl(editingAsset.currentValue) || editingAsset.key.toLowerCase().includes('video');
       setMediaEditorType(isVideo ? 'video' : 'image');
     }
-  }, [editingAsset?.page, editingAsset?.key, editingAsset?.itemId]);
+  }, [editingAsset?.page, editingAsset?.key, editingAsset?.itemId, editingAsset?.currentValue]);
 
   // Check active session on mount
   useEffect(() => {
@@ -8196,10 +8196,15 @@ export default function AdminPage() {
                         Cancelar
                       </button>
                       <button
+                        disabled={isUploadingStaffImage}
                         onClick={handleStaffFormSubmit}
-                        className="flex-1 py-3.5 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer"
+                        className={`flex-1 py-3.5 rounded-full font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer ${
+                          isUploadingStaffImage 
+                            ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed opacity-50' 
+                            : 'bg-gold hover:bg-gold/90 text-black'
+                        }`}
                       >
-                        {editingStaff ? 'Guardar Cambios' : 'Añadir Profesional'}
+                        {isUploadingStaffImage ? 'Subiendo...' : (editingStaff ? 'Guardar Cambios' : 'Añadir Profesional')}
                       </button>
                     </div>
                   </motion.div>
@@ -8981,6 +8986,7 @@ export default function AdminPage() {
                 Cancelar
               </button>
               <button
+                disabled={isUploadingAsset}
                 onClick={() => {
                   if (editingAsset.itemId) {
                     handleGalleryItemChange(editingAsset.itemId, editingAsset.key, editingAsset.currentValue);
@@ -8990,9 +8996,13 @@ export default function AdminPage() {
                   setEditingAsset(null);
                   triggerNotification('Recurso de la vista previa actualizado.');
                 }}
-                className="flex-1 py-2.5 rounded-full bg-gold hover:bg-gold/90 text-black font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer"
+                className={`flex-1 py-2.5 rounded-full font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer ${
+                  isUploadingAsset 
+                    ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed opacity-50' 
+                    : 'bg-gold hover:bg-gold/90 text-black'
+                }`}
               >
-                Aplicar Cambio
+                {isUploadingAsset ? 'Subiendo...' : 'Aplicar Cambio'}
               </button>
             </div>
           </div>
