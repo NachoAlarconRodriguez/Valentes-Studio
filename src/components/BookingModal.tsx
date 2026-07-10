@@ -773,7 +773,7 @@ export function BookingModal() {
                           {/* Services Cards list */}
                           <div>
                             <label className={labelClass}>Selecciona tu Ritual *</label>
-                            <div className="space-y-2.5 max-h-[38vh] overflow-y-auto pr-1 mt-1.5 scrollbar-thin">
+                            <div className="space-y-2.5 pr-1 mt-1.5">
                               {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12 space-y-3">
                                   <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${category === 'terapias' ? 'border-platinum' : 'border-gold'}`} />
@@ -835,7 +835,7 @@ export function BookingModal() {
                             <p className="text-xs text-text-secondary font-light mt-0.5">Selecciona tu especialista preferido o elige cualquiera para mayor disponibilidad.</p>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[42vh] overflow-y-auto pr-1 pb-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1 pb-2">
                             {/* Option: Cualquiera */}
                             <button
                               type="button"
@@ -1195,7 +1195,7 @@ export function BookingModal() {
                                 className="space-y-2"
                               >
                                 <label className={labelClass}>Hora disponible *</label>
-                                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                                <div className="grid grid-cols-4 gap-2 pr-1">
                                   {[
                                     { value: '07:00', label: '07:00 AM' },
                                     { value: '08:00', label: '08:00 AM' },
@@ -1348,8 +1348,8 @@ export function BookingModal() {
                         </div>
                       )}
 
-                      {step === 5 && (
-                        <div className="space-y-5 animate-fadeIn max-h-[60vh] md:max-h-[460px] overflow-y-auto pr-1 scrollbar-thin">
+                       {step === 5 && (
+                        <div className="space-y-5 animate-fadeIn pr-1 w-full">
                           <div>
                             <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 5</h4>
                             <h3 className="font-serif text-lg text-white font-bold mt-0.5">
