@@ -19,6 +19,24 @@ import {
   MessageCircle,
   DollarSign
 } from 'lucide-react';
+
+const Instagram = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
 import { useBookingStore } from '@/store/useBookingStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useServicesStore } from '@/store/useServicesStore';
@@ -88,7 +106,7 @@ export function ManualBookingModal({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
-  const [channel, setChannel] = useState<'Web' | 'WhatsApp' | 'Presencial'>('Presencial');
+  const [channel, setChannel] = useState<'Web' | 'WhatsApp' | 'Presencial' | 'Instagram'>('Presencial');
   const [status, setStatus] = useState<'confirmado' | 'pendiente'>('confirmado');
 
   // Availability Bypass states
@@ -690,6 +708,7 @@ export function ManualBookingModal({
                         {channel === 'Presencial' && <Smartphone size={10} className="text-amber-400" />}
                         {channel === 'WhatsApp' && <MessageSquare size={10} className="text-emerald-400" />}
                         {channel === 'Web' && <Globe size={10} className="text-blue-400" />}
+                        {channel === 'Instagram' && <Instagram size={10} className="text-pink-400" />}
                         <span>{channel}</span>
                       </span>
                     </div>

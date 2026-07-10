@@ -85,6 +85,24 @@ import { useScheduleStore, DailyShift, TimeBlock, parseDurationToMinutes } from 
 import { ManualBookingModal } from '@/components/ManualBookingModal';
 import Image from 'next/image';
 
+const Instagram = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
+
 const specialistPhotos: Record<string, string> = {
   sp1: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80', // Sofia Valente
   sp2: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80', // Lucía Rivas
@@ -2527,11 +2545,13 @@ export default function AdminPage() {
   const webBookingsCount = dashboardBookings.filter(b => b.channel === 'Web').length;
   const waBookingsCount = dashboardBookings.filter(b => b.channel === 'WhatsApp').length;
   const walkinBookingsCount = dashboardBookings.filter(b => b.channel === 'Presencial').length;
+  const instagramBookingsCount = dashboardBookings.filter(b => b.channel === 'Instagram').length;
   
-  const totalChannels = webBookingsCount + waBookingsCount + walkinBookingsCount;
+  const totalChannels = webBookingsCount + waBookingsCount + walkinBookingsCount + instagramBookingsCount;
   const webPct = totalChannels > 0 ? Math.round((webBookingsCount / totalChannels) * 100) : 0;
   const waPct = totalChannels > 0 ? Math.round((waBookingsCount / totalChannels) * 100) : 0;
   const walkinPct = totalChannels > 0 ? Math.round((walkinBookingsCount / totalChannels) * 100) : 0;
+  const instagramPct = totalChannels > 0 ? Math.round((instagramBookingsCount / totalChannels) * 100) : 0;
 
   // Function to generate dynamic trend data
   const getTrendData = () => {
@@ -3664,7 +3684,7 @@ export default function AdminPage() {
               </div>
 
               {/* Channels Donut Chart */}
-              <div className="lg:col-span-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 flex flex-col justify-between shadow-lg h-[350px]">
+              <div className="lg:col-span-4 bg-[#0c0c0c] border border-white/5 rounded-3xl p-6 flex flex-col justify-between shadow-lg h-[380px]">
                 <div className="space-y-0.5">
                   <h3 className="font-serif text-base text-white tracking-wide">Canales de Reserva</h3>
                   <p className="text-[9px] text-text-secondary uppercase tracking-widest">Procedencia de citas activas</p>
@@ -3693,6 +3713,12 @@ export default function AdminPage() {
                       strokeDasharray={`${walkinPct} ${100 - walkinPct}`} 
                       strokeDashoffset={`-${webPct + waPct}`} 
                     />
+
+                    {/* Instagram Segment (pink/rose) */}
+                    <circle cx="18" cy="18" r="15.91" fill="none" stroke="#E1306C" strokeWidth="3" 
+                      strokeDasharray={`${instagramPct} ${100 - instagramPct}`} 
+                      strokeDashoffset={`-${webPct + waPct + walkinPct}`} 
+                    />
                   </svg>
                   
                   {/* Absolute Center text */}
@@ -3715,6 +3741,10 @@ export default function AdminPage() {
                   <div className="flex justify-between items-center text-[10px] font-medium">
                     <span className="flex items-center gap-1.5 text-white/95"><span className="w-2 h-2 rounded-full bg-[#E2E0D8]" /> Presencial</span>
                     <span className="text-text-secondary">{walkinBookingsCount} ({walkinPct}%)</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-medium">
+                    <span className="flex items-center gap-1.5 text-white/95"><span className="w-2 h-2 rounded-full bg-[#E1306C]" /> Instagram</span>
+                    <span className="text-text-secondary">{instagramBookingsCount} ({instagramPct}%)</span>
                   </div>
                 </div>
               </div>
@@ -4332,6 +4362,7 @@ export default function AdminPage() {
                                                       {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
                                                       {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
                                                       {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
+                                                      {booking.channel === 'Instagram' && <Instagram size={8} className="text-pink-400" />}
                                                       <span>{booking.channel}</span>
                                                     </span>
                                                     {booking.category !== activeBusinessTab && (
@@ -4723,6 +4754,7 @@ export default function AdminPage() {
                                   {booking.channel === 'Web' && <Globe size={11} className="text-blue-400" />}
                                   {booking.channel === 'WhatsApp' && <MessageSquare size={11} className="text-emerald-400" />}
                                   {booking.channel === 'Presencial' && <Smartphone size={11} className="text-amber-400" />}
+                                  {booking.channel === 'Instagram' && <Instagram size={11} className="text-pink-400" />}
                                   <span>{booking.channel}</span>
                                 </span>
                               </td>

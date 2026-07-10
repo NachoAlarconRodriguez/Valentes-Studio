@@ -144,7 +144,7 @@ export default function BarberiaLayout() {
 
   return (
     <div className="bg-[#000000] text-[#F0F0F0] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {showIntro ? (
           <motion.div
             key="intro-screen"
@@ -159,7 +159,12 @@ export default function BarberiaLayout() {
 
               <div className="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-center justify-between z-10 gap-6 md:gap-10">
                 {/* Left Side: Minimalist branding & Action button */}
-                <div className="text-center md:text-left space-y-5 select-none order-2 md:order-1 flex-1 md:self-end md:pb-20">
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-center md:text-left space-y-5 select-none order-2 md:order-1 flex-1 md:self-end md:pb-20"
+                >
                    <div className="space-y-4">
                      {/* Premium Client Logo */}
                      <div className="relative w-36 h-36 md:w-28 md:h-28 mx-auto md:mx-0 transition-transform duration-700 hover:scale-105 hover:rotate-1">
@@ -182,12 +187,7 @@ export default function BarberiaLayout() {
                      </div>
                    </div>
                    
-                   <motion.div
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     transition={{ delay: 0.5, duration: 0.6 }}
-                     className="pt-6"
-                   >
+                   <div className="pt-6">
                      <button
                        onClick={() => setShowIntro(false)}
                        className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
@@ -195,8 +195,8 @@ export default function BarberiaLayout() {
                        <span>{content.barberia.discoverBtn}</span>
                        <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
                      </button>
-                   </motion.div>
-                </div>
+                   </div>
+                </motion.div>
 
                 {/* Right Side: Floating 3D Barber Pole (Hidden on mobile) */}
                 <div className="hidden md:flex w-[240px] h-[300px] md:w-[260px] md:h-[360px] relative items-center justify-center order-1 md:order-2 md:mt-12">

@@ -205,6 +205,25 @@ export function BookingModal() {
   const selectedServiceObj = servicesList.find(s => s.id === serviceId);
   const specialistsList = servicesData[category]?.specialists || [];
 
+  // Check if the current selection matches the preselected service from useUIStore
+  const isPreselected = selectedServiceForBooking && selectedServiceForBooking.id === serviceId;
+
+  const displayServiceName = isPreselected 
+    ? selectedServiceForBooking.name 
+    : (selectedServiceObj?.name || '');
+
+  const baseDuration = selectedServiceObj
+    ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration))
+    : 60;
+
+  const displayDurationMins = isPreselected && selectedServiceForBooking.name.toLowerCase().includes('cejas')
+    ? baseDuration + 15
+    : baseDuration;
+
+  const displayDurationStr = isPreselected && selectedServiceForBooking.name.toLowerCase().includes('cejas')
+    ? `${displayDurationMins} min`
+    : (selectedServiceObj?.duration || '');
+
   // Filter specialists based on business type and eligible services
   const filteredSpecialistsList = (() => {
     let list = specialistsList.filter(spec => spec.isActive !== false);
@@ -271,9 +290,7 @@ export function BookingModal() {
       return { available: false, reason: 'El horario ya pasó' };
     }
 
-    const dur = selectedServiceObj 
-      ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
-      : 60;
+    const dur = displayDurationMins;
     if (specialistId) {
       return isSpecialistAvailable(specialistId, checkDate, slotTime, dur, category);
     }
@@ -373,9 +390,7 @@ export function BookingModal() {
         if (specialistId) {
           return selectedSpecialistObj?.name || 'Cualquiera';
         }
-        const dur = selectedServiceObj 
-          ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
-          : 60;
+        const dur = displayDurationMins;
         const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur, category).available);
         if (availableSpecs.length > 0) {
           // Sort available specialists by their number of bookings on this date (load balance)
@@ -390,16 +405,30 @@ export function BookingModal() {
       })();
       setAssignedSpecialistName(assignedName);
 
+      // Detect booking channel
+      let bookingChannel: 'Web' | 'WhatsApp' | 'Presencial' | 'Instagram' = 'Web';
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get('source') || params.get('utm_source');
+        const isInstagramUA = navigator.userAgent.includes('Instagram') || 
+                              navigator.userAgent.includes('FBAN/Instagram') ||
+                              navigator.userAgent.includes('FBAV');
+        if (source === 'instagram' || source === 'ig' || isInstagramUA) {
+          bookingChannel = 'Instagram';
+        }
+      }
+
       const newBookingId = await useBookingStore.getState().addBooking({
         clientName: name,
         clientPhone: fullPhone,
         clientEmail: email,
         category: category as 'barberia' | 'peluqueria' | 'terapias',
-        serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
+        serviceName: displayServiceName || 'Servicio Personalizado',
         price: finalPriceStr,
         specialistName: assignedName,
         date: date,
         time: time,
+        channel: bookingChannel,
         giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined
       });
 
@@ -451,9 +480,11 @@ export function BookingModal() {
 
   const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
 
-  const originalPriceNumber = selectedServiceObj 
-    ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
-    : 0;
+  const originalPriceNumber = isPreselected
+    ? parsePrice(selectedServiceForBooking.price)
+    : (selectedServiceObj 
+        ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
+        : 0);
   
   // Calculate discount & remaining balance
   const discountAmount = appliedGiftCard 
@@ -633,10 +664,10 @@ export function BookingModal() {
                 <span className={`text-[9px] uppercase tracking-widest font-bold block ${themeText80}`}>Estás Reservando:</span>
                 {selectedServiceObj ? (
                   <div className="space-y-2">
-                    <h4 className="font-serif text-lg text-white font-medium leading-snug">{selectedServiceObj.name}</h4>
+                    <h4 className="font-serif text-lg text-white font-medium leading-snug">{displayServiceName}</h4>
                     <div className="flex justify-between items-baseline pt-2 border-t border-white/5">
-                      <span className={`font-serif text-base font-semibold ${themeText}`}>{selectedServiceObj.price}</span>
-                      <span className="text-[9px] text-text-secondary uppercase tracking-wider">{selectedServiceObj.duration}</span>
+                      <span className={`font-serif text-base font-semibold ${themeText}`}>{isPreselected ? selectedServiceForBooking.price : selectedServiceObj.price}</span>
+                      <span className="text-[9px] text-text-secondary uppercase tracking-wider">{displayDurationStr}</span>
                     </div>
                   </div>
                 ) : (

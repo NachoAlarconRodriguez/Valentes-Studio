@@ -37,7 +37,7 @@ export interface Booking {
   specialistName: string;
   date: string;
   time: string;
-  channel: 'Web' | 'WhatsApp' | 'Presencial';
+  channel: 'Web' | 'WhatsApp' | 'Presencial' | 'Instagram';
   status: 'confirmado' | 'pendiente' | 'en_proceso' | 'completado' | 'bloqueado' | 'cancelado' | 'no_llego';
   createdAt: string;
   giftCardUsed?: string;
