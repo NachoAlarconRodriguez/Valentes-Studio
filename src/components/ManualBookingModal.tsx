@@ -343,7 +343,7 @@ export function ManualBookingModal({
       : 60;
 
     const checkAvailabilityForSpec = (spId: string) => {
-      const res = isSpecialistAvailable(spId, date, slotTime, duration);
+      const res = isSpecialistAvailable(spId, date, slotTime, duration, category);
       if (res.available) return res;
       // Bypass shift, day off, and lunch break conflict for manual bookings (sobrecupo)
       if (

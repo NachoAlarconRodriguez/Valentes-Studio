@@ -617,7 +617,8 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       if (error) throw error;
 
       set((state) => ({
-        clients: state.clients.filter(c => c.phone !== phone)
+        clients: state.clients.filter(c => c.phone !== phone),
+        bookings: state.bookings.filter(b => b.clientPhone !== phone)
       }));
     } catch (err) {
       console.error('Error deleting client:', err);

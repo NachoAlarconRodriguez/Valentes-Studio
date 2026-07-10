@@ -275,10 +275,10 @@ export function BookingModal() {
       ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
       : 60;
     if (specialistId) {
-      return isSpecialistAvailable(specialistId, checkDate, slotTime, dur);
+      return isSpecialistAvailable(specialistId, checkDate, slotTime, dur, category);
     }
     if (filteredSpecialistsList.length === 0) return { available: true };
-    const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur).available);
+    const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, checkDate, slotTime, dur, category).available);
     if (availableSpecs.length > 0) {
       return { available: true };
     }
@@ -376,7 +376,7 @@ export function BookingModal() {
         const dur = selectedServiceObj 
           ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration)) 
           : 60;
-        const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur).available);
+        const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur, category).available);
         if (availableSpecs.length > 0) {
           // Sort available specialists by their number of bookings on this date (load balance)
           const bookingsOnDate = useBookingStore.getState().bookings.filter(b => b.date === date);

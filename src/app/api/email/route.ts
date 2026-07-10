@@ -813,6 +813,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, res });
     }
 
+    // 6. PASSWORD RESET FLOW
+    if (type === 'password_reset') {
+      const { email, resetLink } = data;
+      const brand = DEFAULT_BRAND;
+
+      const subject = `Recuperación de Contraseña - ${brand.name}`;
+      const title = 'Restablecer tu Contraseña';
+      const subtitle = 'Consola de Control';
+      const bodyContentHtml = `<p>Hola.</p>
+      <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta de acceso a la Consola de Control de <strong>${brand.name}</strong>.</p>
+      <p>Si no realizaste esta solicitud, puedes ignorar este correo de forma segura. Tu contraseña actual seguirá siendo válida.</p>
+      <p>Para restablecer tu contraseña, haz clic en el botón a continuación. Este enlace expira en 24 horas.</p>`;
+
+      const htmlContent = generateEmailHtml({
+        brand,
+        title,
+        subtitle,
+        bodyContentHtml,
+        buttonText: 'Restablecer Contraseña',
+        buttonUrl: resetLink
+      });
+
+      const res = await sendBrevoEmail({
+        sender: { name: brand.name, email: brand.senderEmail },
+        to: [{ email: email }],
+        subject,
+        htmlContent
+      });
+
+      return NextResponse.json({ success: true, res });
+    }
+
     return NextResponse.json({ error: 'Tipo de correo no soportado' }, { status: 400 });
 
   } catch (error: any) {

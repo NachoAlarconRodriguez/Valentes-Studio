@@ -42,7 +42,10 @@ import {
   Gift,
   UploadCloud,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';
@@ -426,8 +429,17 @@ export default function AdminPage() {
     timeBlocks,
     updateWorkShift,
     addTimeBlock,
-    deleteTimeBlock
+    deleteTimeBlock,
+    error: scheduleError,
+    clearError: clearScheduleError
   } = useScheduleStore();
+
+  useEffect(() => {
+    if (scheduleError) {
+      triggerNotification(`Error: ${scheduleError}`);
+      clearScheduleError();
+    }
+  }, [scheduleError, clearScheduleError]);
 
   // Services Configuration State
   const [activeServiceCategory, setActiveServiceCategory] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
@@ -958,6 +970,8 @@ export default function AdminPage() {
   // CRM Search & Filter State
   const [crmSearch, setCrmSearch] = useState('');
   const [crmFilter, setCrmFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias' | 'crossover'>('todos');
+  const [crmSortKey, setCrmSortKey] = useState<'name' | 'investment'>('name');
+  const [crmSortDirection, setCrmSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   
   // VSM Selected Page State
@@ -1131,8 +1145,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (editingAsset) {
-      const isVideo = isVideoUrl(editingAsset.currentValue) || editingAsset.key.toLowerCase().includes('video');
-      setMediaEditorType(isVideo ? 'video' : 'image');
+      const allowsVideo = (editingAsset.page === 'peluqueria' && editingAsset.key === 'bentoImageC4') ||
+                          (editingAsset.page === 'terapias' && editingAsset.key === 'videoUrl');
+      if (!allowsVideo) {
+        setMediaEditorType('image');
+      } else {
+        const isVideo = isVideoUrl(editingAsset.currentValue) || editingAsset.key.toLowerCase().includes('video');
+        setMediaEditorType(isVideo ? 'video' : 'image');
+      }
     }
   }, [editingAsset?.page, editingAsset?.key, editingAsset?.itemId, editingAsset?.currentValue]);
 
@@ -1324,11 +1344,18 @@ export default function AdminPage() {
     }
     try {
       setAuthLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: `${window.location.origin}/admin`
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: resetEmail.trim() })
       });
-      if (error) {
-        triggerNotification(`Error: ${translateAuthError(error.message)}`);
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        triggerNotification(`Error: ${data.error || 'No se pudo enviar el correo de recuperación.'}`);
       } else {
         triggerNotification('Enlace de recuperación enviado a tu correo.');
         setAuthView('login');
@@ -1528,10 +1555,10 @@ export default function AdminPage() {
     }
   };
 
-  const triggerNotification = (msg: string) => {
+  function triggerNotification(msg: string) {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
-  };
+  }
 
   const optimizeAndUploadImage = async (file: File): Promise<string> => {
     try {
@@ -2311,6 +2338,20 @@ export default function AdminPage() {
     if (crmFilter === 'todos') return true;
     if (crmFilter === 'crossover') return c.businesses.length > 1;
     return c.businesses.includes(crmFilter as any);
+  }).sort((a, b) => {
+    if (crmSortKey === 'name') {
+      const nameA = a.name.toLowerCase().trim();
+      const nameB = b.name.toLowerCase().trim();
+      return crmSortDirection === 'asc' 
+        ? nameA.localeCompare(nameB) 
+        : nameB.localeCompare(nameA);
+    } else {
+      const spentA = a.totalSpent || 0;
+      const spentB = b.totalSpent || 0;
+      return crmSortDirection === 'asc' 
+        ? spentA - spentB 
+        : spentB - spentA;
+    }
   });
 
   // Calculate Metrics for Dashboard based on filters
@@ -4858,9 +4899,47 @@ export default function AdminPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
-                      <th className="py-3 px-4">Cliente</th>
+                      <th className="py-3 px-4">
+                        <button
+                          onClick={() => {
+                            if (crmSortKey === 'name') {
+                              setCrmSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                            } else {
+                              setCrmSortKey('name');
+                              setCrmSortDirection('asc');
+                            }
+                          }}
+                          className="flex items-center space-x-1 hover:text-gold transition-colors font-bold uppercase tracking-widest focus:outline-none cursor-pointer"
+                        >
+                          <span>Cliente</span>
+                          {crmSortKey === 'name' ? (
+                            crmSortDirection === 'asc' ? <ArrowUp size={10} className="text-gold" /> : <ArrowDown size={10} className="text-gold" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-white/20" />
+                          )}
+                        </button>
+                      </th>
                       <th className="py-3 px-4">Negocios Activos</th>
-                      <th className="py-3 px-4 text-right">Inversión</th>
+                      <th className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            if (crmSortKey === 'investment') {
+                              setCrmSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                            } else {
+                              setCrmSortKey('investment');
+                              setCrmSortDirection('desc');
+                            }
+                          }}
+                          className="ml-auto flex items-center space-x-1 hover:text-gold transition-colors font-bold uppercase tracking-widest focus:outline-none cursor-pointer"
+                        >
+                          <span>Inversión</span>
+                          {crmSortKey === 'investment' ? (
+                            crmSortDirection === 'asc' ? <ArrowUp size={10} className="text-gold" /> : <ArrowDown size={10} className="text-gold" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-white/20" />
+                          )}
+                        </button>
+                      </th>
                       <th className="py-3 px-4 text-right">Acción</th>
                     </tr>
                   </thead>
@@ -5645,15 +5724,7 @@ export default function AdminPage() {
                             <p className="text-[8px] text-text-secondary tracking-widest uppercase mt-0.5">Gestión visual interactiva</p>
                           </div>
                           
-                          {/* Add button */}
-                          <button
-                            onClick={handleGalleryItemAdd}
-                            className="py-1.5 px-3.5 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase font-bold tracking-widest flex items-center space-x-1 cursor-pointer transition-all shadow-md shadow-gold/10"
-                            title="Añadir Trabajo"
-                          >
-                            <Plus size={10} />
-                            <span>Añadir</span>
-                          </button>
+
                         </div>
 
                         {/* Grid of thumbnails */}
@@ -5683,21 +5754,7 @@ export default function AdminPage() {
                                     />
                                   )}
                                 </button>
-                                
-                                {/* Trash button overlay */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isSelected) {
-                                      setVsmGalleryIdx(prev => Math.max(0, prev - 1));
-                                    }
-                                    handleGalleryItemDelete(item.id);
-                                  }}
-                                  className="absolute -top-1 -right-1 p-1 bg-red-600/90 text-white rounded-full border border-red-500/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110 cursor-pointer shadow-lg z-20"
-                                  title="Eliminar Trabajo"
-                                >
-                                  <Trash2 size={9} />
-                                </button>
+
                               </div>
                             );
                           })}
@@ -6167,15 +6224,7 @@ export default function AdminPage() {
                                                 <p className="text-[9px] text-text-secondary tracking-widest uppercase mt-0.5">Explora coloraciones y diseños</p>
                                               </div>
                                               
-                                              {/* Add button */}
-                                              <button
-                                                onClick={handleGalleryItemAdd}
-                                                className="py-1.5 px-3 rounded-full bg-gold hover:bg-gold/90 text-black text-[9px] uppercase font-bold tracking-widest flex items-center space-x-1 cursor-pointer transition-all shadow-md shadow-gold/10"
-                                                title="Añadir Trabajo"
-                                              >
-                                                <Plus size={10} />
-                                                <span>Añadir</span>
-                                              </button>
+
                                             </div>
 
                                             {/* Grid of thumbnails */}
@@ -6201,21 +6250,7 @@ export default function AdminPage() {
                                                         <img src={item.imageUrl} alt={item.title} className="object-cover w-full h-full pointer-events-none" />
                                                       )}
                                                     </button>
-                                                    
-                                                    {/* Trash button overlay */}
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (isSelected) {
-                                                          setVsmGalleryIdx(prev => Math.max(0, prev - 1));
-                                                        }
-                                                        handleGalleryItemDelete(item.id);
-                                                      }}
-                                                      className="absolute -top-1.5 -right-1.5 p-1.5 bg-red-600 text-white rounded-full border border-red-500/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity hover:bg-red-700 hover:scale-110 cursor-pointer shadow-lg z-20"
-                                                      title="Eliminar Trabajo"
-                                                    >
-                                                      <Trash2 size={9} />
-                                                    </button>
+
                                                   </div>
                                                 );
                                               })}
@@ -8611,23 +8646,26 @@ export default function AdminPage() {
                       
                       // Fetch shift from store
                       const specialistShifts = workShifts[selectedScheduleStaffId] || [];
-                      const shift = specialistShifts.find((s) => s.dayOfWeek === dayNum) || {
+                      const shift = specialistShifts.find(
+                        (s) => s.dayOfWeek === dayNum && s.business === activeScheduleBusinessFilter
+                      ) || {
                         dayOfWeek: dayNum,
-                        isActive: dayNum !== 0,
+                        isActive: activeScheduleBusinessFilter === 'todos' ? dayNum !== 0 : false,
                         startTime: '09:00',
                         endTime: '18:00',
-                        hasBreak: true,
+                        hasBreak: activeScheduleBusinessFilter === 'todos' ? dayNum !== 0 && dayNum !== 6 : false,
                         breakStartTime: '13:00',
-                        breakEndTime: '14:00'
+                        breakEndTime: '14:00',
+                        business: activeScheduleBusinessFilter
                       };
 
                       const handleToggleActive = (checked: boolean) => {
-                        updateWorkShift(selectedScheduleStaffId, dayNum, { isActive: checked });
+                        updateWorkShift(selectedScheduleStaffId, dayNum, { isActive: checked }, activeScheduleBusinessFilter);
                         triggerNotification(`Jornada del ${dayLabel} actualizada.`);
                       };
 
                       const handleToggleBreak = (checked: boolean) => {
-                        updateWorkShift(selectedScheduleStaffId, dayNum, { hasBreak: checked });
+                        updateWorkShift(selectedScheduleStaffId, dayNum, { hasBreak: checked }, activeScheduleBusinessFilter);
                         triggerNotification(`Colación del ${dayLabel} actualizada.`);
                       };
 
@@ -8669,13 +8707,13 @@ export default function AdminPage() {
                                 <span className="text-[10px] text-text-secondary uppercase tracking-widest font-semibold">Jornada:</span>
                                 <CustomTimeSelect
                                   value={shift.startTime}
-                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { startTime: val })}
+                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { startTime: val }, activeScheduleBusinessFilter)}
                                   options={timeOptions}
                                 />
                                 <span className="text-text-secondary text-xs">-</span>
                                 <CustomTimeSelect
                                   value={shift.endTime}
-                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { endTime: val })}
+                                  onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { endTime: val }, activeScheduleBusinessFilter)}
                                   options={timeOptions}
                                 />
                               </div>
@@ -8697,14 +8735,14 @@ export default function AdminPage() {
                                   <div className="flex items-center space-x-1 ml-2">
                                     <CustomTimeSelect
                                       value={shift.breakStartTime}
-                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakStartTime: val })}
+                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakStartTime: val }, activeScheduleBusinessFilter)}
                                       options={timeOptions}
                                       isSmall={true}
                                     />
                                     <span className="text-text-secondary text-[10px]">-</span>
                                     <CustomTimeSelect
                                       value={shift.breakEndTime}
-                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakEndTime: val })}
+                                      onChange={(val) => updateWorkShift(selectedScheduleStaffId, dayNum, { breakEndTime: val }, activeScheduleBusinessFilter)}
                                       options={timeOptions}
                                       isSmall={true}
                                     />
@@ -9024,44 +9062,49 @@ export default function AdminPage() {
             </div>
             
             <div className="space-y-4">
-              {/* Media Type Selector */}
-              <div className="space-y-1">
-                <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Tipo de Medio</label>
-                <div className="flex space-x-2 bg-black/40 p-1 rounded-xl border border-white/5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMediaEditorType('image');
-                      if (editingAsset && isVideoUrl(editingAsset.currentValue)) {
-                        setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
-                      }
-                    }}
-                    className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
-                      mediaEditorType === 'image'
-                        ? 'bg-gold text-black shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                  >
-                    Imagen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMediaEditorType('video');
-                      if (editingAsset && !isVideoUrl(editingAsset.currentValue)) {
-                        setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
-                      }
-                    }}
-                    className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
-                      mediaEditorType === 'video'
-                        ? 'bg-gold text-black shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                  >
-                    Video
-                  </button>
+              {/* Media Type Selector (Only for allowed video keys) */}
+              {editingAsset && (
+                (editingAsset.page === 'peluqueria' && editingAsset.key === 'bentoImageC4') ||
+                (editingAsset.page === 'terapias' && editingAsset.key === 'videoUrl')
+              ) && (
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Tipo de Medio</label>
+                  <div className="flex space-x-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaEditorType('image');
+                        if (editingAsset && isVideoUrl(editingAsset.currentValue)) {
+                          setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
+                        }
+                      }}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
+                        mediaEditorType === 'image'
+                          ? 'bg-gold text-black shadow-sm'
+                          : 'text-white/60 hover:text-white'
+                      }`}
+                    >
+                      Imagen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaEditorType('video');
+                        if (editingAsset && !isVideoUrl(editingAsset.currentValue)) {
+                          setEditingAsset(prev => prev ? { ...prev, currentValue: '' } : null);
+                        }
+                      }}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] uppercase tracking-widest font-bold transition-all cursor-pointer ${
+                        mediaEditorType === 'video'
+                          ? 'bg-gold text-black shadow-sm'
+                          : 'text-white/60 hover:text-white'
+                      }`}
+                    >
+                      Video
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {mediaEditorType === 'video' ? (
                 <div className="space-y-1">

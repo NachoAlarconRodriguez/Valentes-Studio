@@ -45,6 +45,7 @@ export interface DailyShift {
   hasBreak: boolean;
   breakStartTime: string; // "HH:MM"
   breakEndTime: string;   // "HH:MM"
+  business: string;       // 'todos' | 'peluqueria' | 'terapias' | 'barberia'
 }
 
 export interface TimeBlock {
@@ -58,18 +59,20 @@ export interface TimeBlock {
 }
 
 interface ScheduleStore {
-  workShifts: Record<string, DailyShift[]>; // specialistId -> array of 7 DailyShifts
+  workShifts: Record<string, DailyShift[]>; // specialistId -> array of DailyShifts
   timeBlocks: TimeBlock[];
   loading: boolean;
+  error: string | null;
+  clearError: () => void;
   
   // Actions
   fetchSchedules: () => Promise<void>;
-  updateWorkShift: (specialistId: string, dayOfWeek: number, updatedShift: Partial<DailyShift>) => Promise<void>;
+  updateWorkShift: (specialistId: string, dayOfWeek: number, updatedShift: Partial<DailyShift>, business?: string) => Promise<void>;
   addTimeBlock: (block: Omit<TimeBlock, 'id'>) => Promise<void>;
   deleteTimeBlock: (id: string) => Promise<void>;
   
   // Helpers
-  isSpecialistAvailable: (specialistId: string, date: string, time: string, serviceDurationMinutes?: number) => {
+  isSpecialistAvailable: (specialistId: string, date: string, time: string, serviceDurationMinutes?: number, category?: string) => {
     available: boolean;
     reason?: string;
   };
@@ -95,6 +98,7 @@ const generateDefaultShifts = (): DailyShift[] => {
         hasBreak: false,
         breakStartTime: '13:00',
         breakEndTime: '14:00',
+        business: 'todos',
       });
     } else if (i === 6) {
       shifts.push({
@@ -105,6 +109,7 @@ const generateDefaultShifts = (): DailyShift[] => {
         hasBreak: false,
         breakStartTime: '13:00',
         breakEndTime: '14:00',
+        business: 'todos',
       });
     } else {
       shifts.push({
@@ -115,6 +120,7 @@ const generateDefaultShifts = (): DailyShift[] => {
         hasBreak: true,
         breakStartTime: '13:00',
         breakEndTime: '14:00',
+        business: 'todos',
       });
     }
   }
@@ -125,6 +131,8 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   workShifts: {},
   timeBlocks: [],
   loading: false,
+  error: null,
+  clearError: () => set({ error: null }),
 
   fetchSchedules: async () => {
     set({ loading: true });
@@ -150,7 +158,8 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           endTime: row.end_time,
           hasBreak: row.has_break,
           breakStartTime: row.break_start_time || '13:00',
-          breakEndTime: row.break_end_time || '14:00'
+          breakEndTime: row.break_end_time || '14:00',
+          business: row.business || 'todos'
         });
       });
 
@@ -183,12 +192,13 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     }
   },
 
-  updateWorkShift: async (specialistId, dayOfWeek, updatedShift) => {
+  updateWorkShift: async (specialistId, dayOfWeek, updatedShift, business = 'todos') => {
     try {
       const payload: any = {
-        id: `${specialistId}_shift_${dayOfWeek}`,
+        id: `${specialistId}_shift_${dayOfWeek}_${business}`,
         specialist_id: specialistId,
-        day_of_week: dayOfWeek
+        day_of_week: dayOfWeek,
+        business: business
       };
       if (updatedShift.isActive !== undefined) payload.is_active = updatedShift.isActive;
       if (updatedShift.startTime !== undefined) payload.start_time = updatedShift.startTime;
@@ -199,15 +209,38 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
       const { error } = await supabase
         .from('work_shifts')
-        .upsert(payload, { onConflict: 'specialist_id,day_of_week' });
+        .upsert(payload, { onConflict: 'specialist_id,day_of_week,business' });
 
       if (error) throw error;
 
       set((state) => {
-        const specialistShifts = state.workShifts[specialistId] || generateDefaultShifts();
-        const updated = specialistShifts.map((shift) =>
-          shift.dayOfWeek === dayOfWeek ? { ...shift, ...updatedShift } : shift
+        const specialistShifts = state.workShifts[specialistId] || [];
+        const hasShift = specialistShifts.some(
+          (s) => s.dayOfWeek === dayOfWeek && s.business === business
         );
+        let updated;
+        if (hasShift) {
+          updated = specialistShifts.map((shift) =>
+            shift.dayOfWeek === dayOfWeek && shift.business === business
+              ? { ...shift, ...updatedShift }
+              : shift
+          );
+        } else {
+          updated = [
+            ...specialistShifts,
+            {
+              dayOfWeek,
+              isActive: true,
+              startTime: '09:00',
+              endTime: '18:00',
+              hasBreak: true,
+              breakStartTime: '13:00',
+              breakEndTime: '14:00',
+              business,
+              ...updatedShift
+            }
+          ];
+        }
         return {
           workShifts: {
             ...state.workShifts,
@@ -215,8 +248,9 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           }
         };
       });
-    } catch (err) {
-      console.error('Error updating work shift:', err);
+    } catch (err: any) {
+      console.error('Error updating work shift:', err?.message || err?.details || err);
+      set({ error: err?.message || 'Error al guardar cambios. Asegúrate de haber ejecutado la migración SQL en Supabase.' });
     }
   },
 
@@ -265,7 +299,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     }
   },
 
-  isSpecialistAvailable: (specialistId, date, time, serviceDurationMinutes = 60) => {
+  isSpecialistAvailable: (specialistId, date, time, serviceDurationMinutes = 60, category) => {
     const state = get();
     
     // 1. Get Day of Week (0-6)
@@ -275,7 +309,20 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     
     const specialistShifts = state.workShifts[specialistId] || generateDefaultShifts();
     
-    const dayShift = specialistShifts.find((s) => s.dayOfWeek === dayOfWeek);
+    // Check if the specialist has ANY shifts for this specific category (meaning they customized it)
+    const hasCategoryShifts = category
+      ? specialistShifts.some((s) => s.business === category)
+      : false;
+
+    // Find shift for this category, or fallback to general 'todos' / 'general' ONLY if they have no shifts configured for this category at all
+    let dayShift = category
+      ? specialistShifts.find((s) => s.dayOfWeek === dayOfWeek && s.business === category)
+      : null;
+
+    if (!dayShift && !hasCategoryShifts) {
+      dayShift = specialistShifts.find((s) => s.dayOfWeek === dayOfWeek && (s.business === 'todos' || s.business === 'general'));
+    }
+
     if (!dayShift || !dayShift.isActive) {
       return { available: false, reason: 'Día no laboral para este especialista' };
     }
