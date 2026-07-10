@@ -60,12 +60,24 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     setMenuOpen(false); // Auto close mobile menu on route change
   }, [pathname, setCurrentTheme, setMenuOpen]);
 
-  // Auto open booking modal if ?reserva=true is in URL
+  // Auto open booking modal if ?reserva=true or Instagram source is in URL
   useEffect(() => {
     if (mounted && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('reserva') === 'true') {
-        openBooking();
+      const source = params.get('source') || params.get('utm_source');
+      const isReserva = params.get('reserva') === 'true';
+      const isInstagram = source === 'instagram' || source === 'ig';
+
+      if (isReserva || isInstagram) {
+        let category: 'barberia' | 'peluqueria' | 'terapias' | undefined = undefined;
+        if (pathname.startsWith('/barberia')) {
+          category = 'barberia';
+        } else if (pathname.startsWith('/peluqueria')) {
+          category = 'peluqueria';
+        } else if (pathname.startsWith('/terapias')) {
+          category = 'terapias';
+        }
+        openBooking(undefined, category);
       }
     }
   }, [mounted, pathname, openBooking]);
