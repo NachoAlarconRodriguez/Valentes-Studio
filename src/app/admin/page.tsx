@@ -4465,17 +4465,21 @@ export default function AdminPage() {
                                                         )}
                                                         <div className="grid grid-cols-2 gap-2 w-full">
                                                           <button
-                                                            disabled={isPast}
+                                                            disabled={isPast || hasIncompleteBefore}
                                                             onClick={() => {
                                                               updateBookingStatus(booking.id, 'completado');
                                                               triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
                                                             }}
-                                                            className="py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all cursor-pointer text-center bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20"
+                                                            className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                              isPast || hasIncompleteBefore
+                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
+                                                            }`}
                                                           >
                                                             Pagado
                                                           </button>
                                                           <button
-                                                            disabled={isPast}
+                                                            disabled={isPast || hasIncompleteBefore}
                                                             onClick={() => {
                                                               setConfirmModal({
                                                                 isOpen: true,
@@ -4486,7 +4490,11 @@ export default function AdminPage() {
                                                                 onConfirm: () => handleNoShowBookingAction(booking)
                                                               });
                                                             }}
-                                                            className="py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all cursor-pointer text-center bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"
+                                                            className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                              isPast || hasIncompleteBefore
+                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
+                                                            }`}
                                                           >
                                                             No llegó
                                                           </button>
