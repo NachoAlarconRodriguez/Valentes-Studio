@@ -329,6 +329,8 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       const specialistBookings = useBookingStore.getState().bookings.filter(
         b => b.date === date && 
              b.status !== 'bloqueado' && 
+             b.status !== 'cancelado' && 
+             b.status !== 'no_llego' && 
              b.specialistName.trim().toLowerCase() === specialist.name.trim().toLowerCase()
       );
       

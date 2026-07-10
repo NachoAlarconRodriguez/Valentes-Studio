@@ -327,9 +327,9 @@ export default function HomePage() {
           {/* Column Content */}
           <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
             {/* Logo */}
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none scale-[1.1]">
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-[1.52] transition-transform duration-500 select-none pointer-events-none scale-[1.45]">
               <Image
-                src="/terapias-logo-v8.png"
+                src="/terapias-logo-v9.png"
                 alt="Jefito Lopes Studio Logo"
                 fill
                 sizes="144px"

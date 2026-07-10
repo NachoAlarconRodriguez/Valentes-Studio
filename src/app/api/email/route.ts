@@ -77,7 +77,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     name: 'Jefferson Lopes Studio',
     senderEmail: 'contacto@jeffersonlopes.cl',
     domain: 'https://www.jeffersonlopes.cl',
-    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v8.png',
+    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v9.png',
     color: '#E2E0D8', // Platino/Plata
     accentColor: '#9CA3AF',
     description: 'Terapias Holísticas'

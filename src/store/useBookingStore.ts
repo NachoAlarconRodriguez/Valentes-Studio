@@ -38,9 +38,11 @@ export interface Booking {
   date: string;
   time: string;
   channel: 'Web' | 'WhatsApp' | 'Presencial';
-  status: 'confirmado' | 'pendiente' | 'en_proceso' | 'completado' | 'bloqueado';
+  status: 'confirmado' | 'pendiente' | 'en_proceso' | 'completado' | 'bloqueado' | 'cancelado' | 'no_llego';
   createdAt: string;
   giftCardUsed?: string;
+  abonoTransferido?: boolean;
+  abonoConfirmado?: boolean;
 }
 
 export interface ClientProfile {
@@ -52,6 +54,8 @@ export interface ClientProfile {
   lastVisit: string;
   notes: string;
   notSoGoodClient?: boolean;
+  cancellationsCount?: number;
+  noShowsCount?: number;
 }
 
 interface BookingStore {
@@ -69,6 +73,10 @@ interface BookingStore {
   markAsNotGoodClient: (phone: string) => Promise<void>;
   deleteClient: (phone: string) => Promise<void>;
   updateClient: (oldPhone: string, updatedFields: { name: string; phone: string; email: string }) => Promise<void>;
+  incrementClientCancellations: (phone: string) => Promise<void>;
+  incrementClientNoShows: (phone: string) => Promise<void>;
+  markDepositAsTransferred: (id: string) => Promise<void>;
+  confirmDeposit: (id: string) => Promise<void>;
 }
 
 const supabase = createClient();
@@ -112,19 +120,39 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         channel: b.channel,
         status: b.status,
         createdAt: b.created_at,
-        giftCardUsed: b.gift_card_used
+        giftCardUsed: b.gift_card_used,
+        abonoTransferido: b.abono_transferido || false,
+        abonoConfirmado: b.abono_confirmado || false
       }));
 
-      const clients: ClientProfile[] = (dbClients || []).map((c: any) => ({
-        name: c.name,
-        phone: c.phone,
-        email: c.email || '',
-        businesses: c.businesses || [],
-        totalSpent: c.total_spent || 0,
-        lastVisit: c.last_visit || '',
-        notes: c.notes || '',
-        notSoGoodClient: c.not_so_good_client || false
-      }));
+      const clients: ClientProfile[] = (dbClients || []).map((c: any) => {
+        let cancellationsCount = c.cancellations_count || 0;
+        let noShowsCount = c.no_shows_count || 0;
+        
+        // Parse fallback from notes if columns are missing/0
+        const notesStr = c.notes || '';
+        if (!c.cancellations_count) {
+          const cancelMatch = notesStr.match(/\[Cancelaciones:\s*(\d+)\]/);
+          if (cancelMatch) cancellationsCount = parseInt(cancelMatch[1], 10);
+        }
+        if (!c.no_shows_count) {
+          const noShowMatch = notesStr.match(/\[Inasistencias:\s*(\d+)\]/);
+          if (noShowMatch) noShowsCount = parseInt(noShowMatch[1], 10);
+        }
+
+        return {
+          name: c.name,
+          phone: c.phone,
+          email: c.email || '',
+          businesses: c.businesses || [],
+          totalSpent: c.total_spent || 0,
+          lastVisit: c.last_visit || '',
+          notes: c.notes || '',
+          notSoGoodClient: c.not_so_good_client || false,
+          cancellationsCount,
+          noShowsCount
+        };
+      });
 
       set({ bookings, clients, loading: false });
     } catch (error) {
@@ -242,25 +270,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         }
       }
 
-      // 1. Insert Booking in Supabase (Omit client_name and client_email, prices are INTEGER)
-      const { error: bErr } = await supabase.from('bookings').insert({
-        id: randomCode,
-        client_phone: bookingData.clientPhone,
-        category: bookingData.category,
-        service_name: bookingData.serviceName,
-        price: bookingPrice,
-        specialist_name: bookingData.specialistName,
-        date: bookingData.date,
-        time: bookingData.time,
-        channel,
-        status,
-        created_at: createdAt,
-        gift_card_used: bookingData.giftCardUsed || null
-      });
-
-      if (bErr) throw bErr;
-
-      // 2. Fetch or update CRM Client details in Supabase (Non-blocking to ensure emails are sent)
+      // 1. Fetch or update CRM Client details in Supabase (Required first due to foreign key constraint)
       try {
         const { data: existingClient, error: cFetchErr } = await supabase
           .from('clients')
@@ -310,8 +320,29 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           }
         }
       } catch (clientErr) {
-        console.error('Non-blocking CRM Client sync error:', clientErr);
+        console.error('CRM Client sync error:', clientErr);
+        throw new Error('Error al registrar o actualizar los datos del cliente.');
       }
+
+      // 2. Insert Booking in Supabase (Omit client_name and client_email as they are dropped from raw table)
+      const { error: bErr } = await supabase.from('bookings').insert({
+        id: randomCode,
+        client_phone: bookingData.clientPhone,
+        category: bookingData.category,
+        service_name: bookingData.serviceName,
+        price: bookingPrice,
+        specialist_name: bookingData.specialistName,
+        date: bookingData.date,
+        time: bookingData.time,
+        channel,
+        status,
+        created_at: createdAt,
+        gift_card_used: bookingData.giftCardUsed || null,
+        abono_transferido: (bookingData as any).abonoTransferido || false,
+        abono_confirmado: (bookingData as any).abonoConfirmado || false
+      });
+
+      if (bErr) throw bErr;
 
       // 3. Update local state
       const newBooking: Booking = {
@@ -320,7 +351,9 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         clientEmail: bookingData.clientEmail || '',
         channel,
         status,
-        createdAt
+        createdAt,
+        abonoTransferido: (bookingData as any).abonoTransferido || false,
+        abonoConfirmado: (bookingData as any).abonoConfirmado || false
       };
 
       set((state) => {
@@ -382,6 +415,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
     } catch (err) {
       console.error('Error adding booking:', err);
+      throw err;
     }
 
     return randomCode;
@@ -495,6 +529,84 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     }
   },
 
+  incrementClientCancellations: async (phone) => {
+    try {
+      const client = get().clients.find(c => c.phone === phone);
+      const newCount = (client?.cancellationsCount || 0) + 1;
+      
+      const { error } = await supabase
+        .from('clients')
+        .update({ cancellations_count: newCount })
+        .eq('phone', phone);
+
+      if (error) {
+        // Fallback to update notes field
+        console.warn('cancellations_count column might not exist, falling back to notes update:', error);
+        const existingNotes = client?.notes || '';
+        const cleanNotes = existingNotes.replace(/\[Cancelaciones:\s*\d+\]/g, '').trim();
+        const updatedNotes = `[Cancelaciones: ${newCount}] ${cleanNotes}`.trim();
+        
+        await supabase
+          .from('clients')
+          .update({ notes: updatedNotes })
+          .eq('phone', phone);
+
+        set((state) => ({
+          clients: state.clients.map((c) =>
+            c.phone === phone ? { ...c, cancellationsCount: newCount, notes: updatedNotes } : c
+          )
+        }));
+      } else {
+        set((state) => ({
+          clients: state.clients.map((c) =>
+            c.phone === phone ? { ...c, cancellationsCount: newCount } : c
+          )
+        }));
+      }
+    } catch (err) {
+      console.error('Error incrementing client cancellations:', err);
+    }
+  },
+
+  incrementClientNoShows: async (phone) => {
+    try {
+      const client = get().clients.find(c => c.phone === phone);
+      const newCount = (client?.noShowsCount || 0) + 1;
+      
+      const { error } = await supabase
+        .from('clients')
+        .update({ no_shows_count: newCount })
+        .eq('phone', phone);
+
+      if (error) {
+        // Fallback to update notes field
+        console.warn('no_shows_count column might not exist, falling back to notes update:', error);
+        const existingNotes = client?.notes || '';
+        const cleanNotes = existingNotes.replace(/\[Inasistencias:\s*\d+\]/g, '').trim();
+        const updatedNotes = `[Inasistencias: ${newCount}] ${cleanNotes}`.trim();
+        
+        await supabase
+          .from('clients')
+          .update({ notes: updatedNotes })
+          .eq('phone', phone);
+
+        set((state) => ({
+          clients: state.clients.map((c) =>
+            c.phone === phone ? { ...c, noShowsCount: newCount, notes: updatedNotes } : c
+          )
+        }));
+      } else {
+        set((state) => ({
+          clients: state.clients.map((c) =>
+            c.phone === phone ? { ...c, noShowsCount: newCount } : c
+          )
+        }));
+      }
+    } catch (err) {
+      console.error('Error incrementing client no shows:', err);
+    }
+  },
+
   deleteClient: async (phone) => {
     try {
       const { error } = await supabase
@@ -536,6 +648,40 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       }));
     } catch (err) {
       console.error('Error updating client:', err);
+    }
+  },
+
+  markDepositAsTransferred: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ abono_transferido: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        bookings: state.bookings.map(b => b.id === id ? { ...b, abonoTransferido: true } : b)
+      }));
+    } catch (err) {
+      console.error('Error marking deposit as transferred:', err);
+    }
+  },
+
+  confirmDeposit: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ abono_confirmado: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        bookings: state.bookings.map(b => b.id === id ? { ...b, abonoConfirmado: true } : b)
+      }));
+    } catch (err) {
+      console.error('Error confirming deposit:', err);
     }
   }
 }));

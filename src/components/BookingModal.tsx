@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -93,6 +93,10 @@ export function BookingModal() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [bookingCode, setBookingCode] = useState('');
   const [assignedSpecialistName, setAssignedSpecialistName] = useState('');
+  const [isDepositNotified, setIsDepositNotified] = useState(false);
+  const [isNotifyingDeposit, setIsNotifyingDeposit] = useState(false);
+
+  const [copiedTransfer, setCopiedTransfer] = useState(false);
 
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
   const fetchPublicBookings = useBookingStore(state => state.fetchPublicBookings);
@@ -302,9 +306,9 @@ export function BookingModal() {
       }
 
       const timeSlots = [
-        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+        '19:00', '20:00'
       ];
       
       // Search the next 30 days
@@ -332,8 +336,25 @@ export function BookingModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBookingOpen, step, serviceId, specialistId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleKeyDownStep4 = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (name.trim() !== '' && phoneNumOnly.length === 9 && !phoneError) {
+        setStep(5);
+      }
+    }
+  };
+
+  const handleCopyTransferDetails = () => {
+    const textToCopy = `Banco: Mercado Pago\nNombre: Jefferson Lopes Barros\nRUT: 28.434.859-1\nCuenta Vista: 1029896108\nEmail: jefitolopess@gmail.com\nMonto Abono: $20.000 CLP`;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopiedTransfer(true);
+      setTimeout(() => setCopiedTransfer(false), 2000);
+    });
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!name || !phoneNumOnly || !serviceId || !date || !time) return;
 
     if (phoneNumOnly.length !== 9) {
@@ -410,6 +431,8 @@ export function BookingModal() {
     setSpecialistId('');
     setDate('');
     setTime('');
+    setIsDepositNotified(false);
+    setIsNotifyingDeposit(false);
     setDateType(null);
     setIsSuccess(false);
     setBookingCode('');
@@ -418,6 +441,7 @@ export function BookingModal() {
     setAppliedGiftCard(null);
     setGiftCardError('');
     setGiftCardSuccess('');
+    setCopiedTransfer(false);
   };
 
   const handleClose = () => {
@@ -586,7 +610,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/terapias-logo-v8.png"
+                        src="/terapias-logo-v9.png"
                         alt="Jefito Lopes Studio Logo"
                         fill
                         sizes="64px"
@@ -658,26 +682,21 @@ export function BookingModal() {
 
                 {/* Stepper Progress Bar */}
                 {!isSuccess && (
-                  <div className="flex items-center justify-between mb-8 px-1">
+                  <div className="flex items-center justify-between mb-8 px-4 max-w-[280px] w-full mx-auto">
                     {[1, 2, 3, 4, 5].map((s) => (
                       <React.Fragment key={s}>
-                        <div className="flex items-center">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
-                            step === s 
-                              ? `${themeBg} text-black font-extrabold shadow-md scale-110` 
-                              : step > s 
-                                ? 'bg-emerald-500 text-white' 
-                                : 'bg-white/10 text-white/50'
-                          }`}>
-                            {step > s ? '✓' : s}
-                          </div>
-                          <span className={`hidden sm:inline text-[9px] uppercase tracking-widest ml-1.5 ${step === s ? themeText : 'text-white/40'} font-bold`}>
-                            {s === 1 ? 'Ritual' : s === 2 ? 'Especialista' : s === 3 ? 'Fecha' : s === 4 ? 'Contacto' : 'Confirmar'}
-                          </span>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${
+                          step === s 
+                            ? `${themeBg} text-black font-extrabold shadow-[0_0_12px_rgba(198,155,60,0.3)] scale-110` 
+                            : step > s 
+                              ? 'bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.2)]' 
+                              : 'bg-white/10 text-white/40 border border-white/5'
+                        }`}>
+                          {step > s ? '✓' : s}
                         </div>
                         {s < 5 && (
-                          <div className={`flex-1 h-0.5 mx-1 min-w-[8px] transition-all duration-500 ${
-                            step > s ? 'bg-emerald-500' : 'bg-white/10'
+                          <div className={`flex-1 h-[2px] mx-2 min-w-[8px] transition-all duration-500 ${
+                            step > s ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.1)]' : 'bg-white/10'
                           }`} />
                         )}
                       </React.Fragment>
@@ -686,7 +705,7 @@ export function BookingModal() {
                 )}
 
                 {!isSuccess ? (
-                  <form onSubmit={handleSubmit} className="flex-grow flex flex-col justify-between overflow-hidden">
+                  <form onSubmit={(e) => e.preventDefault()} className="flex-grow flex flex-col justify-between overflow-hidden">
                     <div className="flex-grow overflow-y-auto pr-1 py-1 space-y-6 scrollbar-thin">
                       {step === 1 && (
                         <div className="space-y-5">
@@ -955,9 +974,9 @@ export function BookingModal() {
 
                                     const countAvailableSlots = (checkDate: string) => {
                                       const slots = [
-                                        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                                        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-                                        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+                                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+                                        '19:00', '20:00'
                                       ];
                                       return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
                                     };
@@ -1080,9 +1099,9 @@ export function BookingModal() {
 
                                     const countAvailableSlots = (checkDate: string) => {
                                       const slots = [
-                                        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                                        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-                                        '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                                        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+                                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+                                        '19:00', '20:00'
                                       ];
                                       return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
                                     };
@@ -1148,33 +1167,19 @@ export function BookingModal() {
                                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
                                   {[
                                     { value: '07:00', label: '07:00 AM' },
-                                    { value: '07:30', label: '07:30 AM' },
                                     { value: '08:00', label: '08:00 AM' },
-                                    { value: '08:30', label: '08:30 AM' },
                                     { value: '09:00', label: '09:00 AM' },
-                                    { value: '09:30', label: '09:30 AM' },
                                     { value: '10:00', label: '10:00 AM' },
-                                    { value: '10:30', label: '10:30 AM' },
                                     { value: '11:00', label: '11:00 AM' },
-                                    { value: '11:30', label: '11:30 AM' },
                                     { value: '12:00', label: '12:00 PM' },
-                                    { value: '12:30', label: '12:30 PM' },
                                     { value: '13:00', label: '01:00 PM' },
-                                    { value: '13:30', label: '01:30 PM' },
                                     { value: '14:00', label: '02:00 PM' },
-                                    { value: '14:30', label: '02:30 PM' },
                                     { value: '15:00', label: '03:00 PM' },
-                                    { value: '15:30', label: '03:30 PM' },
                                     { value: '16:00', label: '04:00 PM' },
-                                    { value: '16:30', label: '04:30 PM' },
                                     { value: '17:00', label: '05:00 PM' },
-                                    { value: '17:30', label: '05:30 PM' },
                                     { value: '18:00', label: '06:00 PM' },
-                                    { value: '18:30', label: '06:30 PM' },
                                     { value: '19:00', label: '07:00 PM' },
-                                    { value: '19:30', label: '07:30 PM' },
-                                    { value: '20:00', label: '08:00 PM' },
-                                    { value: '20:30', label: '08:30 PM' }
+                                    { value: '20:00', label: '08:00 PM' }
                                   ].map((slot) => {
                                     const isSelected = time === slot.value;
                                     const availability = checkTimeSlotAvailability(slot.value);
@@ -1221,6 +1226,7 @@ export function BookingModal() {
                                 placeholder="Escribe tu nombre"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                onKeyDown={handleKeyDownStep4}
                                 required
                                 className={inputClass}
                               />
@@ -1286,6 +1292,7 @@ export function BookingModal() {
                                   placeholder="912345678"
                                   value={phoneNumOnly}
                                   onChange={(e) => handlePhoneNumChange(e.target.value)}
+                                  onKeyDown={handleKeyDownStep4}
                                   required
                                   className={`${inputClass} flex-1 ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
                                 />
@@ -1302,6 +1309,7 @@ export function BookingModal() {
                                 placeholder="tu@correo.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={handleKeyDownStep4}
                                 className={inputClass}
                               />
                             </div>
@@ -1310,12 +1318,95 @@ export function BookingModal() {
                       )}
 
                       {step === 5 && (
-                        <div className="space-y-5 animate-fadeIn">
+                        <div className="space-y-5 animate-fadeIn max-h-[60vh] md:max-h-[460px] overflow-y-auto pr-1 scrollbar-thin">
                           <div>
                             <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 5</h4>
-                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">Confirmar Reserva</h3>
-                            <p className="text-xs text-text-secondary font-light mt-0.5">Por favor revisa los detalles de tu ritual antes de finalizar.</p>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">
+                              {(category === 'peluqueria' || category === 'terapias') ? 'Abono de Reserva' : 'Confirmar Reserva'}
+                            </h3>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">
+                              {(category === 'peluqueria' || category === 'terapias') 
+                                ? 'Por favor realiza la transferencia para asegurar tu horario y finalizar la reserva.' 
+                                : 'Por favor revisa los detalles de tu ritual antes de finalizar.'}
+                            </p>
                           </div>
+                                {/* Deposit (Abono) Details Section for Peluquería / Terapias */}
+                          {(category === 'peluqueria' || category === 'terapias') && (
+                            <div className="w-full text-left space-y-4 bg-white/[0.02] border border-white/10 rounded-2xl p-4">
+                              <div className="flex justify-between items-center w-full">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs font-bold text-gold uppercase tracking-wider">Datos para Abono</span>
+                                  <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleCopyTransferDetails}
+                                  className={`flex items-center space-x-1 px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-semibold transition-all cursor-pointer ${copiedTransfer ? 'text-emerald-400 border-emerald-500/25 bg-emerald-500/5' : 'text-text-secondary hover:text-white'}`}
+                                >
+                                  {copiedTransfer ? (
+                                    <>
+                                      <Check size={10} />
+                                      <span>¡Copiado!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy size={10} />
+                                      <span>Copiar Datos</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              
+                              <p className="text-[11px] text-text-secondary leading-relaxed font-light">
+                                El abono de <strong>$20.000 pesos</strong> se solicita para asegurar tu horario y será descontado del valor final del servicio.
+                              </p>
+
+                              <div className="p-3 bg-black/40 rounded-xl space-y-1.5 border border-white/5 font-mono text-[10px] text-white/90">
+                                <div className="flex justify-between"><span className="text-text-secondary">Banco:</span><strong>Mercado Pago</strong></div>
+                                <div className="flex justify-between"><span className="text-text-secondary">Nombre:</span><strong>Jefferson Lopes Barros</strong></div>
+                                <div className="flex justify-between"><span className="text-text-secondary">RUT:</span><strong>28.434.859-1</strong></div>
+                                <div className="flex justify-between"><span className="text-text-secondary">Cuenta Vista:</span><strong>1029896108</strong></div>
+                                <div className="flex justify-between"><span className="text-text-secondary">Email:</span><strong>jefitolopess@gmail.com</strong></div>
+                                <div className="flex justify-between pt-1.5 mt-1.5 border-t border-white/5 text-[11px]"><span className="text-gold font-bold">Monto Abono:</span><strong className="text-gold">$20.000 CLP</strong></div>
+                              </div>
+
+                              <p className="text-[9px] text-text-secondary/60 leading-relaxed font-light">
+                                * En caso de cancelación o cambio de horario, les pedimos avisar con al menos 24 horas de anticipación. Siempre existe la posibilidad de reagendar, avisando con tiempo.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Final Summary Box */}
+                          {selectedServiceObj && (
+                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
+                              <div className="flex justify-between">
+                                <span>Ritual</span>
+                                <span className="text-white font-medium">{selectedServiceObj.name}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Especialista</span>
+                                <span className="text-white font-medium">{selectedSpecialistObj?.name || assignedSpecialistName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Cita</span>
+                                <span className="text-white font-medium">{formatDateToDMY(date)} a las {time} hrs</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Valor de Servicio</span>
+                                <span className="text-white font-medium">{selectedServiceObj.price}</span>
+                              </div>
+                              {appliedGiftCard && (
+                                <div className="flex justify-between text-emerald-400">
+                                  <span>Descuento Gift Card</span>
+                                  <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-sm font-semibold">
+                                <span className="text-white font-bold">Total a Pagar</span>
+                                <span className={`${themeText} font-serif text-base font-bold`}>{finalPriceStr} CLP</span>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Gift Card Selector */}
                           {selectedServiceObj && (
@@ -1347,6 +1438,12 @@ export function BookingModal() {
                                       setGiftCardCode(e.target.value);
                                       setGiftCardError('');
                                     }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleApplyGiftCard();
+                                      }
+                                    }}
                                     className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 uppercase font-mono"
                                   />
                                   <button
@@ -1371,37 +1468,6 @@ export function BookingModal() {
                             </div>
                           )}
 
-                          {/* Final Summary Box */}
-                          {selectedServiceObj && (
-                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
-                              <div className="flex justify-between">
-                                <span>Ritual</span>
-                                <span className="text-white font-medium">{selectedServiceObj.name}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Especialista</span>
-                                <span className="text-white font-medium">{selectedSpecialistObj?.name || 'Cualquier Profesional'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Cita</span>
-                                <span className="text-white font-medium">{formatDateToDMY(date)} a las {time} hrs</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Valor de Servicio</span>
-                                <span className="text-white font-medium">{selectedServiceObj.price}</span>
-                              </div>
-                              {appliedGiftCard && (
-                                <div className="flex justify-between text-emerald-400">
-                                  <span>Descuento Gift Card</span>
-                                  <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-sm font-semibold">
-                                <span className="text-white font-bold">Total a Pagar</span>
-                                <span className={`${themeText} font-serif text-base font-bold`}>{finalPriceStr} CLP</span>
-                              </div>
-                            </div>
-                          )}
                           {submitError && (
                             <div className="p-3.5 bg-red-950/40 border border-red-500/20 rounded-2xl text-[11px] text-red-300 text-left mt-4 font-light leading-relaxed">
                               {submitError}
@@ -1426,6 +1492,7 @@ export function BookingModal() {
                       
                       {step < 5 ? (
                         <button
+                          key="next-btn"
                           type="button"
                           disabled={
                             (step === 1 && !serviceId) ||
@@ -1440,17 +1507,26 @@ export function BookingModal() {
                         </button>
                       ) : (
                         <button
-                          type="submit"
+                          key="submit-btn"
+                          type="button"
+                          onClick={() => handleSubmit()}
                           disabled={isSubmitting || !isFormValid}
                           className={submitButtonClass}
                         >
                           {isSubmitting ? (
                             <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            <>
-                              <Sparkles size={14} />
-                              <span>Confirmar Experiencia</span>
-                            </>
+                            (category === 'peluqueria' || category === 'terapias') ? (
+                              <>
+                                <CheckCircle2 size={14} />
+                                <span>Realice Abono</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={14} />
+                                <span>Confirmar Experiencia</span>
+                              </>
+                            )
                           )}
                         </button>
                       )}
@@ -1458,7 +1534,7 @@ export function BookingModal() {
                   </form>
                 ) : (
                   /* Success Screen inside Split layout */
-                  <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin">
+                  <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin max-h-[60vh] md:max-h-[460px] w-full min-h-0">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1515,14 +1591,27 @@ export function BookingModal() {
                           </div>
                         )}
                         <div className="flex justify-between pt-1 border-t border-white/5">
-                          <span className={summaryLabelClass}>Total Pagado</span>
+                          <span className={summaryLabelClass}>Total de Servicio</span>
                           <span className="text-white font-bold">{finalPriceStr} CLP</span>
                         </div>
                       </div>
 
+                      {/* Deposit (Abono) confirmation notice on success */}
+                      {(category === 'peluqueria' || category === 'terapias') && (
+                        <div className="w-full mt-4 text-center space-y-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl p-4 animate-fadeIn">
+                          <div className="flex items-center justify-center space-x-1.5 text-emerald-400">
+                            <CheckCircle2 size={14} className="stroke-[2.5]" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Abono Notificado</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-300/80 leading-relaxed font-light">
+                            Tu abono de <strong>$20.000</strong> ha sido registrado. Tu reserva se encuentra en estado <strong>pre-confirmada</strong> a la espera de que el staff valide la transferencia.
+                          </p>
+                        </div>
+                      )}
+
                       <button
                         onClick={handleClose}
-                        className={successCloseClass}
+                        className={successCloseClass + " w-full mt-6"}
                       >
                         Cerrar
                       </button>

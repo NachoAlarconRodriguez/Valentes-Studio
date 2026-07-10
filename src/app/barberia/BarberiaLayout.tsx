@@ -771,7 +771,11 @@ export default function BarberiaLayout() {
                               alt={specialist.name}
                               fill
                               sizes="(max-width: 768px) 280px, 290px"
-                              className="object-cover grayscale group-hover:grayscale-0 scale-100 group-hover:scale-110 transition-all duration-700 ease-out"
+                              className={`object-cover ${
+                                specialist.id === 'ba_sp_1783360528525' || specialist.id === 'ba_sp_1783116885397_827'
+                                  ? 'object-top'
+                                  : 'object-center'
+                              } grayscale group-hover:grayscale-0 scale-100 group-hover:scale-110 transition-all duration-700 ease-out`}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-zinc-900 font-serif text-4xl font-bold text-gold/80">

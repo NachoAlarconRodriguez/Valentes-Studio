@@ -98,6 +98,7 @@ export function ManualBookingModal({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredClients, setFilteredClients] = useState<typeof clients>([]);
   const nameInputRef = useRef<HTMLDivElement>(null);
+  const formContainerRef = useRef<HTMLDivElement>(null);
 
   // Dropdowns visual states
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -107,6 +108,7 @@ export function ManualBookingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [newBookingId, setNewBookingId] = useState('');
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Gift Card states
   const [giftCardCode, setGiftCardCode] = useState('');
@@ -459,7 +461,12 @@ export function ManualBookingModal({
       setTimeError(null);
     }
 
-    if (hasError) return;
+    if (hasError) {
+      if (formContainerRef.current) {
+        formContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
 
     // Validate availability
     const availability = checkTimeSlotAvailability(finalTime);
@@ -469,6 +476,7 @@ export function ManualBookingModal({
     }
 
     setIsSubmitting(true);
+    setSubmissionError(null);
 
     try {
       const code = await addBooking({
@@ -496,8 +504,12 @@ export function ManualBookingModal({
       if (onBookingCreated) {
         onBookingCreated(code);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating booking:', err);
+      setSubmissionError(err.message || 'Error al crear la reserva. Por favor intenta de nuevo.');
+      if (formContainerRef.current) {
+        formContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -515,6 +527,7 @@ export function ManualBookingModal({
     setTime('');
     setChannel('Presencial');
     setStatus('confirmado');
+    setSubmissionError(null);
     setIsSuccess(false);
     setNewBookingId('');
     setIsCategoryOpen(false);
@@ -691,7 +704,7 @@ export function ManualBookingModal({
             </div>
 
             {/* RIGHT FORM PANEL */}
-            <div className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#070707] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
+            <div ref={formContainerRef} className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#070707] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
               {!isSuccess ? (
                 <div className="flex-grow flex flex-col justify-center max-w-xl w-full mx-auto space-y-6">
                   <div>
@@ -1138,9 +1151,9 @@ export function ManualBookingModal({
                           
                           <div className="grid grid-cols-4 gap-1.5 mb-2">
                             {[
-                              '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                              '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-                              '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                              '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+                              '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+                              '19:00', '20:00'
                             ].map((slot) => {
                               const isSel = time === slot;
                               const availability = checkTimeSlotAvailability(slot);
@@ -1179,76 +1192,7 @@ export function ManualBookingModal({
                       </div>
                     </div>
 
-                    {/* SECTION 5: Reservation Admin Settings */}
-                    <div className="space-y-4">
-                      <span className="block text-[9px] uppercase tracking-[0.25em] text-text-secondary font-bold border-b border-white/5 pb-1">
-                        Ajustes de Administración
-                      </span>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Channel selector (Pill row button list) */}
-                        <div>
-                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-2">
-                            Canal de Ingreso
-                          </label>
-                          <div className="flex space-x-2">
-                            {[
-                              { id: 'Presencial', label: 'Presencial', icon: Smartphone, color: 'text-amber-400', activeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400' },
-                              { id: 'WhatsApp', label: 'WhatsApp', icon: MessageSquare, color: 'text-emerald-400', activeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' },
-                              { id: 'Web', label: 'Web', icon: Globe, color: 'text-blue-400', activeBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400' }
-                            ].map((item) => {
-                              const isSel = channel === item.id;
-                              const Icon = item.icon;
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onClick={() => setChannel(item.id as any)}
-                                  className={`flex-1 py-2 rounded-xl border text-[10px] font-bold tracking-wider flex items-center justify-center space-x-1.5 cursor-pointer transition-all ${
-                                    isSel
-                                      ? item.activeBg
-                                      : 'border-white/5 bg-white/[0.02] text-white/50 hover:text-white/90 hover:border-white/10'
-                                  }`}
-                                >
-                                  <Icon size={12} className={isSel ? '' : item.color} />
-                                  <span>{item.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Status selector (pendiente vs confirmado) */}
-                        <div>
-                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-semibold mb-2">
-                            Estado de la Reserva
-                          </label>
-                          <div className="flex space-x-2">
-                            {[
-                              { id: 'confirmado', label: 'Confirmado', color: 'text-emerald-400', activeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' },
-                              { id: 'pendiente', label: 'Pendiente', color: 'text-zinc-400', activeBg: 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400' }
-                            ].map((item) => {
-                              const isSel = status === item.id;
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onClick={() => setStatus(item.id as any)}
-                                  className={`flex-1 py-2 rounded-xl border text-[10px] font-bold tracking-wider flex items-center justify-center space-x-1.5 cursor-pointer transition-all ${
-                                    isSel
-                                      ? item.activeBg
-                                      : 'border-white/5 bg-white/[0.02] text-white/50 hover:text-white/90 hover:border-white/10'
-                                  }`}
-                                >
-                                  {isSel && <Check size={11} className={item.color} />}
-                                  <span>{item.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    {/* SECTION 5: Reservation Admin Settings - Removed to be placed elsewhere */}
 
                     {/* SECTION 6: Availability Alert & Override Checkbox */}
                     {selectedTime && !currentAvailability.available && (
@@ -1335,6 +1279,11 @@ export function ManualBookingModal({
 
                     {/* Submit Button */}
                     <div className="pt-4">
+                      {submissionError && (
+                        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs text-left leading-relaxed">
+                          ⚠️ {submissionError}
+                        </div>
+                      )}
                       <button
                         type="submit"
                         disabled={isSubmitting || (!!selectedTime && !currentAvailability.available && !forceBooking)}

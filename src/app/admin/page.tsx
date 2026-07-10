@@ -886,6 +886,13 @@ export default function AdminPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, [activeTab]);
 
+  useEffect(() => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setIsCurrentPasswordVerified(false);
+  }, [activeTab]);
+
   // Schedule and Time Block States
   const [selectedScheduleStaffId, setSelectedScheduleStaffId] = useState<string>('');
   const [activeScheduleBusinessFilter, setActiveScheduleBusinessFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
@@ -977,12 +984,17 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState('');
   const [profilePhoneCode, setProfilePhoneCode] = useState('+56');
   const [profilePhoneNum, setProfilePhoneNum] = useState('');
+  const [profileBio, setProfileBio] = useState('');
   const [profilePhoneError, setProfilePhoneError] = useState<string | null>(null);
   const [isProfilePhoneDropdownOpen, setIsProfilePhoneDropdownOpen] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [isCurrentPasswordVerified, setIsCurrentPasswordVerified] = useState(false);
+  const [isVerifyingCurrentPassword, setIsVerifyingCurrentPassword] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -1006,6 +1018,7 @@ export default function AdminPage() {
       setProfileName(currentUser.name || '');
       setProfileRole(currentUser.role || '');
       setProfileEmail(currentUser.email || '');
+      setProfileBio(currentUser.bio || '');
       
       const phoneStr = currentUser.phone || '';
       if (phoneStr.startsWith('+')) {
@@ -1050,7 +1063,10 @@ export default function AdminPage() {
     markAsNotGoodClient, 
     deleteClient, 
     updateClient,
-    fetchBookingsAndClients 
+    fetchBookingsAndClients,
+    incrementClientCancellations,
+    incrementClientNoShows,
+    confirmDeposit
   } = useBookingStore();
   const { content, updateContent } = useContentStore();
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
@@ -1091,8 +1107,8 @@ export default function AdminPage() {
     };
   }, [fetchBookingsAndClients, fetchSchedules, supabase]);
 
-  // Filter Bookings by active business tab
-  const filteredBookings = bookings.filter(b => b.category === activeBusinessTab);
+  // Filter Bookings by active business tab (excluding cancelled ones to free up slots)
+  const filteredBookings = bookings.filter(b => b.category === activeBusinessTab && b.status !== 'cancelado');
 
   // Temporary local VSM form state (initialized to content values)
   const [vsmForm, setVsmForm] = useState(content);
@@ -1396,6 +1412,7 @@ export default function AdminPage() {
         role: profileRole,
         email: profileEmail,
         phone: fullPhone,
+        bio: profileBio,
         avatar: profileName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
       };
       setCurrentUser(updatedUser);
@@ -1410,6 +1427,7 @@ export default function AdminPage() {
               role: profileRole,
               email: profileEmail,
               phone: fullPhone,
+              bio: profileBio,
               avatar: updatedUser.avatar
             });
           }
@@ -1421,9 +1439,56 @@ export default function AdminPage() {
     }
   };
 
+  const handleVerifyCurrentPassword = async () => {
+    if (!currentPassword) {
+      triggerNotification('Por favor, ingresa tu contraseña actual.');
+      return;
+    }
+    try {
+      setIsVerifyingCurrentPassword(true);
+      const emailToAuth = currentUser?.email;
+      if (!emailToAuth) {
+        triggerNotification('No se pudo verificar la sesión activa.');
+        return;
+      }
+
+      // Re-authenticate user with current password
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: emailToAuth,
+        password: currentPassword
+      });
+
+      if (authError) {
+        triggerNotification('La contraseña actual es incorrecta.');
+        setIsCurrentPasswordVerified(false);
+        return;
+      }
+
+      setIsCurrentPasswordVerified(true);
+      triggerNotification('Contraseña actual verificada con éxito. Ya puedes ingresar la nueva contraseña.');
+    } catch (err: any) {
+      console.error(err);
+      triggerNotification('Ocurrió un error al verificar la contraseña.');
+    } finally {
+      setIsVerifyingCurrentPassword(false);
+    }
+  };
+
   const handleProfileResetPassword = async () => {
+    if (!isCurrentPasswordVerified) {
+      triggerNotification('Primero debes verificar tu contraseña actual.');
+      return;
+    }
     if (!newPassword || !confirmPassword) {
       triggerNotification('Por favor, escribe y confirma la nueva contraseña.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      triggerNotification('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      triggerNotification('La nueva contraseña no puede ser igual a la actual.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -1434,9 +1499,10 @@ export default function AdminPage() {
     setPasswordError(null);
 
     try {
+      // Update to new password
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
-        triggerNotification(`Error al restablecer la contraseña: ${translateAuthError(error.message)}`);
+        triggerNotification(`Error al cambiar la contraseña: ${translateAuthError(error.message)}`);
         return;
       }
 
@@ -1448,6 +1514,8 @@ export default function AdminPage() {
         setCurrentUser(updatedUser);
         setNewPassword('');
         setConfirmPassword('');
+        setCurrentPassword('');
+        setIsCurrentPasswordVerified(false);
         triggerNotification('Contraseña restablecida con éxito. Cerrando sesión por seguridad...');
         
         setTimeout(() => {
@@ -1456,7 +1524,7 @@ export default function AdminPage() {
       }
     } catch (err: any) {
       console.error(err);
-      triggerNotification('Ocurrió un error inesperado al restablecer la contraseña.');
+      triggerNotification('Ocurrió un error al cambiar la contraseña.');
     }
   };
 
@@ -1928,10 +1996,12 @@ export default function AdminPage() {
     timeStr: string,
     baseStatus: string,
     specialistName?: string
-  ): 'reservado' | 'proximo' | 'En Proceso' | 'Finalizado' | 'bloqueado' | 'Espera' => {
+  ): 'reservado' | 'proximo' | 'En Proceso' | 'Finalizado' | 'bloqueado' | 'Espera' | 'Cancelado' | 'No Asistió' => {
     if (baseStatus === 'bloqueado') return 'bloqueado';
     if (baseStatus === 'completado') return 'Finalizado';
     if (baseStatus === 'en_proceso') return 'En Proceso';
+    if (baseStatus === 'cancelado') return 'Cancelado';
+    if (baseStatus === 'no_llego') return 'No Asistió';
     
     try {
       const now = new Date();
@@ -1959,13 +2029,74 @@ export default function AdminPage() {
       const diffMs = start.getTime() - now.getTime();
       const diffMins = diffMs / (1000 * 60);
 
-      if (diffMins <= 30) {
+      if (diffMins <= 60) {
         return 'proximo';
       } else {
         return 'reservado';
       }
     } catch (e) {
       return 'reservado';
+    }
+  };
+
+  const handleCancelBookingAction = async (booking: any) => {
+    try {
+      // 1. Update booking status to cancelado
+      await updateBookingStatus(booking.id, 'cancelado');
+      
+      // 2. Increment client cancellations count
+      if (booking.clientPhone && booking.clientPhone !== '-') {
+        await incrementClientCancellations(booking.clientPhone);
+      }
+      
+      // 3. Send email to client
+      try {
+        const allSpecs = specialistsList || [];
+        const spec = allSpecs.find(s => s.name.trim().toLowerCase() === booking.specialistName.trim().toLowerCase());
+        const specialistEmail = spec ? spec.email : '';
+        
+        await fetch('/api/email', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: 'booking_cancelled',
+            data: {
+              id: booking.id,
+              clientName: booking.clientName,
+              clientEmail: booking.clientEmail,
+              clientPhone: booking.clientPhone,
+              category: booking.category,
+              serviceName: booking.serviceName,
+              date: booking.date,
+              time: booking.time,
+              specialistName: booking.specialistName,
+              specialistEmail
+            }
+          })
+        });
+      } catch (emailErr) {
+        console.error('Error sending cancellation email:', emailErr);
+      }
+      
+      triggerNotification(`Reserva ${booking.id} cancelada y espacio liberado.`);
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+    }
+  };
+
+  const handleNoShowBookingAction = async (booking: any) => {
+    try {
+      // 1. Update status to no_llego
+      await updateBookingStatus(booking.id, 'no_llego');
+      
+      // 2. Increment client no shows count
+      if (booking.clientPhone && booking.clientPhone !== '-') {
+        await incrementClientNoShows(booking.clientPhone);
+      }
+      
+      triggerNotification(`Inasistencia registrada para ${booking.clientName}.`);
+    } catch (err) {
+      console.error('Error marking booking as no show:', err);
     }
   };
 
@@ -2009,7 +2140,7 @@ export default function AdminPage() {
     if (!dayShift || !dayShift.isActive) return false;
     
     const slotStart = localTimeToMinutes(slotTime);
-    const slotEnd = slotStart + 30;
+    const slotEnd = slotStart + 60;
     
     const shiftStart = localTimeToMinutes(dayShift.startTime);
     const shiftEnd = localTimeToMinutes(dayShift.endTime);
@@ -2068,11 +2199,11 @@ export default function AdminPage() {
       }
     });
 
-    minMins = Math.floor(minMins / 30) * 30;
-    maxMins = Math.ceil(maxMins / 30) * 30;
+    minMins = Math.floor(minMins / 60) * 60;
+    maxMins = Math.ceil(maxMins / 60) * 60;
 
     const slots: string[] = [];
-    for (let m = minMins; m < maxMins; m += 30) {
+    for (let m = minMins; m < maxMins; m += 60) {
       const hh = String(Math.floor(m / 60)).padStart(2, '0');
       const mm = String(m % 60).padStart(2, '0');
       slots.push(`${hh}:${mm}`);
@@ -2088,7 +2219,7 @@ export default function AdminPage() {
       const currentSlotMin = localTimeToMinutes(slot);
       const nextSlotMin = slotIndex < timeSlots.length - 1 
         ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
-        : currentSlotMin + 30;
+        : currentSlotMin + 60;
 
       specialistsForView.forEach(sp => {
         const matchedBooking = filteredBookings.find(b => {
@@ -2222,7 +2353,7 @@ export default function AdminPage() {
   })();
 
 
-  // Filter bookings for dashboard metrics and graphs
+  // Filter bookings for dashboard metrics and graphs (excluding blocks, cancellations and no-shows)
   const dashboardBookings = bookings.filter(b => {
     const matchesDate = b.date >= filterStartDate && b.date <= filterEndDate;
     if (!matchesDate) return false;
@@ -2232,6 +2363,9 @@ export default function AdminPage() {
 
     const matchesService = dbServiceFilter === 'todos' || b.serviceName === dbServiceFilter;
     if (!matchesService) return false;
+
+    const isVal = b.status !== 'bloqueado' && b.status !== 'cancelado' && b.status !== 'no_llego';
+    if (!isVal) return false;
 
     return true;
   });
@@ -4039,171 +4173,260 @@ export default function AdminPage() {
                                           ? 'border-gold/40 bg-gold/[0.03] shadow-lg shadow-gold/5 scale-[1.02]'
                                           : 'border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
                                       }`}>
-                                        <div className="space-y-3.5 flex-grow">
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
-                                              computedStatus === 'En Proceso'
-                                                ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400'
-                                                : computedStatus === 'Espera'
-                                                ? 'bg-amber-500/5 border-amber-500/30 text-amber-400 animate-pulse'
-                                                : computedStatus === 'proximo'
-                                                ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
-                                                : computedStatus === 'reservado'
-                                                ? 'bg-blue-500/5 border-blue-500/30 text-blue-400'
-                                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                            }`}>
-                                              <span className={`w-1 h-1 rounded-full ${
-                                                computedStatus === 'En Proceso'
-                                                  ? 'bg-emerald-400'
-                                                  : computedStatus === 'Espera'
-                                                  ? 'bg-amber-400'
-                                                  : computedStatus === 'proximo'
-                                                  ? 'bg-amber-400'
-                                                  : computedStatus === 'reservado'
-                                                  ? 'bg-blue-400'
-                                                  : 'bg-emerald-400'
-                                              }`} />
-                                              <span>
-                                                {computedStatus === 'Finalizado' ? 'Pagado' : 
-                                                 computedStatus === 'Espera' ? 'En Espera' : 
-                                                 computedStatus}
-                                              </span>
-                                            </span>
-                                          </div>
+                                        {(() => {
+                                          const isTimeReached = (() => {
+                                            if (!nowState) return false;
+                                            const today = new Date();
+                                            const y = today.getFullYear();
+                                            const m = String(today.getMonth() + 1).padStart(2, '0');
+                                            const d = String(today.getDate()).padStart(2, '0');
+                                            const todayStr = `${y}-${m}-${d}`;
+                                            
+                                            if (targetDate < todayStr) return true;
+                                            if (targetDate > todayStr) return false;
+                                            
+                                            const slotMins = localTimeToMinutes(booking.time);
+                                            const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
+                                            return currentMins >= slotMins;
+                                          })();
+                                          
+                                          const isUpcoming = !isTimeReached;
 
-                                          <div className="space-y-1">
-                                            <div className="font-bold text-white text-[11px] leading-tight">{booking.clientName}</div>
-                                            {(() => {
-                                              const cleanPhone = booking.clientPhone.replace(/\D/g, '');
-                                              return (
-                                                <a
-                                                  href={`https://wa.me/${cleanPhone}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-[9px] text-text-secondary hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
-                                                >
-                                                  <Smartphone size={9} className="text-emerald-500/80" />
-                                                  <span>{booking.clientPhone}</span>
-                                                </a>
-                                              );
-                                            })()}
-                                          </div>
+                                          const hasIncompleteBefore = bookings.some(b => {
+                                            if (b.date !== targetDate) return false;
+                                            if (b.specialistName.trim().toLowerCase() !== specialist.name.trim().toLowerCase()) return false;
+                                            if (b.status === 'bloqueado' || b.status === 'cancelado' || b.status === 'completado' || b.status === 'no_llego') return false;
+                                            
+                                            const bMins = localTimeToMinutes(b.time);
+                                            const thisMins = localTimeToMinutes(booking.time);
+                                            return bMins < thisMins;
+                                          });
 
-                                          <div className="space-y-1.5">
-                                            <div className="text-[10px] text-white/80 font-medium leading-tight">{booking.serviceName}</div>
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <span className="inline-flex items-center gap-0.5 text-[7px] text-white/50 bg-white/5 px-1 py-0.5 rounded uppercase font-mono">
-                                                {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
-                                                {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
-                                                {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
-                                                <span>{booking.channel}</span>
-                                              </span>
-                                              {booking.category !== activeBusinessTab && (
-                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
-                                                  booking.category === 'barberia' 
-                                                    ? 'bg-gold/10 text-gold border border-gold/20' 
-                                                    : booking.category === 'peluqueria'
-                                                    ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
-                                                    : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
-                                                }`}>
-                                                  {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
+                                          return (
+                                            <>
+                                              <div className="space-y-3.5 flex-grow">
+                                                <div className="flex items-start justify-between gap-2">
+                                                  <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
+                                                  <div className="flex flex-col gap-1.5 items-end">
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
+                                                      computedStatus === 'En Proceso'
+                                                        ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400 animate-pulse'
+                                                        : computedStatus === 'Espera'
+                                                        ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
+                                                        : computedStatus === 'proximo'
+                                                        ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
+                                                        : computedStatus === 'reservado'
+                                                        ? 'bg-blue-500/5 border-blue-500/30 text-blue-400'
+                                                        : computedStatus === 'Cancelado'
+                                                        ? 'bg-red-500/5 border-red-500/30 text-red-400'
+                                                        : computedStatus === 'No Asistió'
+                                                        ? 'bg-amber-500/5 border-amber-500/30 text-amber-400'
+                                                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                                    }`}>
+                                                      <span className={`w-1 h-1 rounded-full ${
+                                                        computedStatus === 'En Proceso'
+                                                          ? 'bg-emerald-400'
+                                                          : computedStatus === 'Espera'
+                                                          ? 'bg-amber-400'
+                                                          : computedStatus === 'proximo'
+                                                          ? 'bg-amber-400'
+                                                          : computedStatus === 'reservado'
+                                                          ? 'bg-blue-400'
+                                                          : computedStatus === 'Cancelado'
+                                                          ? 'bg-red-400'
+                                                          : computedStatus === 'No Asistió'
+                                                          ? 'bg-amber-400'
+                                                          : 'bg-emerald-400'
+                                                      }`} />
+                                                      <span>
+                                                        {computedStatus === 'Finalizado' ? 'Pagado' : 
+                                                         computedStatus === 'Espera' ? 'En Espera' : 
+                                                         computedStatus}
+                                                      </span>
+                                                    </span>
 
-                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-white/5 mt-4">
-                                          {(computedStatus === 'reservado' || computedStatus === 'proximo') && (
-                                            <button
-                                              disabled={isPast}
-                                              onClick={() => {
-                                                updateBookingStatus(booking.id, 'en_proceso');
-                                                triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
-                                              }}
-                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
-                                                isPast
-                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                  : activeBusinessTab === 'barberia'
-                                                  ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
-                                                  : activeBusinessTab === 'peluqueria'
-                                                  ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
-                                                  : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
-                                              }`}
-                                            >
-                                              Iniciar
-                                            </button>
-                                          )}
-                                          {computedStatus === 'Espera' && (
-                                            <button
-                                              disabled={true}
-                                              title="Debe finalizar el servicio en curso de este especialista primero"
-                                              className="px-2 py-1 text-[9px] font-bold rounded-lg border bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50"
-                                            >
-                                              Iniciar
-                                            </button>
-                                          )}
-                                          {computedStatus === 'En Proceso' && (
-                                            <button
-                                              disabled={isPast}
-                                              onClick={() => {
-                                                updateBookingStatus(booking.id, 'completado');
-                                                triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
-                                              }}
-                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
-                                                isPast
-                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                  : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
-                                              }`}
-                                            >
-                                              Cobrar
-                                            </button>
-                                          )}
-                                          {computedStatus === 'Finalizado' && (() => {
-                                            const clientObj = clients.find(c => c.phone === booking.clientPhone);
-                                            const isBad = clientObj?.notSoGoodClient;
-                                            if (isBad) {
-                                              return (
-                                                <span className="text-[8px] font-bold text-red-400/60 bg-red-500/5 border border-red-500/10 px-2 py-0.5 rounded-lg select-none">
-                                                  No asistió
-                                                </span>
-                                              );
-                                            }
-                                            return (
-                                              <button
-                                                disabled={isPast}
-                                                onClick={() => {
-                                                  markAsNotGoodClient(booking.clientPhone);
-                                                  triggerNotification(`Cliente ${booking.clientName} marcado como 'No tan buen cliente' por inasistencia.`);
-                                                }}
-                                                className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
-                                                  isPast
-                                                    ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
-                                                }`}
-                                                title={isPast ? "No se puede marcar una cita pasada" : "Marcar Inasistencia"}
-                                              >
-                                                <UserX size={9} className="inline mr-0.5" />
-                                                <span>No asistió</span>
-                                              </button>
-                                            );
-                                          })()}
-                                          {computedStatus !== 'Finalizado' && (
-                                            <button
-                                              disabled={isPast}
-                                              onClick={() => {
-                                                deleteBooking(booking.id);
-                                                triggerNotification(`Reserva ${booking.id} eliminada.`);
-                                              }}
-                                              className={`p-1 text-text-secondary hover:text-red-400 border border-transparent hover:border-red-500/10 hover:bg-red-500/5 rounded-lg transition-all ${
-                                                isPast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-                                              }`}
-                                            >
-                                              <Trash2 size={10} />
-                                            </button>
-                                          )}
-                                        </div>
+                                                    {/* Abono Badge */}
+                                                    {(booking.category === 'peluqueria' || booking.category === 'terapias') && (
+                                                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[6px] uppercase tracking-wider font-bold border ${
+                                                        booking.abonoConfirmado
+                                                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                          : booking.abonoTransferido
+                                                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
+                                                          : 'bg-red-500/10 border-red-500/30 text-red-400'
+                                                      }`}>
+                                                        <span>
+                                                          {booking.abonoConfirmado
+                                                            ? 'Abono OK'
+                                                            : booking.abonoTransferido
+                                                            ? 'Abonado'
+                                                            : 'Sin Abono'}
+                                                        </span>
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                  <div className="font-bold text-white text-[11px] leading-tight">{booking.clientName}</div>
+                                                  {(() => {
+                                                    const cleanPhone = booking.clientPhone.replace(/\D/g, '');
+                                                    return (
+                                                      <a
+                                                        href={`https://wa.me/${cleanPhone}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[9px] text-text-secondary hover:text-emerald-400 transition-colors inline-flex items-center gap-1 cursor-pointer font-mono"
+                                                      >
+                                                        <Smartphone size={9} className="text-emerald-500/80" />
+                                                        <span>{booking.clientPhone}</span>
+                                                      </a>
+                                                    );
+                                                  })()}
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                  <div className="text-[10px] text-white/80 font-medium leading-tight">{booking.serviceName}</div>
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="inline-flex items-center gap-0.5 text-[7px] text-white/50 bg-white/5 px-1 py-0.5 rounded uppercase font-mono">
+                                                      {booking.channel === 'Web' && <Globe size={8} className="text-blue-400" />}
+                                                      {booking.channel === 'WhatsApp' && <MessageSquare size={8} className="text-emerald-400" />}
+                                                      {booking.channel === 'Presencial' && <Smartphone size={8} className="text-amber-400" />}
+                                                      <span>{booking.channel}</span>
+                                                    </span>
+                                                    {booking.category !== activeBusinessTab && (
+                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold ${
+                                                        booking.category === 'barberia' 
+                                                          ? 'bg-gold/10 text-gold border border-gold/20' 
+                                                          : booking.category === 'peluqueria'
+                                                          ? 'bg-[#CD7F32]/10 text-[#CD7F32] border border-[#CD7F32]/20'
+                                                          : 'bg-[#E2E0D8]/10 text-[#E2E0D8] border border-[#E2E0D8]/20'
+                                                      }`}>
+                                                        {booking.category === 'barberia' ? 'Barbería' : booking.category === 'peluqueria' ? 'Peluquería' : 'Terapias'}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              <div className="flex items-center justify-center pt-2.5 border-t border-white/5 mt-4 w-full">
+                                                {booking.status === 'cancelado' ? (
+                                                  <span className="text-[9px] font-bold text-red-500/60 bg-red-500/5 border border-red-500/10 px-3 py-1 rounded-xl select-none w-full text-center">
+                                                    Reserva Cancelada
+                                                  </span>
+                                                ) : booking.status === 'no_llego' ? (
+                                                  <span className="text-[9px] font-bold text-amber-500/60 bg-amber-500/5 border border-amber-500/10 px-3 py-1 rounded-xl select-none w-full text-center">
+                                                    No se presentó
+                                                  </span>
+                                                ) : booking.status === 'completado' ? (
+                                                  <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1 rounded-xl select-none w-full text-center">
+                                                    Servicio Pagado
+                                                  </span>
+                                                ) : (
+                                                  <div className="flex flex-col gap-2 w-full">
+                                                    {/* Botón de Confirmar Abono si el cliente notificó pero no ha sido confirmado */}
+                                                    {(booking.category === 'peluqueria' || booking.category === 'terapias') && booking.abonoTransferido && !booking.abonoConfirmado && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                          setConfirmModal({
+                                                            isOpen: true,
+                                                            title: '¿Confirmar abono de transferencia?',
+                                                            message: `Se marcará el abono de $20.000 de ${booking.clientName} como validado y verificado en la cuenta de Mercado Pago.`,
+                                                            confirmText: 'Sí, Confirmar',
+                                                            confirmBtnClass: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20',
+                                                            onConfirm: () => {
+                                                              confirmDeposit(booking.id);
+                                                              triggerNotification(`Abono para la cita de ${booking.clientName} confirmado con éxito.`);
+                                                            }
+                                                          });
+                                                        }}
+                                                        className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center animate-pulse shadow-md"
+                                                      >
+                                                        Confirmar Abono
+                                                      </button>
+                                                    )}
+
+                                                    {isUpcoming ? (
+                                                      <button
+                                                        disabled={isPast}
+                                                        onClick={() => {
+                                                          setConfirmModal({
+                                                            isOpen: true,
+                                                            title: '¿Cancelar esta reserva?',
+                                                            message: `Se liberará el espacio y se enviará un correo electrónico de cancelación a ${booking.clientName}.`,
+                                                            confirmText: 'Sí, Cancelar',
+                                                            confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                                            onConfirm: () => handleCancelBookingAction(booking)
+                                                          });
+                                                        }}
+                                                        className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                                                      >
+                                                        Cancelar Cita
+                                                      </button>
+                                                    ) : (
+                                                      /* Cita en hora o pasada, sin resolver */
+                                                      <>
+                                                        {booking.status !== 'en_proceso' ? (
+                                                          <button
+                                                            disabled={isPast || hasIncompleteBefore}
+                                                            onClick={() => {
+                                                              updateBookingStatus(booking.id, 'en_proceso');
+                                                              triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
+                                                            }}
+                                                            className={`w-full py-2.5 text-[10px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                              isPast || hasIncompleteBefore
+                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                : activeBusinessTab === 'barberia'
+                                                                ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer shadow-md'
+                                                                : activeBusinessTab === 'peluqueria'
+                                                                ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer shadow-md'
+                                                                : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer shadow-md'
+                                                            }`}
+                                                            title={hasIncompleteBefore ? "Cierra la atención actual para iniciar la siguiente" : "Iniciar atención"}
+                                                          >
+                                                            {hasIncompleteBefore ? 'Iniciar (Bloqueado)' : 'Iniciar'}
+                                                          </button>
+                                                        ) : (
+                                                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-xl select-none w-full text-center animate-pulse">
+                                                            Atendiendo Cita...
+                                                          </span>
+                                                        )}
+                                                        <div className="grid grid-cols-2 gap-2 w-full">
+                                                          <button
+                                                            disabled={isPast}
+                                                            onClick={() => {
+                                                              updateBookingStatus(booking.id, 'completado');
+                                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
+                                                            }}
+                                                            className="py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all cursor-pointer text-center bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20"
+                                                          >
+                                                            Pagado
+                                                          </button>
+                                                          <button
+                                                            disabled={isPast}
+                                                            onClick={() => {
+                                                              setConfirmModal({
+                                                                isOpen: true,
+                                                                title: '¿Registrar inasistencia?',
+                                                                message: `Se marcará la cita como "No asistió" y se acumulará en el historial del cliente ${booking.clientName}.`,
+                                                                confirmText: 'Sí, Registrar',
+                                                                confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                                                onConfirm: () => handleNoShowBookingAction(booking)
+                                                              });
+                                                            }}
+                                                            className="py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all cursor-pointer text-center bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"
+                                                          >
+                                                            No llegó
+                                                          </button>
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
                                       </div>
                                     </td>
                                   );
@@ -6728,79 +6951,140 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {currentUser?.profileType !== 'admin' && (
+                <div className="space-y-1">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Descripción / Bio (Se muestra al público)</label>
+                  <textarea
+                    placeholder="Escribe la descripción de tu perfil para mostrar a los clientes en la página web..."
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    rows={3}
+                    className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 resize-none font-sans"
+                  />
+                </div>
+              )}
+
               <h4 className="font-serif text-sm text-white tracking-wide border-b border-white/5 pb-1 pt-4">Seguridad de Acceso</h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nueva Contraseña</label>
-                  <div className="relative flex items-center">
-                    <input
-                      type={showNewPassword ? 'text' : 'password'}
-                      placeholder="Nueva contraseña"
-                      value={newPassword}
-                      onChange={(e) => {
-                        setNewPassword(e.target.value);
-                        if (confirmPassword && e.target.value !== confirmPassword) {
-                          setPasswordError('Las contraseñas no coinciden.');
-                        } else {
-                          setPasswordError(null);
-                        }
-                      }}
-                      className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
-                    >
-                      {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+              <div className="space-y-4">
+                {/* Paso 1: Contraseña Actual */}
+                <div className="w-full max-w-md space-y-2">
+                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Contraseña Actual</label>
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                    <div className="relative flex-grow flex items-center">
+                      <input
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        placeholder="Ingresa tu contraseña actual"
+                        value={currentPassword}
+                        disabled={isCurrentPasswordVerified}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className={`w-full bg-black/40 border rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30 transition-all ${
+                          isCurrentPasswordVerified ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/[0.02]' : 'border-white/5'
+                        }`}
+                      />
+                      {!isCurrentPasswordVerified && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                        >
+                          {showCurrentPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      )}
+                      {isCurrentPasswordVerified && (
+                        <span className="absolute right-3 text-emerald-400 text-xs font-bold font-sans">✓</span>
+                      )}
+                    </div>
+                    {!isCurrentPasswordVerified && (
+                      <button
+                        type="button"
+                        disabled={isVerifyingCurrentPassword || !currentPassword}
+                        onClick={handleVerifyCurrentPassword}
+                        className="py-2.5 px-4 rounded-lg bg-white/5 border border-white/10 hover:border-gold/30 hover:bg-gold/5 text-white hover:text-gold text-[9px] uppercase tracking-wider font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {isVerifyingCurrentPassword ? 'Verificando...' : 'Verificar'}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Confirmar Nueva Contraseña</label>
-                  <div className="relative flex items-center">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirmar nueva contraseña"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (newPassword && e.target.value !== newPassword) {
-                          setPasswordError('Las contraseñas no coinciden.');
-                        } else {
-                          setPasswordError(null);
-                        }
-                      }}
-                      className={`w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30 ${
-                        passwordError ? 'border-red-500/50 focus:border-red-500' : ''
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
-                    >
-                      {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+                {/* Paso 2: Nuevas Contraseñas (Reveladas cuando isCurrentPasswordVerified es true) */}
+                {isCurrentPasswordVerified && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5 animate-fadeIn">
+                    <div className="space-y-1">
+                      <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Nueva Contraseña</label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          placeholder="Mínimo 6 caracteres"
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            if (confirmPassword && e.target.value !== confirmPassword) {
+                              setPasswordError('Las contraseñas no coinciden.');
+                            } else {
+                              setPasswordError(null);
+                            }
+                          }}
+                          className="w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                        >
+                          {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">Confirmar Nueva Contraseña</label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="Confirmar nueva contraseña"
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            if (newPassword && e.target.value !== newPassword) {
+                              setPasswordError('Las contraseñas no coinciden.');
+                            } else {
+                              setPasswordError(null);
+                            }
+                          }}
+                          className={`w-full bg-black/40 border border-white/5 rounded-lg py-2.5 pl-3 pr-10 text-xs text-white focus:outline-none focus:border-gold/30 ${
+                            passwordError ? 'border-red-500/50 focus:border-red-500' : ''
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                        >
+                          {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      {passwordError && (
+                        <p className="text-[10px] text-red-400 mt-1 font-light">{passwordError}</p>
+                      )}
+                    </div>
                   </div>
-                  {passwordError && (
-                    <p className="text-[10px] text-red-400 mt-1 font-light">{passwordError}</p>
-                  )}
-                </div>
+                )}
               </div>
 
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleProfileResetPassword}
-                  disabled={!newPassword || !confirmPassword || !!passwordError}
-                  className="py-2 px-5 rounded-full border border-gold/30 hover:border-gold/60 bg-gold/5 hover:bg-gold/10 text-gold font-bold uppercase tracking-widest text-[9px] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Restablecer Contraseña
-                </button>
-              </div>
+              {isCurrentPasswordVerified && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={handleProfileResetPassword}
+                    disabled={!newPassword || !confirmPassword || !!passwordError || newPassword.length < 6}
+                    className="py-2 px-5 rounded-full border border-gold/30 hover:border-gold/60 bg-gold/5 hover:bg-gold/10 text-gold font-bold uppercase tracking-widest text-[9px] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Restablecer Contraseña
+                  </button>
+                </div>
+              )}
 
               <div className="pt-6 border-t border-white/5 flex justify-end">
                 <button
@@ -7524,9 +7808,12 @@ export default function AdminPage() {
                     }));
                   };
 
-                  // Calculate specialist stats
+                  // Calculate specialist stats (excluding blocks, cancellations and no-shows)
                   const staffBookings = bookings.filter(
-                    b => b.specialistName === staff.name && (b.status as string) !== 'bloqueado' && (b.status as string) !== 'cancelado'
+                    b => b.specialistName === staff.name && 
+                         (b.status as string) !== 'bloqueado' && 
+                         (b.status as string) !== 'cancelado' &&
+                         (b.status as string) !== 'no_llego'
                   );
                   const totalCitas = staffBookings.length;
                   const totalRevenue = staffBookings.reduce((sum, b) => {
