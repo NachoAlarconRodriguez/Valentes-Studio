@@ -8,9 +8,11 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host') || ''
 
-  // Omit static assets, APIs, and favicon
+  // Omit static assets, APIs, favicon, admin, and giftcards
   if (
     url.pathname.startsWith('/_next') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/giftcards') ||
     url.pathname.includes('/api/') ||
     url.pathname.includes('.')
   ) {
@@ -19,14 +21,18 @@ export async function proxy(request: NextRequest) {
 
   // 2. Perform internal rewrite based on the host
   if (hostname.includes('valentes.cl')) {
-    url.pathname = `/barberia${url.pathname === '/' ? '' : url.pathname}`
+    if (!url.pathname.startsWith('/barberia')) {
+      url.pathname = `/barberia${url.pathname === '/' ? '' : url.pathname}`
+    }
     return NextResponse.rewrite(url, {
       headers: response.headers
     })
   }
 
   if (hostname.includes('almabela.cl')) {
-    url.pathname = `/peluqueria${url.pathname === '/' ? '' : url.pathname}`
+    if (!url.pathname.startsWith('/peluqueria')) {
+      url.pathname = `/peluqueria${url.pathname === '/' ? '' : url.pathname}`
+    }
     return NextResponse.rewrite(url, {
       headers: response.headers
     })
