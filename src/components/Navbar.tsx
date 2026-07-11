@@ -102,7 +102,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/lotus-transparent.png"
+                    src="/meditando-loto.png"
                     alt="Santuario de Bienestar Logo"
                     fill
                     sizes="44px"

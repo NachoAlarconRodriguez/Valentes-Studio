@@ -86,7 +86,7 @@ export default function GiftcardsLayout() {
       cardBg: 'bg-gradient-to-br from-[#1c1a16] via-[#101010] to-[#252119]',
       border: 'border-gold/30',
       glow: 'shadow-gold/5',
-      logo: '/lotus-transparent.png',
+      logo: '/meditando-loto.png',
       textColor: 'text-gold',
       buttonBg: 'bg-gold hover:bg-gold/90 text-black',
       gradientClip: 'text-gold-gradient',

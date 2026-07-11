@@ -197,7 +197,7 @@ export default function HomePage() {
             </span>
 
             {/* Title */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white tracking-wider font-normal uppercase leading-none">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white/85 tracking-wider font-normal uppercase leading-none">
               VALENTES
               <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#C5A059]/90 mt-1.5 font-sans font-bold">STUDIO</span>
             </h2>
@@ -270,7 +270,7 @@ export default function HomePage() {
             </span>
 
             {/* Title */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white tracking-wider font-normal uppercase leading-none">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white/85 tracking-wider font-normal uppercase leading-none">
               ALMA BELA
               <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#3fcbe0] mt-1.5 font-sans font-bold">STUDIO</span>
             </h2>
@@ -343,7 +343,7 @@ export default function HomePage() {
             </span>
 
             {/* Title (Only JEFITO LOPES, no STUDIO) */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white tracking-wider font-normal uppercase leading-none">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-white/85 tracking-wider font-normal uppercase leading-none">
               JEFÏTO LOPÊS
             </h2>
 
@@ -374,9 +374,9 @@ export default function HomePage() {
       </section>
 
       {/* 3. BOTTOM FOOTER VALUES SECTION */}
-      <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative overflow-hidden flex-shrink-0">
+      <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative flex-shrink-0">
         {/* Decorative backdrop glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] h-[70px] bg-[#C5A059]/5 rounded-full blur-[50px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[450px] h-[100px] bg-[#C5A059]/8 rounded-full blur-[60px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-1.5 items-center text-center">
           {/* Value 1: EQUILIBRIO */}
@@ -440,18 +440,18 @@ export default function HomePage() {
           <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex justify-center py-1 lg:py-0">
             <Link 
               href="/admin"
-              className="relative flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 transition-all duration-500 hover:scale-105 cursor-pointer z-20"
+              className="relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 lg:w-28 lg:h-28 transition-all duration-500 hover:scale-110 cursor-pointer z-20 -translate-y-3 sm:-translate-y-4 lg:-translate-y-5"
               aria-label="Panel de Administración"
             >
               {/* Glowing aura */}
-              <div className="absolute inset-0 bg-[#C5A059]/15 rounded-full blur-xl animate-pulse" />
+              <div className="absolute inset-0 bg-[#C5A059]/20 rounded-full blur-xl animate-pulse" />
               {/* Lotus Image */}
               <div className="relative w-full h-full select-none">
                 <Image
-                  src="/lotus-transparent.png"
-                  alt="Lotus Templo Santuario"
+                  src="/meditando-loto.png"
+                  alt="Lotus Meditando Templo Santuario"
                   fill
-                  sizes="(max-width: 768px) 80px, 96px"
+                  sizes="(max-width: 768px) 110px, 128px"
                   className="object-contain filter brightness-110 contrast-105 drop-shadow-[0_0_15px_rgba(212,175,55,0.85)]"
                   priority
                 />

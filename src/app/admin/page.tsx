@@ -415,6 +415,20 @@ function CustomTimeSelect({ value, onChange, options, className = "", isSmall = 
   );
 }
 
+const formatSystemDate = (date: Date | null) => {
+  if (!date) return 'Cargando fecha...';
+  const weekdaysSpanish = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const monthsSpanish = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const day = date.getDate();
+  const weekday = weekdaysSpanish[date.getDay()];
+  const month = monthsSpanish[date.getMonth()];
+  const year = date.getFullYear();
+  return `${weekday} ${day} de ${month} del ${year}`;
+};
+
 export default function AdminPage() {
   const { 
     servicesData, 
@@ -3438,7 +3452,7 @@ export default function AdminPage() {
           
           <div className="text-[10px] uppercase tracking-widest text-text-secondary flex items-center space-x-2 bg-white/[0.02] px-4 py-2 border border-white/5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Consola Activa • Sincronización Local</span>
+            <span>{formatSystemDate(nowState)}</span>
           </div>
         </div>
 
