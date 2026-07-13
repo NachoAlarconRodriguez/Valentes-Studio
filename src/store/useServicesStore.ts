@@ -442,7 +442,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
         if (error) {
           console.error('Error updating specialist in DB:', error);
-          // Don't throw — still update local state below
+          throw error;
         }
       }
 

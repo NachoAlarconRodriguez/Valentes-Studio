@@ -260,6 +260,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
       }));
     } catch (err) {
       console.error('Error updating page content:', err);
+      throw err;
     }
   },
 
