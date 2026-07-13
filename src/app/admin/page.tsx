@@ -816,7 +816,7 @@ export default function AdminPage() {
     setStaffFormSubmitted(false);
   };
 
-  const handleStaffFormSubmit = (e: React.FormEvent) => {
+  const handleStaffFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStaffFormSubmitted(true);
     if (!staffFormName || !staffFormEmail || !staffFormProfileType || !staffFormPhone) {
@@ -880,19 +880,34 @@ export default function AdminPage() {
 
     if (editingStaff) {
       let found = false;
+      const updatePromises: Promise<void>[] = [];
       Object.keys(servicesData).forEach(cat => {
         const hasSp = servicesData[cat].specialists.some(sp => sp.id === editingStaff.id);
         if (hasSp) {
-          updateSpecialist(cat, editingStaff.id, staffPayload as any);
+          updatePromises.push(updateSpecialist(cat, editingStaff.id, staffPayload as any));
           found = true;
         }
       });
+      
       if (found) {
-        triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
+        try {
+          await Promise.all(updatePromises);
+          triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
+        } catch (err: any) {
+          console.error('Error updating specialist:', err);
+          triggerNotification(err?.message || 'Error al guardar los cambios en la base de datos.');
+          return; // Stop here, do not close the drawer
+        }
       }
     } else {
-      addSpecialist(primaryCategory, staffPayload as any);
-      triggerNotification(`Profesional "${staffFormName}" creado con éxito.`);
+      try {
+        await addSpecialist(primaryCategory, staffPayload as any);
+        triggerNotification(`Profesional "${staffFormName}" creado con éxito.`);
+      } catch (err: any) {
+        console.error('Error adding specialist:', err);
+        triggerNotification(err?.message || 'Error al guardar el nuevo profesional en la base de datos.');
+        return; // Stop here, do not close the drawer
+      }
     }
 
     setIsStaffDrawerOpen(false);
