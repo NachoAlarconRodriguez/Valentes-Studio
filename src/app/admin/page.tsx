@@ -879,25 +879,14 @@ export default function AdminPage() {
     };
 
     if (editingStaff) {
-      let found = false;
-      const updatePromises: Promise<void>[] = [];
-      Object.keys(servicesData).forEach(cat => {
-        const hasSp = servicesData[cat].specialists.some(sp => sp.id === editingStaff.id);
-        if (hasSp) {
-          updatePromises.push(updateSpecialist(cat, editingStaff.id, staffPayload as any));
-          found = true;
-        }
-      });
-      
-      if (found) {
-        try {
-          await Promise.all(updatePromises);
-          triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
-        } catch (err: any) {
-          console.error('Error updating specialist:', err);
-          triggerNotification(err?.message || 'Error al guardar los cambios en la base de datos.');
-          return; // Stop here, do not close the drawer
-        }
+      try {
+        const targetCat = (editingStaff as any).primaryCategory || 'barberia';
+        await updateSpecialist(targetCat, editingStaff.id, staffPayload as any);
+        triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
+      } catch (err: any) {
+        console.error('Error updating specialist:', err);
+        triggerNotification(err?.message || 'Error al guardar los cambios en la base de datos.');
+        return; // Stop here, do not close the drawer
       }
     } else {
       try {
@@ -1493,18 +1482,16 @@ export default function AdminPage() {
 
       // If not admin, update in the specialists store as well!
       if (currentUser.id !== 'admin') {
-        Object.keys(servicesData).forEach(cat => {
-          const hasSp = servicesData[cat].specialists.some(sp => sp.id === currentUser.id);
-          if (hasSp) {
-            updateSpecialist(cat, currentUser.id, {
-              name: profileName,
-              role: profileRole,
-              email: profileEmail,
-              phone: fullPhone,
-              bio: profileBio,
-              avatar: updatedUser.avatar
-            });
-          }
+        const targetCat = currentUser.primaryCategory || 'barberia';
+        updateSpecialist(targetCat, currentUser.id, {
+          name: profileName,
+          role: profileRole,
+          email: profileEmail,
+          phone: fullPhone,
+          bio: profileBio,
+          avatar: updatedUser.avatar
+        }).catch(err => {
+          console.error('Error updating profile in store:', err);
         });
       }
       setNewPassword('');
