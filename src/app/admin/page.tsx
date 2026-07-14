@@ -696,7 +696,7 @@ export default function AdminPage() {
   const populateServiceForm = (service: any) => {
     setEditingService(service);
     setServiceFormName(service.name);
-    setServiceFormPrice(service.price);
+    setServiceFormPrice(service.price !== undefined && service.price !== null ? String(service.price) : '');
     setServiceFormDuration(service.duration);
     setServiceFormDescription(service.description);
     setServiceFormSpecialists(service.specialistIds || []);
@@ -714,7 +714,7 @@ export default function AdminPage() {
     }
 
     // Ensure price has $ prefix if not present
-    let formattedPrice = serviceFormPrice.trim();
+    let formattedPrice = String(serviceFormPrice).trim();
     if (!formattedPrice.startsWith('$')) {
       formattedPrice = '$' + formattedPrice;
     }
@@ -7529,7 +7529,7 @@ export default function AdminPage() {
                               value={serviceFormPrice}
                               onChange={(e) => setServiceFormPrice(e.target.value)}
                               className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors font-mono ${
-                                serviceFormSubmitted && !serviceFormPrice.trim()
+                                serviceFormSubmitted && !String(serviceFormPrice).trim()
                                   ? 'border-red-500/80 focus:border-red-500'
                                   : 'border-white/10 focus:border-gold/30'
                               }`}
