@@ -564,11 +564,11 @@ export function ManualBookingModal({
 
   // Color styling helpers matching business themes
   const isTerapias = category === 'terapias';
-  const themeGold = isTerapias ? '#E2E0D8' : '#C5A059';
-  const textGoldClass = isTerapias ? 'text-platinum' : 'text-gold';
-  const borderFocusClass = isTerapias ? 'focus:border-platinum/50' : 'focus:border-gold/50';
-  const bgThemeClass = isTerapias ? 'bg-platinum' : 'bg-gold';
-  const shadowThemeClass = isTerapias ? 'shadow-platinum/10' : 'shadow-gold/10';
+  const themeGold = '#C5A059';
+  const textGoldClass = 'text-gold';
+  const borderFocusClass = 'focus:border-gold/50';
+  const bgThemeClass = 'bg-gold';
+  const shadowThemeClass = 'shadow-gold/10';
 
   const selectedTime = time;
   const currentAvailability = selectedTime ? checkTimeSlotAvailability(selectedTime) : { available: true };

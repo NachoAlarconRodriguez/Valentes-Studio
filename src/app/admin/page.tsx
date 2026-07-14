@@ -3809,6 +3809,9 @@ export default function AdminPage() {
                       { id: 'peluqueria', label: 'Peluquería de Autor' },
                       { id: 'terapias', label: 'Terapias Holísticas' }
                     ].filter(subtab => {
+                      if (currentUser && currentUser.profileType === 'admin') {
+                        return true;
+                      }
                       const agendas = currentUser ? currentUser.assignedAgendas : ['barberia', 'peluqueria', 'terapias'];
                       return agendas.includes(subtab.id as any);
                     }).map(subtab => (
@@ -3853,6 +3856,9 @@ export default function AdminPage() {
                   { id: 'peluqueria', label: 'Peluquería de Autor', badge: '02' },
                   { id: 'terapias', label: 'Terapias Holísticas', badge: '03' }
                 ].filter(subtab => {
+                  if (currentUser && currentUser.profileType === 'admin') {
+                    return true;
+                  }
                   const agendas = currentUser ? currentUser.assignedAgendas : ['barberia', 'peluqueria', 'terapias'];
                   return agendas.includes(subtab.id as any);
                 }).map((subtab) => {

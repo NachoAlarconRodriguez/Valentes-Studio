@@ -34,14 +34,6 @@ export function Navbar() {
   ];
 
   const getLinkColors = (path: string) => {
-    if (path === '/terapias') {
-      return {
-        textActive: 'text-platinum',
-        borderActive: 'bg-platinum',
-        hoverText: 'group-hover:text-platinum',
-        borderHover: 'group-hover:bg-platinum'
-      };
-    }
     return {
       textActive: 'text-gold',
       borderActive: 'bg-gold',
@@ -174,11 +166,8 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-platinum bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent transition-all duration-300">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold bg-gradient-to-r from-white via-gold to-text-secondary bg-clip-text text-transparent transition-all duration-300">
                     JEFITO LOPES
-                  </span>
-                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-platinum transition-colors duration-300 leading-none mt-0.5">
-                    STUDIO
                   </span>
                 </div>
               </>
@@ -218,33 +207,21 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/giftcards"
-              className={`p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center ${
-                isTerapias
-                  ? 'border-platinum/20 text-platinum/75 hover:text-platinum hover:border-platinum/40 hover:bg-white/5'
-                  : 'border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5'
-              }`}
+              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5"
               title="Comprar Tarjeta de Regalo"
             >
               <Gift size={16} />
             </Link>
             <Link
               href="/admin"
-              className={`p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center ${
-                isTerapias
-                  ? 'border-platinum/20 text-platinum/75 hover:text-platinum hover:border-platinum/40 hover:bg-white/5'
-                  : 'border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5'
-              }`}
+              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5"
               title="Panel de Administración"
             >
               <User size={16} />
             </Link>
             <button
               onClick={() => openBooking()}
-              className={`px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 ${
-                isTerapias
-                  ? 'border-platinum/40 text-platinum hover:bg-platinum hover:shadow-platinum/20 shadow-platinum/5'
-                  : 'border-gold/40 text-gold hover:bg-gold hover:shadow-gold/20 shadow-gold/5'
-              }`}
+              className="px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 border-gold/40 text-gold hover:bg-gold hover:shadow-gold/20 shadow-gold/5"
             >
               Agendar Ritual
             </button>
@@ -281,8 +258,6 @@ export function Navbar() {
               <span className={`text-[10px] uppercase tracking-[0.5em] border-b pb-4 ${
                 isPeluqueria
                   ? 'text-bronze border-bronze/20'
-                  : isTerapias
-                  ? 'text-platinum border-platinum/20'
                   : 'text-gold border-gold/20'
               }`}>
                 Menú de Navegación
@@ -298,8 +273,6 @@ export function Navbar() {
                   const hoverClass = 
                     link.path === '/peluqueria' 
                       ? 'hover:text-bronze' 
-                      : link.path === '/terapias'
-                      ? 'hover:text-platinum'
                       : 'hover:text-gold';
                   return (
                     <motion.div key={link.path} variants={linkVariants}>
@@ -309,7 +282,6 @@ export function Navbar() {
                         className={`font-serif text-4xl sm:text-5xl font-light tracking-wide block transition-colors duration-300 ${hoverClass}`}
                       >
                         <span className={isActive ? `${colors.textActive} pl-2 border-l-2 ${
-                          link.path === '/terapias' ? 'border-platinum' :
                           link.path === '/peluqueria' ? 'border-bronze' : 'border-gold'
                         }` : 'text-text-primary'}>
                           {link.name}
@@ -329,8 +301,6 @@ export function Navbar() {
                   className={`w-full flex items-center justify-center space-x-2 py-4 rounded-full text-bg-base font-semibold uppercase tracking-wider text-sm transition-all duration-300 ${
                     isPeluqueria
                       ? 'bg-bronze hover:bg-bronze/90'
-                      : isTerapias
-                      ? 'bg-platinum hover:bg-platinum/90'
                       : 'bg-gold hover:bg-gold/90'
                   }`}
                 >
@@ -343,8 +313,6 @@ export function Navbar() {
                   className={`w-full flex items-center justify-center space-x-2 py-3.5 rounded-full border text-xs uppercase tracking-widest font-semibold transition-all duration-300 ${
                     isPeluqueria
                       ? 'border-bronze/40 text-bronze hover:bg-bronze/10'
-                      : isTerapias
-                      ? 'border-platinum/40 text-platinum hover:bg-platinum/10'
                       : 'border-gold/40 text-gold hover:bg-gold/10'
                   }`}
                 >

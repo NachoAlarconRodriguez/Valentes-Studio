@@ -88,24 +88,24 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
         };
       case 'terapias':
         return {
-          text: 'text-platinum',
-          bg: 'bg-platinum',
-          border: 'border-platinum',
-          borderActive: 'border-platinum/40',
-          shadow: 'shadow-[0_0_22px_rgba(226,224,216,0.08)]',
-          bgHover: 'hover:bg-platinum/90',
-          shadowBtn: 'shadow-platinum/5',
-          hoverBorderLight: 'hover:border-platinum/20',
-          borderLight: 'border-platinum/20',
-          borderCardFrame: 'border-platinum/15',
-          glass: 'apple-platinum-glass',
-          glowBg: 'bg-platinum/8',
-          badgeBg: 'bg-platinum/10',
-          borderBtn: 'border-platinum/40',
-          titleShimmer: 'animate-text-platinum-flow',
-          starFill: 'fill-platinum',
-          starText: 'border-platinum/20 text-platinum',
-          borderCardInner: 'border-t border-platinum/20'
+          text: 'text-gold',
+          bg: 'bg-gold',
+          border: 'border-gold',
+          borderActive: 'border-gold/40',
+          shadow: 'shadow-[0_0_22px_rgba(198,155,60,0.08)]',
+          bgHover: 'hover:bg-gold/90',
+          shadowBtn: 'shadow-gold/5',
+          hoverBorderLight: 'hover:border-gold/20',
+          borderLight: 'border-gold/20',
+          borderCardFrame: 'border-gold/15',
+          glass: 'apple-gold-glass',
+          glowBg: 'bg-gold/8',
+          badgeBg: 'bg-gold/10',
+          borderBtn: 'border-gold/40',
+          titleShimmer: 'animate-text-gold-flow',
+          starFill: 'fill-gold',
+          starText: 'border-gold/20 text-gold',
+          borderCardInner: 'border-t border-gold/20'
         };
       case 'barberia':
       default:
@@ -403,20 +403,20 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
                 <div className="relative w-full h-full duration-700 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] shadow-2xl rounded-2xl">
                   
                   {/* BACK SIDE (Face down - Sacred Geometry) */}
-                  <div className="absolute inset-0 w-full h-full rounded-2xl bg-[#0e0e0e] border border-platinum/15 flex flex-col items-center justify-center p-6 [backface-visibility:hidden] z-20">
+                  <div className="absolute inset-0 w-full h-full rounded-2xl bg-[#0e0e0e] border border-gold/15 flex flex-col items-center justify-center p-6 [backface-visibility:hidden] z-20">
                     {/* Inner elegant frame */}
-                    <div className="absolute inset-2 border border-platinum/5 rounded-xl pointer-events-none" />
+                    <div className="absolute inset-2 border border-gold/5 rounded-xl pointer-events-none" />
                     
                     {/* Card corners symbols */}
-                    <span className="absolute top-4 left-4 text-[10px] font-serif text-platinum/30 tracking-widest">{oracle.numero}</span>
-                    <span className="absolute top-4 right-4 text-[10px] font-serif text-platinum/30 tracking-widest">{oracle.numero}</span>
-                    <span className="absolute bottom-4 left-4 text-[10px] font-serif text-platinum/30 tracking-widest">{oracle.numero}</span>
-                    <span className="absolute bottom-4 right-4 text-[10px] font-serif text-platinum/30 tracking-widest">{oracle.numero}</span>
+                    <span className="absolute top-4 left-4 text-[10px] font-serif text-gold/30 tracking-widest">{oracle.numero}</span>
+                    <span className="absolute top-4 right-4 text-[10px] font-serif text-gold/30 tracking-widest">{oracle.numero}</span>
+                    <span className="absolute bottom-4 left-4 text-[10px] font-serif text-gold/30 tracking-widest">{oracle.numero}</span>
+                    <span className="absolute bottom-4 right-4 text-[10px] font-serif text-gold/30 tracking-widest">{oracle.numero}</span>
 
                     {/* Glowing Sacred Geometry Mandala SVG */}
                     <div className="relative flex items-center justify-center">
-                      <div className="absolute w-28 h-28 bg-platinum/3 rounded-full blur-xl group-hover:bg-platinum/6 transition-colors duration-500" />
-                      <svg viewBox="0 0 100 100" className="w-24 h-24 text-platinum/25 group-hover:text-platinum/50 group-hover:scale-105 transition-all duration-700 animate-[spin_90s_linear_infinite] relative z-10">
+                      <div className="absolute w-28 h-28 bg-gold/3 rounded-full blur-xl group-hover:bg-gold/6 transition-colors duration-500" />
+                      <svg viewBox="0 0 100 100" className="w-24 h-24 text-gold/25 group-hover:text-gold/50 group-hover:scale-105 transition-all duration-700 animate-[spin_90s_linear_infinite] relative z-10">
                         <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="1 3" />
                         <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" strokeWidth="0.6" />
                         <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" />
@@ -430,32 +430,32 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
 
                     {/* Card indicator */}
                     <div className="mt-8 text-center space-y-1 relative z-10">
-                      <span className="block text-[8px] uppercase tracking-[0.4em] text-platinum/40 group-hover:text-platinum/70 transition-colors duration-500 font-semibold">[ ORÁCULO DE SANACIÓN ]</span>
+                      <span className="block text-[8px] uppercase tracking-[0.4em] text-gold/40 group-hover:text-gold/70 transition-colors duration-500 font-semibold">[ ORÁCULO DE SANACIÓN ]</span>
                       <span className="block text-[9px] uppercase tracking-[0.2em] text-text-secondary font-light">{oracle.elemento}</span>
                     </div>
                   </div>
 
                   {/* FRONT SIDE (Face up - Specialist Info) */}
-                  <div className="absolute inset-0 w-full h-full rounded-2xl bg-[#080808] border border-platinum/25 flex flex-col justify-between p-6 [backface-visibility:hidden] [transform:rotateY(180deg)] z-10">
+                  <div className="absolute inset-0 w-full h-full rounded-2xl bg-[#080808] border border-gold/25 flex flex-col justify-between p-6 [backface-visibility:hidden] [transform:rotateY(180deg)] z-10">
                     {/* Inner elegant frame */}
-                    <div className="absolute inset-2 border border-platinum/10 rounded-xl pointer-events-none" />
+                    <div className="absolute inset-2 border border-gold/10 rounded-xl pointer-events-none" />
                     
                     {/* Top category label */}
                     <div className="text-center relative z-10 pt-2">
-                      <span className="text-[8px] uppercase tracking-[0.25em] text-platinum/40 font-bold block mb-0.5">{oracle.arquetipo}</span>
-                      <div className="h-[1px] w-12 bg-platinum/20 mx-auto" />
+                      <span className="text-[8px] uppercase tracking-[0.25em] text-gold/40 font-bold block mb-0.5">{oracle.arquetipo}</span>
+                      <div className="h-[1px] w-12 bg-gold/20 mx-auto" />
                     </div>
 
                     {/* Specialist info */}
                     <div className="flex flex-col items-center text-center relative z-10 pt-2 flex-grow justify-center space-y-3">
                       {/* Stylized Avatar initials in glowing circle */}
-                      <div className="w-16 h-16 rounded-full border border-platinum/20 bg-white/[0.02] flex items-center justify-center font-serif text-2xl font-bold text-platinum shadow-[inset_0_2px_12px_rgba(226,224,216,0.1)] group-hover:border-platinum/45 transition-colors duration-500 select-none">
+                      <div className="w-16 h-16 rounded-full border border-gold/20 bg-white/[0.02] flex items-center justify-center font-serif text-2xl font-bold text-gold shadow-[inset_0_2px_12px_rgba(197,160,89,0.1)] group-hover:border-gold/45 transition-colors duration-500 select-none">
                         {specialist.avatar}
                       </div>
 
                       <div className="space-y-0.5">
                         <h3 className="font-serif text-lg text-white tracking-wide font-medium leading-none">{specialist.name}</h3>
-                        <span className="text-[9px] uppercase tracking-widest font-semibold text-platinum block pt-1">
+                        <span className="text-[9px] uppercase tracking-widest font-semibold text-gold block pt-1">
                           {specialist.role}
                         </span>
                         <span className="text-[9px] text-text-secondary italic block max-w-[90%] mx-auto truncate mt-0.5">
@@ -485,7 +485,7 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
                             price: typeof serviceObj.price === 'number' ? `$${serviceObj.price.toLocaleString('es-CL')}` : serviceObj.price
                           });
                         }}
-                        className="px-6 py-2 rounded-full border border-platinum/30 text-platinum text-[9px] uppercase tracking-widest font-bold hover:bg-platinum hover:text-black transition-all duration-300 hover:scale-[1.03] active:scale-95 shimmer-button animate-pulse-slow"
+                        className="px-6 py-2 rounded-full border border-gold/30 text-gold text-[9px] uppercase tracking-widest font-bold hover:bg-gold hover:text-black transition-all duration-300 hover:scale-[1.03] active:scale-95 shimmer-button animate-pulse-slow"
                       >
                         Agendar Ritual
                       </button>

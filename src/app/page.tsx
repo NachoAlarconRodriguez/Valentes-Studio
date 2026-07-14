@@ -43,8 +43,8 @@ export default function HomePage() {
           <span className="font-serif text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C5A059] transition-all duration-300 group-hover:brightness-110">
             JEFÏTO LOPÊS
           </span>
-          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.45em] text-[#C5A059]/80 mt-1 font-semibold block transition-colors">
-            ━ TERAPIA HOLÍSTICA ━
+          <span className="text-[8px] sm:text-[9px] tracking-wider text-[#C5A059]/80 mt-1 font-semibold block transition-colors">
+            Cuidamos tu imagen, tu estilo y tu energía
           </span>
         </Link>
 
@@ -321,7 +321,7 @@ export default function HomePage() {
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
-            <div className="absolute inset-0 bg-platinum/5 group-hover:bg-platinum/10 transition-colors duration-700 mix-blend-color z-1" />
+            <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
           </div>
 
           {/* Column Content */}

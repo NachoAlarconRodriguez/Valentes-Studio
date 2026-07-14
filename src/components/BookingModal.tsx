@@ -521,16 +521,16 @@ export function BookingModal() {
 
   // Dynamic Theme definitions based on category
   const isTerapias = category === 'terapias';
-  const themeText = isTerapias ? 'text-platinum' : 'text-gold';
-  const themeText80 = isTerapias ? 'text-platinum/80' : 'text-gold/80';
-  const themeBg = isTerapias ? 'bg-platinum' : 'bg-gold';
-  const themeBorder25 = isTerapias ? 'border-platinum/25' : 'border-gold/25';
-  const themeBorder15 = isTerapias ? 'border-platinum/15' : 'border-gold/15';
-  const themeBorderFocus = isTerapias ? 'focus:border-platinum/60' : 'focus:border-gold/60';
-  const themeShadow = isTerapias ? 'hover:shadow-platinum/20 shadow-platinum/5' : 'hover:shadow-gold/20 shadow-gold/5';
+  const themeText = 'text-gold';
+  const themeText80 = 'text-gold/80';
+  const themeBg = 'bg-gold';
+  const themeBorder25 = 'border-gold/25';
+  const themeBorder15 = 'border-gold/15';
+  const themeBorderFocus = 'focus:border-gold/60';
+  const themeShadow = 'hover:shadow-gold/20 shadow-gold/5';
   
   // Success styles
-  const themeSuccessText = isTerapias ? 'text-platinum' : 'text-gold';
+  const themeSuccessText = 'text-gold';
   
   const modalContainerClass = `relative w-full max-w-4xl bg-black/95 text-white rounded-none md:rounded-[32px] overflow-hidden z-10 border border-white/5 md:${themeBorder25} shadow-[0_30px_60px_-15px_rgba(0,0,0,0.85)] grid grid-cols-1 md:grid-cols-12 h-[100dvh] md:h-[680px] transition-all duration-500`;
   
@@ -650,10 +650,10 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Jefito Lopes Studio
+                        Jefito Lopes
                       </span>
                       <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">JEFITO LOPES</h2>
-                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-platinum/80 uppercase font-bold mt-1">STUDIO</h2>
+                      <h2 className="font-serif text-[10px] tracking-wider text-platinum/80 font-bold mt-1">Cuidamos tu imagen, tu estilo y tu energía</h2>
                     </div>
                   </div>
                 )}
@@ -703,9 +703,9 @@ export function BookingModal() {
                   <h3 className={`font-serif text-2xl ${themeText} tracking-wide`}>Completar Ritual</h3>
                   <p className="text-xs text-text-secondary tracking-widest uppercase mt-1">
                     {category === 'barberia'
-                      ? 'Santuario de Barbería Tradicional'
+                      ? 'Barbería'
                       : category === 'peluqueria'
-                      ? 'Santuario de Peluquería de Autor'
+                      ? 'Peluquería'
                       : 'Jefito Lopes • Terapias Holísticas'
                     }
                   </p>
@@ -757,9 +757,7 @@ export function BookingModal() {
                                     onClick={() => handleCategoryChange(opt.id as 'barberia' | 'peluqueria' | 'terapias')}
                                     className={`py-2.5 px-1 text-center rounded-xl border text-[10px] uppercase tracking-wider font-bold transition-all duration-300 focus:outline-none ${
                                       isSelected
-                                        ? opt.id === 'terapias'
-                                          ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.15)]'
-                                          : 'border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.15)]'
+                                        ? 'border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.15)]'
                                         : 'border-white/5 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/10'
                                     }`}
                                   >
@@ -776,7 +774,7 @@ export function BookingModal() {
                             <div className="space-y-2.5 pr-1 mt-1.5">
                               {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                                  <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${category === 'terapias' ? 'border-platinum' : 'border-gold'}`} />
+                                  <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin border-gold`} />
                                   <p className="text-xs text-white/40 tracking-wider uppercase">Cargando rituales...</p>
                                 </div>
                               ) : servicesList.length === 0 ? (
@@ -791,9 +789,7 @@ export function BookingModal() {
                                       onClick={() => setServiceId(service.id)}
                                       className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start justify-between gap-4 ${
                                         isSelected
-                                          ? isTerapias
-                                            ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.15)]'
-                                            : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
+                                          ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
                                           : 'border-white/5 bg-white/[0.02] text-white/80 hover:border-white/20 hover:bg-white/[0.04]'
                                       }`}
                                     >
@@ -842,15 +838,13 @@ export function BookingModal() {
                               onClick={() => setSpecialistId('')}
                               className={`p-4 rounded-2xl border text-left flex items-center space-x-4 transition-all duration-300 relative ${
                                 specialistId === ''
-                                  ? isTerapias
-                                    ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_15px_rgba(226,224,216,0.2)] scale-[1.02]'
-                                    : 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
+                                  ? 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
                                   : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.04]'
                               }`}
                             >
                               <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 bg-gradient-to-br from-black to-zinc-900 flex-shrink-0 transition-transform duration-300 ${
                                 specialistId === ''
-                                  ? isTerapias ? 'border-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]' : 'border-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                  ? 'border-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
                                   : 'border-white/10'
                               }`}>
                                 <Sparkles className={`w-6 h-6 ${themeText}`} />
@@ -879,15 +873,13 @@ export function BookingModal() {
                                   onClick={() => setSpecialistId(specialist.id)}
                                   className={`p-4 rounded-2xl border text-left flex items-center space-x-4 transition-all duration-300 relative ${
                                     isSelected
-                                      ? isTerapias
-                                        ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_15px_rgba(226,224,216,0.2)] scale-[1.02]'
-                                        : 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
+                                      ? 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
                                       : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.04]'
                                   }`}
                                 >
                                   <div className={`relative w-14 h-14 rounded-full overflow-hidden border-2 flex-shrink-0 transition-transform duration-300 ${
                                     isSelected
-                                      ? isTerapias ? 'border-platinum scale-105 shadow-[0_0_10px_rgba(226,224,216,0.2)]' : 'border-gold scale-105 shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                      ? 'border-gold scale-105 shadow-[0_0_10px_rgba(198,155,60,0.2)]'
                                       : 'border-white/10'
                                   }`}>
                                     {photo ? (
@@ -957,9 +949,7 @@ export function BookingModal() {
                                       onClick={() => handleDateTypeSelect(item.type)}
                                       className={`flex flex-col items-center justify-center p-3 rounded-2xl border aspect-square transition-all duration-300 focus:outline-none cursor-pointer ${
                                         isSelected 
-                                          ? isTerapias
-                                            ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
-                                            : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
+                                          ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
                                           : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
                                       }`}
                                     >
@@ -1030,9 +1020,7 @@ export function BookingModal() {
                                             isFullyBooked
                                               ? 'border-white/5 bg-black/20 text-white/20 opacity-30 cursor-not-allowed'
                                               : isSelected
-                                                ? isTerapias
-                                                  ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_12px_rgba(226,224,216,0.25)]'
-                                                  : 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]'
+                                                ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]'
                                                 : 'border-white/10 bg-white/[0.02] hover:border-white/20 text-white/70 hover:text-white cursor-pointer'
                                           }`}
                                         >
@@ -1042,7 +1030,7 @@ export function BookingModal() {
                                             isFullyBooked
                                               ? 'text-red-400/70 font-semibold'
                                               : isSelected
-                                                ? isTerapias ? 'text-platinum/80' : 'text-gold/80'
+                                                ? 'text-gold/80'
                                                 : 'text-text-secondary/60'
                                           }`}>
                                             {isFullyBooked ? 'Agotado' : `${availableCount} disp.`}
@@ -1165,9 +1153,7 @@ export function BookingModal() {
                                             isDisabled || isFullyBooked
                                               ? 'text-white/20 bg-black/20 opacity-30 cursor-not-allowed'
                                               : isSelected
-                                                ? isTerapias
-                                                  ? 'border border-platinum bg-platinum/10 text-platinum shadow-[0_0_8px_rgba(226,224,216,0.25)] font-bold'
-                                                  : 'border border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.25)] font-bold'
+                                                ? 'border border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.25)] font-bold'
                                                 : 'border border-transparent bg-white/[0.02] hover:border-white/20 text-white/80 hover:text-white cursor-pointer'
                                           }`}
                                         >
@@ -1175,7 +1161,7 @@ export function BookingModal() {
                                           {!isDisabled && !isFullyBooked && (
                                             <span className={`w-1 h-1 rounded-full absolute bottom-1 ${
                                               isSelected
-                                                ? isTerapias ? 'bg-platinum' : 'bg-gold'
+                                                ? 'bg-gold'
                                                 : 'bg-emerald-400/50'
                                             }`} />
                                           )}
@@ -1225,9 +1211,7 @@ export function BookingModal() {
                                           !availability.available
                                             ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
                                             : isSelected
-                                              ? isTerapias
-                                                ? 'border-platinum bg-platinum/10 text-platinum shadow-[0_0_10px_rgba(226,224,216,0.2)]'
-                                                : 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                              ? 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
                                               : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
                                         }`}
                                       >

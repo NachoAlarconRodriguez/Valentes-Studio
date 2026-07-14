@@ -7,7 +7,7 @@ export default function LotusDivider() {
   return (
     <div className="flex items-center w-full space-x-4 my-6 select-none pointer-events-none">
       {/* Left Fading Line */}
-      <div className="h-[1px] flex-grow bg-gradient-to-r from-transparent via-platinum/20 to-platinum/45" />
+      <div className="h-[1px] flex-grow bg-gradient-to-r from-transparent via-gold/20 to-gold/45" />
 
       {/* Lotus Icon with Breathing Animation */}
       <motion.div
@@ -20,7 +20,7 @@ export default function LotusDivider() {
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="text-platinum/85 flex-shrink-0"
+        className="text-gold/85 flex-shrink-0"
       >
         <svg
           width="26"
@@ -46,7 +46,7 @@ export default function LotusDivider() {
       </motion.div>
 
       {/* Right Fading Line */}
-      <div className="h-[1px] flex-grow bg-gradient-to-l from-transparent via-platinum/20 to-platinum/45" />
+      <div className="h-[1px] flex-grow bg-gradient-to-l from-transparent via-gold/20 to-gold/45" />
     </div>
   );
 }
