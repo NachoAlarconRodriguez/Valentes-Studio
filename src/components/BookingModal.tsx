@@ -887,6 +887,7 @@ export function BookingModal() {
                                         src={photo}
                                         alt={specialist.name}
                                         fill
+                                        unoptimized
                                         sizes="56px"
                                         className="object-cover"
                                       />

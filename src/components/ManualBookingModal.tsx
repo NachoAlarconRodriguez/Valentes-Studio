@@ -669,6 +669,7 @@ export function ManualBookingModal({
                             src={selectedSpecialistObj.imageUrl || specialistPhotos[selectedSpecialistObj.id]}
                             alt={selectedSpecialistObj.name}
                             fill
+                            unoptimized
                             sizes="40px"
                             className="object-cover"
                           />
@@ -1081,6 +1082,7 @@ export function ManualBookingModal({
                                     src={sp.imageUrl || specialistPhotos[sp.id]}
                                     alt={sp.name}
                                     fill
+                                    unoptimized
                                     sizes="48px"
                                     className="object-cover"
                                   />

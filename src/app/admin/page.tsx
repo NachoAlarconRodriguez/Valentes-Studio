@@ -3965,6 +3965,7 @@ export default function AdminPage() {
                               src={photo}
                               alt={sp.name}
                               fill
+                              unoptimized
                               sizes="48px"
                               className="object-cover"
                             />
@@ -8026,6 +8027,7 @@ export default function AdminPage() {
                               src={staff.imageUrl}
                               alt={staff.name}
                               fill
+                              unoptimized
                               sizes="(max-width: 768px) 100vw, 30vw"
                               className="object-cover transition-transform duration-700 group-hover:scale-105"
                             />
@@ -8517,6 +8519,7 @@ export default function AdminPage() {
                                   src={staffFormImageUrl}
                                   alt="Preview"
                                   fill
+                                  unoptimized
                                   sizes="64px"
                                   className="object-cover"
                                 />
@@ -8617,6 +8620,7 @@ export default function AdminPage() {
                             src={selectedStaffObj.imageUrl}
                             alt={selectedStaffObj.name}
                             fill
+                            unoptimized
                             sizes="20px"
                             className="object-cover"
                           />
@@ -8661,6 +8665,7 @@ export default function AdminPage() {
                                       src={spec.imageUrl}
                                       alt={spec.name}
                                       fill
+                                      unoptimized
                                       sizes="20px"
                                       className="object-cover"
                                     />

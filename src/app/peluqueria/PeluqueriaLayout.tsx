@@ -737,6 +737,7 @@ export default function PeluqueriaLayout() {
                               src={photo}
                               alt={specialist.name}
                               fill
+                              unoptimized
                               sizes="64px"
                               className="object-cover"
                             />

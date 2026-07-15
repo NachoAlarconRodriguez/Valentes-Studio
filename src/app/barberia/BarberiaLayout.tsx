@@ -792,6 +792,7 @@ export default function BarberiaLayout() {
                               src={specialist.imageUrl || barberPhotos[specialist.id]}
                               alt={specialist.name}
                               fill
+                              unoptimized
                               sizes="(max-width: 768px) 280px, 290px"
                               className={`object-cover ${
                                 specialist.id === 'ba_sp_1783360528525' || specialist.id === 'ba_sp_1783116885397_827'
