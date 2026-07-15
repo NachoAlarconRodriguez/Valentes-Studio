@@ -30,7 +30,7 @@ export function Navbar() {
     { name: 'Inicio', path: '/' },
     { name: 'Barbería', path: '/barberia' },
     { name: 'Peluquería', path: '/peluqueria' },
-    { name: 'Terapias', path: '/terapias' },
+    { name: 'Terapias', path: 'https://www.jeffersonlopes.cl/terapias' },
   ];
 
   const getLinkColors = (path: string) => {
@@ -180,6 +180,8 @@ export function Navbar() {
               const isActive =
                 link.path === '/'
                   ? pathname === '/'
+                  : link.path.startsWith('http')
+                  ? pathname.startsWith('/terapias')
                   : pathname.startsWith(link.path);
               const colors = getLinkColors(link.path);
 
@@ -268,6 +270,8 @@ export function Navbar() {
                   const isActive =
                     link.path === '/'
                       ? pathname === '/'
+                      : link.path.startsWith('http')
+                      ? pathname.startsWith('/terapias')
                       : pathname.startsWith(link.path);
                   const colors = getLinkColors(link.path);
                   const hoverClass = 

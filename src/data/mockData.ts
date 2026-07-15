@@ -382,13 +382,13 @@ export const crossSellingMap: Record<string, { title: string; subtitle: string; 
   barberia: {
     title: "Completa tu Experiencia",
     subtitle: "Añade Sanación a tu Estilo",
-    path: "/terapias",
+    path: "https://www.jeffersonlopes.cl/terapias",
     recommendation: "Te sugerimos complementar tu corte o afeitado con nuestro Masaje Craneal & Aromaterapia de 30 minutos, ideal para aliviar la tensión acumulada."
   },
   peluqueria: {
     title: "Completa tu Experiencia",
     subtitle: "Consiente tus Sentidos",
-    path: "/terapias",
+    path: "https://www.jeffersonlopes.cl/terapias",
     recommendation: "Para elevar el cuidado de tu cabello, te sugerimos nuestro ritual de Alineación de Chakras & Reiki, ideal para balancear tu bienestar interior."
   },
   terapias: {
