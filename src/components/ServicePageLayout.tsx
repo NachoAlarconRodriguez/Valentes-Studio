@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import useContentStore from '@/store/useContentStore';
 import ScissorsDivider from './ScissorsDivider';
 import LotusDivider from './LotusDivider';
+import JsonLd from './SEO/JsonLd';
 
 const HandsCanvas = dynamic(() => import('./HandsCanvas'), {
   ssr: false,
@@ -134,10 +135,31 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
 
   const s = getStyles();
 
+  const schemaData = category === 'terapias' ? {
+    "@context": "https://schema.org",
+    "@type": "DaySpa",
+    "name": "Jefïto Lopês - Terapias Holísticas",
+    "image": "https://santuariodebienestar.cl/terapias-logo-v8.png",
+    "priceRange": "$$$",
+    "telephone": "+56953332492",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Santiago",
+      "addressCountry": "CL"
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "opens": "09:00",
+      "closes": "20:00"
+    }
+  } : null;
+
   return (
     <div className={`w-full pb-8 ${
       category === 'terapias' ? 'space-y-24 md:space-y-36' : 'max-w-7xl mx-auto px-6 pt-0 space-y-24 md:space-y-36'
     }`}>
+      {schemaData && <JsonLd data={schemaData} />}
       
       {/* 1. HEADER SECTION */}
       <section className={`relative w-full flex items-center overflow-hidden ${

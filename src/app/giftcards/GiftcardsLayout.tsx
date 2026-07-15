@@ -120,7 +120,7 @@ export default function GiftcardsLayout() {
       textColor: 'text-[#E2E0D8]',
       buttonBg: 'bg-[#E2E0D8] hover:bg-[#E2E0D8]/90 text-black',
       gradientClip: 'bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent',
-      title: 'JEFITO LOPES'
+      title: 'JEFÏTO LOPÊS'
     }
   };
 

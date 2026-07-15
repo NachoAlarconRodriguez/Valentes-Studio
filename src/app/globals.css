@@ -6,6 +6,7 @@
   --color-bronze: #8A6230;
   --color-brown-dark: #4A2E17;
   --color-platinum: #E2E0D8;
+  --color-white: #F4EFE7;
   
   --color-emerald-principal: #0E6E63;
   --color-emerald-glow: #20B39A;
@@ -110,7 +111,7 @@ canvas {
 }
 
 @utility animate-text-gold-flow {
-  background: linear-gradient(120deg, #FFFFFF 0%, #C89A4B 50%, #FFFFFF 100%);
+  background: linear-gradient(120deg, #F4EFE7 0%, #C89A4B 50%, #F4EFE7 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -265,7 +266,7 @@ canvas {
 }
 
 @utility animate-text-copper-flow {
-  background: linear-gradient(120deg, #FFFFFF 0%, #8A6230 50%, #FFFFFF 100%);
+  background: linear-gradient(120deg, #F4EFE7 0%, #8A6230 50%, #F4EFE7 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -287,7 +288,7 @@ canvas {
 }
 
 @utility animate-text-platinum-flow {
-  background: linear-gradient(120deg, #FFFFFF 0%, #9CA3AF 50%, #FFFFFF 100%);
+  background: linear-gradient(120deg, #F4EFE7 0%, #9CA3AF 50%, #F4EFE7 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;

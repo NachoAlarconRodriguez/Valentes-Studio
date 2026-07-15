@@ -642,7 +642,7 @@ export function BookingModal() {
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
                         src="/terapias-logo-v9.png"
-                        alt="Jefito Lopes Studio Logo"
+                        alt="Jefïto Lopês Studio Logo"
                         fill
                         sizes="64px"
                         className="object-contain"
@@ -650,9 +650,9 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Jefito Lopes
+                        Jefïto Lopês
                       </span>
-                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">JEFITO LOPES</h2>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">JEFÏTO LOPÊS</h2>
                       <h2 className="font-serif text-[10px] tracking-wider text-platinum/80 font-bold mt-1">Cuidamos tu imagen, tu estilo y tu energía</h2>
                     </div>
                   </div>
@@ -706,7 +706,7 @@ export function BookingModal() {
                       ? 'Barbería'
                       : category === 'peluqueria'
                       ? 'Peluquería'
-                      : 'Jefito Lopes • Terapias Holísticas'
+                      : 'Jefïto Lopês • Terapias Holísticas'
                     }
                   </p>
                 </div>

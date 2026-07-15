@@ -158,7 +158,7 @@ export function Navbar() {
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
                     src="/terapias-logo-v9.png"
-                    alt="Jefito Lopes Studio Logo"
+                    alt="Jefïto Lopês Studio Logo"
                     fill
                     sizes="44px"
                     className="object-contain"
@@ -167,7 +167,7 @@ export function Navbar() {
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold bg-gradient-to-r from-white via-gold to-text-secondary bg-clip-text text-transparent transition-all duration-300">
-                    JEFITO LOPES
+                    JEFÏTO LOPÊS
                   </span>
                 </div>
               </>

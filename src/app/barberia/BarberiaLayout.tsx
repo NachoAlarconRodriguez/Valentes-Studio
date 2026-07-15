@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import useContentStore from '@/store/useContentStore';
+import JsonLd from '@/components/SEO/JsonLd';
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -142,8 +143,29 @@ export default function BarberiaLayout() {
     return `${total} min`;
   };
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "BarberShop",
+    "name": "Valentes Studio - Barbería Tradicional",
+    "image": "https://valentes.cl/hands-logo-v4.png",
+    "priceRange": "$$$",
+    "telephone": "+56953332492",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Santiago",
+      "addressCountry": "CL"
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "opens": "09:00",
+      "closes": "20:00"
+    }
+  };
+
   return (
     <div className="bg-[#000000] text-[#F0F0F0] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
+      <JsonLd data={schemaData} />
       <AnimatePresence>
         {showIntro ? (
           <motion.div

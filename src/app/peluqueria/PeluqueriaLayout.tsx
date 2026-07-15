@@ -9,6 +9,7 @@ import { useUIStore } from '@/store/useUIStore';
 import Link from 'next/link';
 import Image from 'next/image';
 import useContentStore from '@/store/useContentStore';
+import JsonLd from '@/components/SEO/JsonLd';
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -224,8 +225,29 @@ export default function PeluqueriaLayout() {
     }
   ];
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "HairSalon",
+    "name": "Alma Bela Studio - Peluquería de Autor",
+    "image": "https://almabela.cl/peluqueria-logo-v4.png",
+    "priceRange": "$$$",
+    "telephone": "+56953332492",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Santiago",
+      "addressCountry": "CL"
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      "opens": "09:00",
+      "closes": "20:00"
+    }
+  };
+
   return (
     <div className="bg-[#0A0A0A] text-[#fdfbf7] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
+      <JsonLd data={schemaData} />
       
       {/* 1. ENTRANCE OVERLAY (COVER SCREEN) */}
       <AnimatePresence>

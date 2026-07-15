@@ -170,6 +170,7 @@ export default function HomePage() {
                 src={barberiaBg}
                 alt="Barbería background"
                 fill
+                priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
@@ -243,6 +244,7 @@ export default function HomePage() {
                 src={peluqueriaBg}
                 alt="Peluquería background"
                 fill
+                priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
@@ -316,6 +318,7 @@ export default function HomePage() {
                 src={terapiasBg}
                 alt="Terapias background"
                 fill
+                priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
                 className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
@@ -330,7 +333,7 @@ export default function HomePage() {
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-[1.52] transition-transform duration-500 select-none pointer-events-none scale-[1.45]">
               <Image
                 src="/terapias-logo-v9.png"
-                alt="Jefito Lopes Studio Logo"
+                alt="Jefïto Lopês Studio Logo"
                 fill
                 sizes="144px"
                 className="object-contain"
