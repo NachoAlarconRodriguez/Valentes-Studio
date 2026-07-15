@@ -43,6 +43,7 @@ export interface Booking {
   giftCardUsed?: string;
   abonoTransferido?: boolean;
   abonoConfirmado?: boolean;
+  metodoPago?: 'efectivo' | 'transferencia' | 'tarjeta' | '';
 }
 
 export interface ClientProfile {
@@ -67,7 +68,7 @@ interface BookingStore {
   fetchBookingsAndClients: () => Promise<void>;
   fetchPublicBookings: () => Promise<void>;
   addBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'channel' | 'status'> & Partial<Pick<Booking, 'channel' | 'status'>>) => Promise<string>;
-  updateBookingStatus: (id: string, status: Booking['status']) => Promise<void>;
+  updateBookingStatus: (id: string, status: Booking['status'], metodoPago?: Booking['metodoPago']) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   updateClientNotes: (phone: string, notes: string) => Promise<void>;
   markAsNotGoodClient: (phone: string) => Promise<void>;
@@ -122,7 +123,8 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         createdAt: b.created_at,
         giftCardUsed: b.gift_card_used,
         abonoTransferido: b.abono_transferido || false,
-        abonoConfirmado: b.abono_confirmado || false
+        abonoConfirmado: b.abono_confirmado || false,
+        metodoPago: b.metodo_pago || ''
       }));
 
       const clients: ClientProfile[] = (dbClients || []).map((c: any) => {
@@ -421,17 +423,22 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     return randomCode;
   },
 
-  updateBookingStatus: async (id, status) => {
+  updateBookingStatus: async (id, status, metodoPago?: Booking['metodoPago']) => {
     try {
+      const updateData: any = { status };
+      if (status === 'completado' && metodoPago) {
+        updateData.metodo_pago = metodoPago;
+      }
+
       const { error } = await supabase
         .from('bookings')
-        .update({ status })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
 
       set((state) => ({
-        bookings: state.bookings.map(b => b.id === id ? { ...b, status } : b)
+        bookings: state.bookings.map(b => b.id === id ? { ...b, status, metodoPago: metodoPago || b.metodoPago } : b)
       }));
     } catch (err) {
       console.error('Error updating booking status:', err);

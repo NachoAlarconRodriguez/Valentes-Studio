@@ -33,12 +33,15 @@ import {
   ChevronDown,
   TrendingUp,
   DollarSign,
+  CreditCard,
+  ArrowLeftRight,
   Monitor,
   Undo2,
   Redo2,
   Camera,
   X,
   AlertCircle,
+  AlertTriangle,
   Gift,
   UploadCloud,
   Maximize2,
@@ -1023,6 +1026,21 @@ export default function AdminPage() {
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
   const [prefillTime, setPrefillTime] = useState<string | undefined>(undefined);
 
+  // States for past unmanaged bookings (only for admin)
+  const [isUnmanagedModalOpen, setIsUnmanagedModalOpen] = useState(false);
+  const [selectedUnmanagedBooking, setSelectedUnmanagedBooking] = useState<any | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta'>('efectivo');
+
+  // Checkout Modal State
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean;
+    booking: any | null;
+  }>({
+    isOpen: false,
+    booking: null
+  });
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta'>('efectivo');
+
   // Agenda Filter States
   const [agendaViewMode, setAgendaViewMode] = useState<'hoy' | 'manana' | 'semana' | 'prox_semana' | 'fecha'>('hoy');
   const [agendaCustomDate, setAgendaCustomDate] = useState(() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; });
@@ -1119,6 +1137,7 @@ export default function AdminPage() {
     confirmDeposit
   } = useBookingStore();
   const { content, updateContent } = useContentStore();
+  const isAdmin = currentUser?.profileType === 'admin';
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
 
   // Poll and auto-refresh bookings & schedule availability in the background and on focus
@@ -2182,6 +2201,25 @@ export default function AdminPage() {
     const [h, m] = tStr.split(':').map(Number);
     return h * 60 + (m || 0);
   };
+
+  // Past unmanaged bookings for the administrator
+  const unmanagedBookings = bookings.filter(b => {
+    if (b.status === 'bloqueado' || b.status === 'cancelado' || b.status === 'completado' || b.status === 'no_llego') return false;
+    if (!nowState) return false;
+    
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+    
+    if (b.date < todayStr) return true;
+    if (b.date > todayStr) return false;
+    
+    const slotMins = localTimeToMinutes(b.time);
+    const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
+    return slotMins < currentMins;
+  });
 
   const isSlotWithinWorkShift = (specialistId: string, dateStr: string, slotTime: string) => {
     const specialistShifts = workShifts[specialistId];
@@ -4049,24 +4087,36 @@ export default function AdminPage() {
                   </span>
                 </div>
                 
-                <button
-                  onClick={() => {
-                    setPrefillSpecialistId(undefined);
-                    setPrefillDate(targetDate);
-                    setPrefillTime(undefined);
-                    setIsManualBookingOpen(true);
-                  }}
-                  className={`text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-1.5 cursor-pointer shadow-lg hover:scale-105 ${
-                    activeBusinessTab === 'barberia'
-                      ? 'bg-gold hover:bg-[#b08732] text-black shadow-gold/5'
-                      : activeBusinessTab === 'peluqueria'
-                      ? 'bg-[#CD7F32] hover:bg-[#b56b24] text-black shadow-bronze/5'
-                      : 'bg-[#E2E0D8] hover:bg-[#c4c2ba] text-black shadow-platinum/5'
-                  }`}
-                >
-                  <Plus size={11} strokeWidth={3} />
-                  <span>Nueva Reserva</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  {currentUser?.profileType === 'admin' && unmanagedBookings.length > 0 && (
+                    <button
+                      onClick={() => setIsUnmanagedModalOpen(true)}
+                      className="text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 flex items-center space-x-1.5 cursor-pointer shadow-lg animate-pulse"
+                    >
+                      <AlertTriangle size={11} className="text-amber-400" />
+                      <span>{unmanagedBookings.length} Sin Gestionar</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setPrefillSpecialistId(undefined);
+                      setPrefillDate(targetDate);
+                      setPrefillTime(undefined);
+                      setIsManualBookingOpen(true);
+                    }}
+                    className={`text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-1.5 cursor-pointer shadow-lg hover:scale-105 ${
+                      activeBusinessTab === 'barberia'
+                        ? 'bg-gold hover:bg-[#b08732] text-black shadow-gold/5'
+                        : activeBusinessTab === 'peluqueria'
+                        ? 'bg-[#CD7F32] hover:bg-[#b56b24] text-black shadow-bronze/5'
+                        : 'bg-[#E2E0D8] hover:bg-[#c4c2ba] text-black shadow-platinum/5'
+                    }`}
+                  >
+                    <Plus size={11} strokeWidth={3} />
+                    <span>Nueva Reserva</span>
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -4441,87 +4491,90 @@ export default function AdminPage() {
                                                     )}
 
                                                     {isUpcoming ? (
-                                                      <button
-                                                        disabled={isPast}
-                                                        onClick={() => {
-                                                          setConfirmModal({
-                                                            isOpen: true,
-                                                            title: '¿Cancelar esta reserva?',
-                                                            message: `Se liberará el espacio y se enviará un correo electrónico de cancelación a ${booking.clientName}.`,
-                                                            confirmText: 'Sí, Cancelar',
-                                                            confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
-                                                            onConfirm: () => handleCancelBookingAction(booking)
-                                                          });
-                                                        }}
-                                                        className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
-                                                      >
-                                                        Cancelar Cita
-                                                      </button>
-                                                    ) : (
-                                                      /* Cita en hora o pasada, sin resolver */
-                                                      <>
-                                                        {booking.status !== 'en_proceso' ? (
-                                                          <button
-                                                            disabled={isPast || hasIncompleteBefore}
-                                                            onClick={() => {
-                                                              updateBookingStatus(booking.id, 'en_proceso');
-                                                              triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
-                                                            }}
-                                                            className={`w-full py-2.5 text-[10px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
-                                                              isPast || hasIncompleteBefore
-                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                                : activeBusinessTab === 'barberia'
-                                                                ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer shadow-md'
-                                                                : activeBusinessTab === 'peluqueria'
-                                                                ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer shadow-md'
-                                                                : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer shadow-md'
-                                                            }`}
-                                                            title={hasIncompleteBefore ? "Cierra la atención actual para iniciar la siguiente" : "Iniciar atención"}
-                                                          >
-                                                            {hasIncompleteBefore ? 'Iniciar (Bloqueado)' : 'Iniciar'}
-                                                          </button>
-                                                        ) : (
-                                                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-xl select-none w-full text-center animate-pulse">
-                                                            Atendiendo Cita...
-                                                          </span>
-                                                        )}
-                                                        <div className="grid grid-cols-2 gap-2 w-full">
-                                                          <button
-                                                            disabled={isPast || hasIncompleteBefore}
-                                                            onClick={() => {
-                                                              updateBookingStatus(booking.id, 'completado');
-                                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
-                                                            }}
-                                                            className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
-                                                              isPast || hasIncompleteBefore
-                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
-                                                            }`}
-                                                          >
-                                                            Pagado
-                                                          </button>
-                                                          <button
-                                                            disabled={isPast || hasIncompleteBefore}
-                                                            onClick={() => {
-                                                              setConfirmModal({
-                                                                isOpen: true,
-                                                                title: '¿Registrar inasistencia?',
-                                                                message: `Se marcará la cita como "No asistió" y se acumulará en el historial del cliente ${booking.clientName}.`,
-                                                                confirmText: 'Sí, Registrar',
-                                                                confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
-                                                                onConfirm: () => handleNoShowBookingAction(booking)
-                                                              });
-                                                            }}
-                                                            className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
-                                                              isPast || hasIncompleteBefore
-                                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                                                : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
-                                                            }`}
-                                                          >
-                                                            No llegó
-                                                          </button>
-                                                        </div>
-                                                      </>
+                                                       <button
+                                                         disabled={!isAdmin && isPast}
+                                                         onClick={() => {
+                                                           setConfirmModal({
+                                                             isOpen: true,
+                                                             title: '¿Cancelar esta reserva?',
+                                                             message: `Se liberará el espacio y se enviará un correo electrónico de cancelación a ${booking.clientName}.`,
+                                                             confirmText: 'Sí, Cancelar',
+                                                             confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                                             onConfirm: () => handleCancelBookingAction(booking)
+                                                           });
+                                                         }}
+                                                         className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                                                       >
+                                                         Cancelar Cita
+                                                       </button>
+                                                     ) : (
+                                                       /* Cita en hora o pasada, sin resolver */
+                                                       <>
+                                                         {booking.status !== 'en_proceso' ? (
+                                                           <button
+                                                             disabled={(!isAdmin && isPast) || hasIncompleteBefore}
+                                                             onClick={() => {
+                                                               updateBookingStatus(booking.id, 'en_proceso');
+                                                               triggerNotification(`Servicio para ${booking.clientName} iniciado.`);
+                                                             }}
+                                                             className={`w-full py-2.5 text-[10px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                               (!isAdmin && isPast) || hasIncompleteBefore
+                                                                 ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                 : activeBusinessTab === 'barberia'
+                                                                 ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer shadow-md'
+                                                                 : activeBusinessTab === 'peluqueria'
+                                                                 ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer shadow-md'
+                                                                 : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer shadow-md'
+                                                             }`}
+                                                             title={hasIncompleteBefore ? "Cierra la atención actual para iniciar la siguiente" : "Iniciar atención"}
+                                                           >
+                                                             {hasIncompleteBefore ? 'Iniciar (Bloqueado)' : 'Iniciar'}
+                                                           </button>
+                                                         ) : (
+                                                           <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-xl select-none w-full text-center animate-pulse">
+                                                             Atendiendo Cita...
+                                                           </span>
+                                                         )}
+                                                         <div className="grid grid-cols-2 gap-2 w-full">
+                                                           <button
+                                                             disabled={(!isAdmin && isPast) || hasIncompleteBefore}
+                                                             onClick={() => {
+                                                               setCheckoutPaymentMethod('efectivo');
+                                                               setCheckoutModal({
+                                                                 isOpen: true,
+                                                                 booking: booking
+                                                               });
+                                                             }}
+                                                             className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                               (!isAdmin && isPast) || hasIncompleteBefore
+                                                                 ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
+                                                             }`}
+                                                           >
+                                                             Pagado
+                                                           </button>
+                                                           <button
+                                                             disabled={(!isAdmin && isPast) || hasIncompleteBefore}
+                                                             onClick={() => {
+                                                               setConfirmModal({
+                                                                 isOpen: true,
+                                                                 title: '¿Registrar inasistencia?',
+                                                                 message: `Se marcará la cita como "No asistió" y se acumulará en el historial del cliente ${booking.clientName}.`,
+                                                                 confirmText: 'Sí, Registrar',
+                                                                 confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                                                 onConfirm: () => handleNoShowBookingAction(booking)
+                                                               });
+                                                             }}
+                                                             className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
+                                                               (!isAdmin && isPast) || hasIncompleteBefore
+                                                                 ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                                 : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
+                                                             }`}
+                                                           >
+                                                             No llegó
+                                                           </button>
+                                                         </div>
+                                                       </>
                                                     )}
                                                   </div>
                                                 )}
@@ -4852,8 +4905,11 @@ export default function AdminPage() {
                                         {computedStatus === 'En Proceso' && (
                                           <button
                                             onClick={() => {
-                                              updateBookingStatus(booking.id, 'completado');
-                                              triggerNotification(`Servicio para ${booking.clientName} cobrado y completado.`);
+                                              setCheckoutPaymentMethod('efectivo');
+                                              setCheckoutModal({
+                                                isOpen: true,
+                                                booking: booking
+                                              });
                                             }}
                                             className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20 transition-all cursor-pointer"
                                           >
@@ -10043,6 +10099,313 @@ export default function AdminPage() {
               >
                 Cerrar Ventana
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE RESERVAS SIN GESTIONAR */}
+      <AnimatePresence>
+        {isUnmanagedModalOpen && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsUnmanagedModalOpen(false);
+                setSelectedUnmanagedBooking(null);
+              }}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl z-10 flex flex-col max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="px-8 py-6 bg-white/[0.01] border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                    <AlertTriangle size={18} className="animate-pulse" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-serif text-lg text-white font-medium">Reservas Pasadas Sin Gestionar</h3>
+                    <p className="text-[10px] text-text-secondary">Citas que los especialistas no iniciaron ni completaron a tiempo.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsUnmanagedModalOpen(false);
+                    setSelectedUnmanagedBooking(null);
+                  }}
+                  className="p-2 text-text-secondary hover:text-white transition-colors rounded-full hover:bg-white/5"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                {unmanagedBookings.length === 0 ? (
+                  <div className="py-12 text-center text-text-secondary/60 italic font-light space-y-2">
+                    <Check size={28} className="text-emerald-500 mx-auto opacity-80" />
+                    <p>No tienes reservas pasadas pendientes de gestión.</p>
+                    <p className="text-[10px]">¡Todas las citas han sido cerradas a tiempo!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Booking list */}
+                    <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                      {unmanagedBookings.map((b) => {
+                        const isSelected = selectedUnmanagedBooking?.id === b.id;
+                        return (
+                          <div
+                            key={b.id}
+                            onClick={() => setSelectedUnmanagedBooking(b)}
+                            className={`p-4 rounded-2xl border text-left cursor-pointer transition-all duration-300 ${
+                              isSelected
+                                ? 'border-amber-500 bg-amber-500/[0.03] shadow-md shadow-amber-900/5'
+                                : 'border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.02]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[8px] font-mono text-text-secondary uppercase">{b.id}</span>
+                              <span className="text-[9px] uppercase font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/15">
+                                {b.status === 'en_proceso' ? 'En Proceso' : 'Reservado'}
+                              </span>
+                            </div>
+                            <div className="font-bold text-white text-xs mb-1">{b.clientName}</div>
+                            <div className="text-[10px] text-white/80 font-medium mb-2">{b.serviceName} ({b.price})</div>
+                            <div className="grid grid-cols-2 gap-2 text-[9px] text-text-secondary border-t border-white/5 pt-2 font-mono">
+                              <div>📅 {formatDateToDMY(b.date)}</div>
+                              <div>⏰ {b.time} hrs</div>
+                              <div className="col-span-2">👤 Especialista: {b.specialistName}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Action Form for selected booking */}
+                    <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                      {selectedUnmanagedBooking ? (
+                        <div className="space-y-6 text-left h-full flex flex-col justify-between">
+                          <div className="space-y-4">
+                            <div>
+                              <span className="text-[8px] uppercase tracking-[0.2em] text-gold font-bold block mb-1">Cita Seleccionada</span>
+                              <h4 className="font-semibold text-white text-sm">{selectedUnmanagedBooking.clientName}</h4>
+                              <p className="text-[10px] text-text-secondary">{selectedUnmanagedBooking.serviceName} • {selectedUnmanagedBooking.price}</p>
+                            </div>
+
+                            {/* Payment Method Selector */}
+                            <div className="space-y-2">
+                              <label className="block text-[9px] uppercase tracking-wider text-gold font-bold">Seleccionar Forma de Pago</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {(['efectivo', 'transferencia', 'tarjeta'] as const).map((method) => {
+                                  const isSel = selectedPaymentMethod === method;
+                                  return (
+                                    <button
+                                      key={method}
+                                      type="button"
+                                      onClick={() => setSelectedPaymentMethod(method)}
+                                      className={`py-2 px-1 text-[9px] uppercase tracking-wider font-bold rounded-lg border transition-all duration-300 cursor-pointer ${
+                                        isSel
+                                          ? 'bg-amber-500/20 border-amber-500 text-amber-400 shadow-md shadow-amber-900/5'
+                                          : 'bg-black/40 border-white/10 text-white/60 hover:text-white hover:border-white/20'
+                                      }`}
+                                    >
+                                      {method === 'efectivo' ? 'Efectivo' : method === 'transferencia' ? 'Transfer' : 'Tarjeta'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] text-text-secondary leading-relaxed bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                              💡 <strong>Nota del Administrador:</strong> Al registrar el pago o inasistencia, esta cita se dará por finalizada en el sistema. Se liberarán las citas siguientes de <strong>{selectedUnmanagedBooking.specialistName}</strong>.
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5 pt-4 border-t border-white/5 mt-auto">
+                            <button
+                              onClick={async () => {
+                                await updateBookingStatus(selectedUnmanagedBooking.id, 'completado', selectedPaymentMethod);
+                                triggerNotification(`Cita de ${selectedUnmanagedBooking.clientName} cobrada con ${selectedPaymentMethod.toUpperCase()} y finalizada.`);
+                                setSelectedUnmanagedBooking(null);
+                                // If list is empty, close modal
+                                if (unmanagedBookings.length <= 1) {
+                                  setIsUnmanagedModalOpen(false);
+                                }
+                              }}
+                              className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                            >
+                              Finalizar y Cobrar
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={async () => {
+                                  await updateBookingStatus(selectedUnmanagedBooking.id, 'no_llego');
+                                  if (selectedUnmanagedBooking.clientPhone && selectedUnmanagedBooking.clientPhone !== '-') {
+                                    await incrementClientNoShows(selectedUnmanagedBooking.clientPhone);
+                                  }
+                                  triggerNotification(`Inasistencia registrada para ${selectedUnmanagedBooking.clientName}.`);
+                                  setSelectedUnmanagedBooking(null);
+                                  if (unmanagedBookings.length <= 1) {
+                                    setIsUnmanagedModalOpen(false);
+                                  }
+                                }}
+                                className="py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center font-semibold"
+                              >
+                                No Asistió
+                              </button>
+
+                              <button
+                                onClick={async () => {
+                                  await updateBookingStatus(selectedUnmanagedBooking.id, 'cancelado');
+                                  if (selectedUnmanagedBooking.clientPhone && selectedUnmanagedBooking.clientPhone !== '-') {
+                                    await incrementClientCancellations(selectedUnmanagedBooking.clientPhone);
+                                  }
+                                  triggerNotification(`Cita de ${selectedUnmanagedBooking.clientName} cancelada.`);
+                                  setSelectedUnmanagedBooking(null);
+                                  if (unmanagedBookings.length <= 1) {
+                                    setIsUnmanagedModalOpen(false);
+                                  }
+                                }}
+                                className="py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center font-semibold"
+                              >
+                                Cancelar Cita
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-text-secondary/60 italic font-light p-8">
+                          <AlertCircle size={20} className="mb-2 opacity-55 text-amber-400/80" />
+                          <p className="text-xs">Selecciona una cita del listado de la izquierda para gestionarla.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CHECKOUT MODAL (PAYMENT METHOD SELECTOR) */}
+      <AnimatePresence>
+        {checkoutModal.isOpen && checkoutModal.booking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-[#0c0c0c] border border-white/5 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden text-text-primary"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold tracking-wide text-text-primary">Finalizar y Cobrar</h3>
+                    <p className="text-[10px] text-text-secondary">Selecciona el método de pago del cliente</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCheckoutModal({ isOpen: false, booking: null })}
+                  className="p-1.5 hover:bg-white/5 text-text-secondary hover:text-text-primary rounded-lg transition-all cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Service Details Card */}
+              <div className="bg-[#121212] border border-white/5 rounded-xl p-4 mb-5 space-y-2.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Cliente</h4>
+                    <p className="text-xs font-semibold text-text-primary">{checkoutModal.booking.clientName}</p>
+                    <p className="text-[10px] text-text-secondary">{checkoutModal.booking.clientPhone}</p>
+                  </div>
+                  <div className="text-right">
+                    <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Total a Pagar</h4>
+                    <p className="text-sm font-bold text-emerald-400">{checkoutModal.booking.price}</p>
+                  </div>
+                </div>
+
+                <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2 text-[10px]">
+                  <div>
+                    <span className="text-text-secondary">Servicio:</span>
+                    <p className="font-medium text-text-primary truncate">{checkoutModal.booking.serviceName}</p>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Especialista:</span>
+                    <p className="font-medium text-text-primary">{checkoutModal.booking.specialistName}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-3 mb-6">
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Forma de Pago</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['efectivo', 'transferencia', 'tarjeta'] as const).map((method) => {
+                    const isSelected = checkoutPaymentMethod === method;
+                    let icon = <DollarSign size={18} />;
+                    if (method === 'transferencia') icon = <ArrowLeftRight size={18} />;
+                    if (method === 'tarjeta') icon = <CreditCard size={18} />;
+
+                    return (
+                      <button
+                        key={method}
+                        onClick={() => setCheckoutPaymentMethod(method)}
+                        className={`p-3.5 flex flex-col items-center justify-center space-y-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/5'
+                            : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <div className={isSelected ? 'text-emerald-400' : 'text-text-secondary'}>
+                          {icon}
+                        </div>
+                        <span>
+                          {method === 'efectivo' ? 'Efectivo' : method === 'transferencia' ? 'Transfer' : 'Tarjeta'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setCheckoutModal({ isOpen: false, booking: null })}
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-text-secondary hover:text-text-primary text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={async () => {
+                    await updateBookingStatus(checkoutModal.booking.id, 'completado', checkoutPaymentMethod);
+                    triggerNotification(`Servicio para ${checkoutModal.booking.clientName} cobrado con ${checkoutPaymentMethod.toUpperCase()} y completado.`);
+                    setCheckoutModal({ isOpen: false, booking: null });
+                  }}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow-lg shadow-emerald-950/20"
+                >
+                  Confirmar Pago
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
