@@ -306,6 +306,23 @@ export function BookingModal() {
     return checkTimeSlotAvailabilityForDate(date, slotTime);
   };
 
+  const countAvailableSlots = (checkDate: string) => {
+    const slots = category === 'barberia'
+      ? [
+          '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+          '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+          '19:00', '20:00'
+        ]
+      : [
+          '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+          '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+          '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+          '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+          '19:00', '19:30', '20:00'
+        ];
+    return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
+  };
+
   // Clear date and time when service or specialist changes so we recalculate the nearest available slot
   useEffect(() => {
     setDate('');
@@ -322,11 +339,19 @@ export function BookingModal() {
         return;
       }
 
-      const timeSlots = [
-        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-        '19:00', '20:00'
-      ];
+      const timeSlots = category === 'barberia'
+        ? [
+            '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+            '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+            '19:00', '20:00'
+          ]
+        : [
+            '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+            '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+            '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+            '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+            '19:00', '19:30', '20:00'
+          ];
       
       // Search the next 30 days
       for (let offset = 0; offset < 30; offset++) {
@@ -993,15 +1018,6 @@ export function BookingModal() {
                                         displayDate: `${dayOfMonth} ${month}`,
                                       });
                                     }
-
-                                    const countAvailableSlots = (checkDate: string) => {
-                                      const slots = [
-                                        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-                                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-                                        '19:00', '20:00'
-                                      ];
-                                      return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
-                                    };
                                     
                                     return days.map((d) => {
                                       const isSelected = date === d.date;
@@ -1115,15 +1131,6 @@ export function BookingModal() {
                                       const checkD = new Date(d);
                                       checkD.setHours(0, 0, 0, 0);
                                       return checkD < today || checkD > maxDate;
-                                    };
-
-                                    const countAvailableSlots = (checkDate: string) => {
-                                      const slots = [
-                                        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-                                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-                                        '19:00', '20:00'
-                                      ];
-                                      return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
                                     };
 
                                     return grid.map((d, index) => {

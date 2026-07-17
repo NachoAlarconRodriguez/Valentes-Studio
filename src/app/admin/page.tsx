@@ -2257,7 +2257,8 @@ export default function AdminPage() {
     if (!dayShift || !dayShift.isActive) return false;
     
     const slotStart = localTimeToMinutes(slotTime);
-    const slotEnd = slotStart + 60;
+    const step = activeBusinessTab === 'barberia' ? 60 : 30;
+    const slotEnd = slotStart + step;
     
     const shiftStart = localTimeToMinutes(dayShift.startTime);
     const shiftEnd = localTimeToMinutes(dayShift.endTime);
@@ -2316,17 +2317,21 @@ export default function AdminPage() {
       }
     });
 
-    minMins = Math.floor(minMins / 60) * 60;
-    maxMins = Math.ceil(maxMins / 60) * 60;
+    const step = activeBusinessTab === 'barberia' ? 60 : 30;
+
+    minMins = Math.floor(minMins / step) * step;
+    maxMins = Math.ceil(maxMins / step) * step;
 
     const slots: string[] = [];
-    for (let m = minMins; m < maxMins; m += 60) {
+    for (let m = minMins; m < maxMins; m += step) {
       const hh = String(Math.floor(m / 60)).padStart(2, '0');
       const mm = String(m % 60).padStart(2, '0');
       slots.push(`${hh}:${mm}`);
     }
     
-    return slots.length > 0 ? slots : ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    return slots.length > 0 ? slots : (step === 30
+      ? ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00']
+      : ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']);
   })();
 
   const gridRows: { time: string; specialist: typeof specialistsInUnit[0]; booking: any | null }[] = [];
@@ -2334,9 +2339,10 @@ export default function AdminPage() {
   if (isSingleDayMode) {
     timeSlots.forEach((slot, slotIndex) => {
       const currentSlotMin = localTimeToMinutes(slot);
+      const step = activeBusinessTab === 'barberia' ? 60 : 30;
       const nextSlotMin = slotIndex < timeSlots.length - 1 
         ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
-        : currentSlotMin + 60;
+        : currentSlotMin + step;
 
       specialistsForView.forEach(sp => {
         const matchedBooking = filteredBookings.find(b => {
@@ -4224,7 +4230,7 @@ export default function AdminPage() {
                                   ? localTimeToMinutes(timeSlots[slotIndex + 1]) 
                                   : currentSlotMin + 30;
 
-                                const booking = filteredBookings.find(b => {
+                                const cellBookings = filteredBookings.filter(b => {
                                   if (b.date !== targetDate) return false;
                                   if (b.specialistName.trim().toLowerCase() !== specialist.name.trim().toLowerCase()) return false;
                                   
@@ -4240,6 +4246,8 @@ export default function AdminPage() {
 
                                   return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
                                 });
+
+                                const booking = cellBookings.find(b => b.status !== 'no_llego') || cellBookings.find(b => b.status === 'no_llego');
 
                                 const isPast = (() => {
                                   if (!nowState) return false;
@@ -4323,7 +4331,7 @@ export default function AdminPage() {
                                     <td
                                       key={`${specialist.id}-${time}`}
                                       rowSpan={rowSpan}
-                                      style={{ height: '1px' }}
+                                      style={{ height: '100%' }}
                                       onMouseEnter={() => setHoveredBookingId(booking.id)}
                                       onMouseLeave={() => setHoveredBookingId(null)}
                                       className={`py-4 px-4 w-[250px] align-top transition-all duration-200 h-full ${
@@ -4477,9 +4485,24 @@ export default function AdminPage() {
                                                     Reserva Cancelada
                                                   </span>
                                                 ) : booking.status === 'no_llego' ? (
-                                                  <span className="text-[9px] font-bold text-amber-500/60 bg-amber-500/5 border border-amber-500/10 px-3 py-1 rounded-xl select-none w-full text-center">
-                                                    No se presentó
-                                                  </span>
+                                                  <div className="flex flex-col gap-2 w-full">
+                                                    <span className="text-[9px] font-bold text-amber-500/60 bg-amber-500/5 border border-amber-500/10 px-3 py-1.5 rounded-xl select-none w-full text-center">
+                                                      No se presentó
+                                                    </span>
+                                                    {!isPast && (
+                                                      <button
+                                                        onClick={() => {
+                                                          setPrefillSpecialistId(specialist.id);
+                                                          setPrefillDate(targetDate);
+                                                          setPrefillTime(time);
+                                                          setIsManualBookingOpen(true);
+                                                        }}
+                                                        className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                                                      >
+                                                        Agendar nuevo
+                                                      </button>
+                                                    )}
+                                                  </div>
                                                 ) : booking.status === 'completado' ? (
                                                   <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1 rounded-xl select-none w-full text-center">
                                                     Servicio Pagado

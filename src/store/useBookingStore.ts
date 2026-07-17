@@ -229,7 +229,9 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         .select('id, time, service_name')
         .eq('date', bookingData.date)
         .eq('specialist_name', bookingData.specialistName)
-        .neq('status', 'bloqueado');
+        .neq('status', 'bloqueado')
+        .neq('status', 'cancelado')
+        .neq('status', 'no_llego');
 
       if (checkErr) throw checkErr;
 
