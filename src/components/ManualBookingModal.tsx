@@ -66,6 +66,7 @@ interface ManualBookingModalProps {
   defaultDate?: string;
   defaultTime?: string;
   onBookingCreated?: (code: string) => void;
+  currentUser?: any | null;
 }
 
 export function ManualBookingModal({ 
@@ -75,7 +76,8 @@ export function ManualBookingModal({
   defaultSpecialistId, 
   defaultDate, 
   defaultTime, 
-  onBookingCreated 
+  onBookingCreated,
+  currentUser
 }: ManualBookingModalProps) {
   const { clients, addBooking } = useBookingStore();
   const { servicesData } = useServicesStore();
@@ -172,7 +174,9 @@ export function ManualBookingModal({
       setGiftCardError('');
       setGiftCardSuccess('');
       setForceBooking(false);
-      if (defaultSpecialistId) {
+      if (currentUser && currentUser.profileType !== 'admin') {
+        setSpecialistId(currentUser.id);
+      } else if (defaultSpecialistId) {
         setSpecialistId(defaultSpecialistId);
       } else {
         setSpecialistId('');
@@ -224,7 +228,7 @@ export function ManualBookingModal({
         setTime('');
       }
     }
-  }, [isOpen, defaultCategory, defaultSpecialistId, defaultDate, defaultTime, workShifts]);
+  }, [isOpen, defaultCategory, defaultSpecialistId, defaultDate, defaultTime, workShifts, currentUser]);
 
   // Handle client name typeahead suggestions
   useEffect(() => {
@@ -321,7 +325,13 @@ export function ManualBookingModal({
 
   // Lists based on category
   const rawServicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
-  const rawSpecialistsList = servicesData[category]?.specialists || [];
+  const rawSpecialistsList = (() => {
+    const list = servicesData[category]?.specialists || [];
+    if (currentUser && currentUser.profileType !== 'admin') {
+      return list.filter(sp => sp.id === currentUser.id || sp.email.toLowerCase() === currentUser.email.toLowerCase());
+    }
+    return list;
+  })();
 
   const selectedServiceObj = rawServicesList.find(s => s.id === serviceId);
   const selectedSpecialistObj = rawSpecialistsList.find(sp => sp.id === specialistId);
@@ -1071,18 +1081,20 @@ export function ManualBookingModal({
                       </label>
                       <div className="flex flex-wrap gap-3 py-1">
                         {/* Option: Cualquiera */}
-                        <button
-                          type="button"
-                          onClick={() => setSpecialistId('')}
-                          className={`flex flex-col items-center space-y-1 focus:outline-none transition-all duration-300 ${
-                            specialistId === '' ? 'scale-105' : 'opacity-60 hover:opacity-100'
-                          }`}
-                        >
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-[#0a0a0a]`} style={{ borderColor: specialistId === '' ? themeGold : 'rgba(255,255,255,0.1)' }}>
-                            <Sparkles size={16} className={textGoldClass} />
-                          </div>
-                          <span className="text-[9px] tracking-wider text-text-secondary uppercase">Cualquiera</span>
-                        </button>
+                        {(!currentUser || currentUser.profileType === 'admin') && (
+                          <button
+                            type="button"
+                            onClick={() => setSpecialistId('')}
+                            className={`flex flex-col items-center space-y-1 focus:outline-none transition-all duration-300 ${
+                              specialistId === '' ? 'scale-105' : 'opacity-60 hover:opacity-100'
+                            }`}
+                          >
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-[#0a0a0a]`} style={{ borderColor: specialistId === '' ? themeGold : 'rgba(255,255,255,0.1)' }}>
+                              <Sparkles size={16} className={textGoldClass} />
+                            </div>
+                            <span className="text-[9px] tracking-wider text-text-secondary uppercase">Cualquiera</span>
+                          </button>
+                        )}
 
                         {/* Specialists matching category */}
                         {specialistsList.map((sp) => {
