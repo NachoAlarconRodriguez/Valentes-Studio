@@ -454,8 +454,26 @@ export default function AdminPage() {
   const [hoveredBookingId, setHoveredBookingId] = useState<string | null>(null);
 
   useEffect(() => {
-    setNowState(new Date());
-    const timer = setInterval(() => setNowState(new Date()), 30000);
+    let skew = 0;
+    const syncTime = async () => {
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/time');
+        const data = await res.json();
+        const latency = (Date.now() - start) / 2;
+        skew = (data.serverTime + latency) - Date.now();
+        setNowState(new Date(Date.now() + skew));
+      } catch (err) {
+        console.error('Error syncing server time:', err);
+        setNowState(new Date());
+      }
+    };
+
+    syncTime();
+
+    const timer = setInterval(() => {
+      setNowState(new Date(Date.now() + skew));
+    }, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -2207,7 +2225,7 @@ export default function AdminPage() {
     if (b.status === 'bloqueado' || b.status === 'cancelado' || b.status === 'completado' || b.status === 'no_llego') return false;
     if (!nowState) return false;
     
-    const today = new Date();
+    const today = nowState;
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
@@ -2218,7 +2236,7 @@ export default function AdminPage() {
     
     const slotMins = localTimeToMinutes(b.time);
     const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
-    return slotMins < currentMins;
+    return (slotMins + 30) < currentMins;
   });
 
   const isSlotWithinWorkShift = (specialistId: string, dateStr: string, slotTime: string) => {
@@ -4225,7 +4243,7 @@ export default function AdminPage() {
 
                                 const isPast = (() => {
                                   if (!nowState) return false;
-                                  const today = new Date();
+                                  const today = nowState;
                                   const y = today.getFullYear();
                                   const m = String(today.getMonth() + 1).padStart(2, '0');
                                   const d = String(today.getDate()).padStart(2, '0');
@@ -4236,7 +4254,7 @@ export default function AdminPage() {
                                   
                                   const slotMins = localTimeToMinutes(time);
                                   const currentMins = nowState.getHours() * 60 + nowState.getMinutes();
-                                  return slotMins < currentMins;
+                                  return (slotMins + 30) < currentMins;
                                 })();
 
                                 if (booking) {

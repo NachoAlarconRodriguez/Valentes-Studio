@@ -134,6 +134,26 @@ export function ManualBookingModal({
   const [giftCardError, setGiftCardError] = useState('');
   const [giftCardSuccess, setGiftCardSuccess] = useState('');
 
+  const [timeSkew, setTimeSkew] = useState<number>(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      const syncTime = async () => {
+        try {
+          const start = Date.now();
+          const res = await fetch('/api/time');
+          const data = await res.json();
+          const latency = (Date.now() - start) / 2;
+          const skew = (data.serverTime + latency) - Date.now();
+          setTimeSkew(skew);
+        } catch (err) {
+          console.error('Error syncing time in modal:', err);
+        }
+      };
+      syncTime();
+    }
+  }, [isOpen]);
+
   // Set default form values when modal opens or defaults change
   useEffect(() => {
     if (isOpen) {
@@ -316,7 +336,7 @@ export function ManualBookingModal({
     : rawSpecialistsList;
 
   const getFormattedDate = (daysOffset = 0) => {
-    const d = new Date();
+    const d = new Date(Date.now() + timeSkew);
     d.setDate(d.getDate() + daysOffset);
     // Use local date components to avoid UTC offset shifting the day (e.g. in Chile UTC-3/-4)
     const year = d.getFullYear();
@@ -333,7 +353,7 @@ export function ManualBookingModal({
     
     // Check if slot is in the past
     const isPast = (() => {
-      const today = new Date();
+      const today = new Date(Date.now() + timeSkew);
       const y = today.getFullYear();
       const m = String(today.getMonth() + 1).padStart(2, '0');
       const d = String(today.getDate()).padStart(2, '0');
@@ -349,7 +369,7 @@ export function ManualBookingModal({
       
       const slotMins = timeToMinutes(slotTime);
       const currentMins = today.getHours() * 60 + today.getMinutes();
-      return slotMins < currentMins;
+      return (slotMins + 30) < currentMins;
     })();
 
     if (isPast) {
