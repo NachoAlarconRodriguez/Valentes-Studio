@@ -3834,7 +3834,7 @@ export default function AdminPage() {
         {activeTab === 'agenda' && (
           <div className="space-y-6">
             {/* Mobile-only Dropdown Filters */}
-            <div className="md:hidden grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+            <div className={`md:hidden grid ${(!currentUser || currentUser.profileType === 'admin') ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pb-3 border-b border-white/5`}>
               {/* Business Select */}
               <div className="flex flex-col space-y-1 text-left">
                 <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Negocio</span>
@@ -3876,25 +3876,27 @@ export default function AdminPage() {
               </div>
 
               {/* Specialist Select */}
-              <div className="flex flex-col space-y-1 text-left">
-                <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Profesional</span>
-                <div className="relative">
-                  <select
-                    value={activeSpecialistFilter}
-                    onChange={(e) => setActiveSpecialistFilter(e.target.value)}
-                    className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                  >
-                    {(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map(sp => (
-                      <option key={sp.id} value={sp.id} className="bg-[#0c0c0c] text-white">
-                        {sp.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
-                    <ChevronDown size={12} />
+              {(!currentUser || currentUser.profileType === 'admin') && (
+                <div className="flex flex-col space-y-1 text-left">
+                  <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Profesional</span>
+                  <div className="relative">
+                    <select
+                      value={activeSpecialistFilter}
+                      onChange={(e) => setActiveSpecialistFilter(e.target.value)}
+                      className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                    >
+                      {(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map(sp => (
+                        <option key={sp.id} value={sp.id} className="bg-[#0c0c0c] text-white">
+                          {sp.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                      <ChevronDown size={12} />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Desktop-only 3 Business Sub-tabs */}
@@ -4019,11 +4021,11 @@ export default function AdminPage() {
               <span className="text-[9px] uppercase tracking-[0.2em] text-text-secondary font-bold text-center md:text-left">
                 Filtrar por Rango o Fecha
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+              <div className="grid grid-cols-6 gap-3 sm:grid-cols-5 sm:gap-3.5">
                 {/* Hoy Card */}
                 <button
                   onClick={() => setAgendaViewMode('hoy')}
-                  className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group ${getActiveStyles('hoy')}`}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-2 aspect-square sm:col-span-1 sm:aspect-auto ${getActiveStyles('hoy')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Hoy</span>
                   <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4034,7 +4036,7 @@ export default function AdminPage() {
                 {/* Mañana Card */}
                 <button
                   onClick={() => setAgendaViewMode('manana')}
-                  className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group ${getActiveStyles('manana')}`}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-2 aspect-square sm:col-span-1 sm:aspect-auto ${getActiveStyles('manana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Mañana</span>
                   <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4045,10 +4047,10 @@ export default function AdminPage() {
                 {/* Esta Semana Card */}
                 <button
                   onClick={() => setAgendaViewMode('semana')}
-                  className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group ${getActiveStyles('semana')}`}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-3 aspect-[1.5/1] sm:col-span-1 sm:aspect-auto ${getActiveStyles('semana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Esta Semana</span>
-                  <span className="text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] sm:text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
                     {(() => {
                       const range = getThisWeekRange();
                       return formatCardRange(range.start, range.end);
@@ -4059,10 +4061,10 @@ export default function AdminPage() {
                 {/* Próx. Semana Card */}
                 <button
                   onClick={() => setAgendaViewMode('prox_semana')}
-                  className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group ${getActiveStyles('prox_semana')}`}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-3 aspect-[1.5/1] sm:col-span-1 sm:aspect-auto ${getActiveStyles('prox_semana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Próx. Semana</span>
-                  <span className="text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] sm:text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
                     {(() => {
                       const range = getNextWeekRange();
                       return formatCardRange(range.start, range.end);
@@ -4071,7 +4073,7 @@ export default function AdminPage() {
                 </button>
 
                 {/* Custom Card */}
-                <div className="relative">
+                <div className="relative col-span-2 sm:col-span-1 aspect-square sm:aspect-auto">
                   <input
                     type="date"
                     value={agendaCustomDate}
@@ -4084,7 +4086,7 @@ export default function AdminPage() {
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                   />
                   <div
-                    className={`h-full flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden group ${getActiveStyles('fecha')}`}
+                    className={`h-full flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden group ${getActiveStyles('fecha')}`}
                   >
                     <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Elegir Fecha</span>
                     <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -4146,12 +4148,12 @@ export default function AdminPage() {
 
               <div className="overflow-x-auto">
                 {isSingleDayMode ? (
-                  <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
+                  <table className={`w-full text-left border-collapse table-fixed ${specialistsForView.length === 1 ? 'min-w-0' : 'min-w-[700px]'}`}>
                     <thead>
                       <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest text-text-secondary">
-                        <th className="py-4 px-6 w-[100px] text-center font-bold">Hora</th>
+                        <th className="py-4 px-3 md:px-6 w-[70px] md:w-[100px] text-center font-bold">Hora</th>
                         {specialistsForView.map(sp => (
-                          <th key={sp.id} className="py-4 px-6 min-w-[220px]">
+                          <th key={sp.id} className={`py-4 px-3 md:px-6 ${specialistsForView.length === 1 ? 'w-auto' : 'min-w-[220px]'}`}>
                             <div className="flex items-center space-x-2">
                               <span className={`text-[9px] bg-white/5 border border-white/10 px-2 py-1 rounded-full font-bold ${
                                 activeBusinessTab === 'barberia' ? 'text-gold' : activeBusinessTab === 'peluqueria' ? 'text-[#CD7F32]' : 'text-[#E2E0D8]'
@@ -4215,7 +4217,7 @@ export default function AdminPage() {
                           <React.Fragment key={`row-${time}`}>
                             {showLineBeforeFirstSlot && timeIndicatorRow}
                             <tr className="hover:bg-white/[0.005] border-b border-white/5 transition-all">
-                              <td className="py-4.5 px-6 font-bold text-white/60 text-center w-[100px] border-r border-white/5 bg-black/20">
+                              <td className="py-4.5 px-3 md:px-6 font-bold text-white/60 text-center w-[70px] md:w-[100px] border-r border-white/5 bg-black/20">
                                 <div className="flex flex-col items-center justify-center space-y-1">
                                   <Clock size={11} className={
                                     activeBusinessTab === 'barberia' ? 'text-gold' : activeBusinessTab === 'peluqueria' ? 'text-[#CD7F32]' : 'text-[#E2E0D8]'
@@ -4268,7 +4270,7 @@ export default function AdminPage() {
                                 if (booking) {
                                   if (booking.status === 'bloqueado') {
                                     return (
-                                      <td key={`${specialist.id}-${time}`} className={`py-4 px-4 w-[250px] align-top ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
+                                      <td key={`${specialist.id}-${time}`} className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top ${isPast ? 'opacity-40 select-none grayscale-[40%]' : ''}`}>
                                         <div className="bg-red-950/15 border border-red-500/20 rounded-2xl p-3 space-y-2 group transition-all hover:bg-red-950/20">
                                           <div className="flex items-center justify-between">
                                             <span className="text-[8px] font-mono font-bold text-red-400 tracking-wider">BLOQUEADO</span>
@@ -4334,7 +4336,7 @@ export default function AdminPage() {
                                       style={{ height: '100%' }}
                                       onMouseEnter={() => setHoveredBookingId(booking.id)}
                                       onMouseLeave={() => setHoveredBookingId(null)}
-                                      className={`py-4 px-4 w-[250px] align-top transition-all duration-200 h-full ${
+                                      className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top transition-all duration-200 h-full ${
                                         isPast ? 'opacity-70 select-none' : ''
                                       }`}
                                     >
@@ -4654,7 +4656,7 @@ export default function AdminPage() {
 
                                 if (isLunchBreak) {
                                   return (
-                                    <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top opacity-50">
+                                    <td key={`${specialist.id}-${time}`} className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top opacity-50`}>
                                       <div className="bg-white/[0.01] border border-white/5 border-dashed rounded-2xl p-3 flex flex-col items-center justify-center min-h-[85px] text-center">
                                         <div className="text-[8px] font-mono text-text-secondary/60">ALMUERZO</div>
                                         <div className="text-[9px] text-white/30 font-medium mt-1">Receso laboral</div>
@@ -4665,7 +4667,7 @@ export default function AdminPage() {
 
                                 if (!isShift) {
                                   return (
-                                    <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top">
+                                    <td key={`${specialist.id}-${time}`} className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top`}>
                                       <div className="bg-[#0c0c0c]/40 border border-white/5 border-dashed rounded-2xl p-3 flex flex-col justify-between min-h-[85px] group hover:border-amber-500/20 hover:bg-amber-500/[0.01] transition-all">
                                         <div className="flex flex-col">
                                           <span className="text-[8px] font-mono text-amber-500/40 tracking-wider">FUERA JORNADA</span>
@@ -4695,7 +4697,7 @@ export default function AdminPage() {
                                 }
 
                                 return (
-                                  <td key={`${specialist.id}-${time}`} className="py-4 px-4 w-[250px] align-top">
+                                  <td key={`${specialist.id}-${time}`} className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top`}>
                                     <div className="bg-transparent border border-white/[0.03] border-dashed rounded-2xl p-3 flex flex-col justify-between min-h-[85px] group hover:border-gold/25 hover:bg-white/[0.01] transition-all">
                                       <div className="flex flex-col">
                                         <span className="text-[8px] font-mono text-text-secondary/50 tracking-wider">DISPONIBLE</span>
