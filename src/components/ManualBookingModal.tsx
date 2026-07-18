@@ -391,17 +391,7 @@ export function ManualBookingModal({
       : 60;
 
     const checkAvailabilityForSpec = (spId: string) => {
-      const res = isSpecialistAvailable(spId, date, slotTime, duration, category);
-      if (res.available) return res;
-      // Bypass shift, day off, and lunch break conflict for manual bookings (sobrecupo)
-      if (
-        res.reason?.includes('Fuera del horario de jornada') ||
-        res.reason?.includes('Día no laboral') ||
-        res.reason?.includes('Horario de colación')
-      ) {
-        return { available: true };
-      }
-      return res;
+      return isSpecialistAvailable(spId, date, slotTime, duration, category);
     };
 
     if (specialistId) {
@@ -1223,21 +1213,22 @@ export function ManualBookingModal({
                                 <button
                                   key={slot}
                                   type="button"
-                                  disabled={!availability.available && !forceBooking}
                                   title={availability.reason}
                                   onClick={() => {
                                     setTime(slot);
                                   }}
                                   className={`py-1.5 rounded-lg border text-[10px] font-semibold transition-all cursor-pointer ${
-                                    !availability.available && !forceBooking
-                                      ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
+                                    !availability.available
+                                      ? isSel
+                                        ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                                        : 'border-red-500/10 bg-red-500/5 text-white/30 hover:border-red-500/20'
                                       : isSel
                                         ? `border-gold bg-gold/15 text-gold shadow-sm ${shadowThemeClass}`
                                         : 'border-white/5 bg-white/[0.02] text-white/70 hover:text-white hover:border-white/20'
                                   }`}
                                   style={{
-                                    borderColor: isSel ? themeGold : 'rgba(255,255,255,0.05)',
-                                    color: isSel ? themeGold : 'rgba(255,255,255,0.7)'
+                                    borderColor: !availability.available ? undefined : (isSel ? themeGold : 'rgba(255,255,255,0.05)'),
+                                    color: !availability.available ? undefined : (isSel ? themeGold : 'rgba(255,255,255,0.7)')
                                   }}
                                 >
                                   {slot}

@@ -2490,8 +2490,13 @@ export default function AdminPage() {
   })();
 
 
+  // Filter bookings to restrict to the logged-in barber if they are not an admin
+  const allowedBookings = currentUser && currentUser.profileType !== 'admin'
+    ? bookings.filter(b => b.specialistName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    : bookings;
+
   // Filter bookings for dashboard metrics and graphs (excluding blocks, cancellations and no-shows)
-  const dashboardBookings = bookings.filter(b => {
+  const dashboardBookings = allowedBookings.filter(b => {
     const matchesDate = b.date >= filterStartDate && b.date <= filterEndDate;
     if (!matchesDate) return false;
 
@@ -2548,7 +2553,7 @@ export default function AdminPage() {
     prevStartDate = _toLocalStr(new Date(startMs - 86400000 - diff));
   }
 
-  const prevPeriodBookings = prevStartDate ? bookings.filter(b => {
+  const prevPeriodBookings = prevStartDate ? allowedBookings.filter(b => {
     const matchesDate = b.date >= prevStartDate && b.date <= prevEndDate;
     if (!matchesDate) return false;
 
@@ -2584,7 +2589,7 @@ export default function AdminPage() {
 
   // Dynamic retention rate
   const uniqueClientsWithMultipleBookings = Object.values(
-    bookings.reduce((acc, b) => {
+    allowedBookings.reduce((acc, b) => {
       if ((b.status as string) !== 'bloqueado') {
         acc[b.clientPhone] = (acc[b.clientPhone] || 0) + 1;
       }
@@ -2593,7 +2598,7 @@ export default function AdminPage() {
   ).filter(count => count >= 2).length;
 
   const totalUniqueClients = new Set(
-    bookings.filter(b => (b.status as string) !== 'bloqueado').map(b => b.clientPhone)
+    allowedBookings.filter(b => (b.status as string) !== 'bloqueado').map(b => b.clientPhone)
   ).size;
 
   const retentionRate = totalUniqueClients > 0 
@@ -3838,63 +3843,49 @@ export default function AdminPage() {
               {/* Business Select */}
               <div className="flex flex-col space-y-1 text-left">
                 <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Negocio</span>
-                <div className="relative">
-                  <select
-                    value={activeBusinessTab}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      setActiveBusinessTab(val);
-                      const specs = servicesData[val]?.specialists || [];
-                      if (specs.length > 0) {
-                        setActiveSpecialistFilter(specs[0].id);
-                      } else {
-                        setActiveSpecialistFilter('all');
-                      }
-                    }}
-                    className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                  >
-                    {[
-                      { id: 'barberia', label: 'Barbería Tradicional' },
-                      { id: 'peluqueria', label: 'Peluquería de Autor' },
-                      { id: 'terapias', label: 'Terapias Holísticas' }
-                    ].filter(subtab => {
-                      if (currentUser && currentUser.profileType === 'admin') {
-                        return true;
-                      }
-                      const agendas = currentUser ? currentUser.assignedAgendas : ['barberia', 'peluqueria', 'terapias'];
-                      return agendas.includes(subtab.id as any);
-                    }).map(subtab => (
-                      <option key={subtab.id} value={subtab.id} className="bg-[#0c0c0c] text-white">
-                        {subtab.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
+                <CustomSelect
+                  value={activeBusinessTab}
+                  onChange={(val) => {
+                    const businessVal = val as any;
+                    setActiveBusinessTab(businessVal);
+                    const specs = servicesData[businessVal]?.specialists || [];
+                    if (specs.length > 0) {
+                      setActiveSpecialistFilter(specs[0].id);
+                    } else {
+                      setActiveSpecialistFilter('all');
+                    }
+                  }}
+                  options={[
+                    { value: 'barberia', label: 'Barbería Tradicional' },
+                    { value: 'peluqueria', label: 'Peluquería de Autor' },
+                    { value: 'terapias', label: 'Terapias Holísticas' }
+                  ].filter(subtab => {
+                    if (currentUser && currentUser.profileType === 'admin') {
+                      return true;
+                    }
+                    const agendas = currentUser ? currentUser.assignedAgendas : ['barberia', 'peluqueria', 'terapias'];
+                    return agendas.includes(subtab.value as any);
+                  }).map(subtab => ({
+                    value: subtab.value,
+                    label: subtab.label
+                  }))}
+                  buttonClassName="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/15 transition-colors text-left"
+                />
               </div>
 
               {/* Specialist Select */}
               {(!currentUser || currentUser.profileType === 'admin') && (
                 <div className="flex flex-col space-y-1 text-left">
                   <span className="text-[8px] uppercase tracking-wider text-text-secondary font-bold">Profesional</span>
-                  <div className="relative">
-                    <select
-                      value={activeSpecialistFilter}
-                      onChange={(e) => setActiveSpecialistFilter(e.target.value)}
-                      className="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                    >
-                      {(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map(sp => (
-                        <option key={sp.id} value={sp.id} className="bg-[#0c0c0c] text-white">
-                          {sp.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
-                      <ChevronDown size={12} />
-                    </div>
-                  </div>
+                  <CustomSelect
+                    value={activeSpecialistFilter}
+                    onChange={(val) => setActiveSpecialistFilter(val)}
+                    options={(servicesData[activeBusinessTab]?.specialists || []).filter(sp => sp.isActive !== false).map(sp => ({
+                      value: sp.id,
+                      label: sp.name
+                    }))}
+                    buttonClassName="w-full bg-[#0c0c0c] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-gold/30 hover:border-white/15 transition-colors text-left"
+                  />
                 </div>
               )}
             </div>
