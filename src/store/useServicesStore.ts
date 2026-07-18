@@ -77,7 +77,7 @@ const defaultServicesData: Record<string, Omit<ServiceSection, 'specialists'> & 
   },
   terapias: {
     title: "Terapias Holísticas",
-    description: "Espacio consagrado a la reconexión cuerpo-mente a través de terapias manuales de relajación profunda, masajes geotermales y sanación energética.",
+    description: `Bienvenido al Templo de las Terapias Holísticas\n\nUn espacio dedicado a la expansión de la conciencia, la armonización energética y la transformación interior. A través de Reiki, ThetaHealing, Barras de Access, armonización de chakras, canalización, apometría, mesas energéticas, radiestesia con péndulo, cristales y baños de hierbas, acompaño cada proceso desde una mirada integral, promoviendo equilibrio, claridad y bienestar para cuerpo, mente, emociones y espíritu.`,
     path: "/terapias",
     color: "#E2E0D8",
     accentColor: "#9CA3AF",

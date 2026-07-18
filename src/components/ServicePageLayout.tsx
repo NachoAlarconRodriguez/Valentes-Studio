@@ -212,7 +212,11 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
             <h1 className={`font-serif text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-none pb-2 ${s.titleShimmer}`}>
               {data.title}
             </h1>
-            <p className="text-lg md:text-xl text-text-secondary font-light leading-relaxed">
+            <p className={`whitespace-pre-line leading-relaxed ${
+              category === 'terapias'
+                ? 'text-xl md:text-2xl text-white font-normal drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
+                : 'text-lg md:text-xl text-text-secondary font-light'
+            }`}>
               {data.description}
             </p>
           </div>
