@@ -4021,11 +4021,11 @@ export default function AdminPage() {
               <span className="text-[9px] uppercase tracking-[0.2em] text-text-secondary font-bold text-center md:text-left">
                 Filtrar por Rango o Fecha
               </span>
-              <div className="grid grid-cols-6 gap-3 sm:grid-cols-5 sm:gap-3.5">
+              <div className="flex overflow-x-auto gap-3 pb-3 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-5 sm:gap-3.5 sm:overflow-visible">
                 {/* Hoy Card */}
                 <button
                   onClick={() => setAgendaViewMode('hoy')}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-2 aspect-square sm:col-span-1 sm:aspect-auto ${getActiveStyles('hoy')}`}
+                  className={`flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group w-[120px] aspect-square flex-shrink-0 sm:w-auto sm:aspect-auto sm:flex-shrink ${getActiveStyles('hoy')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Hoy</span>
                   <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4036,7 +4036,7 @@ export default function AdminPage() {
                 {/* Mañana Card */}
                 <button
                   onClick={() => setAgendaViewMode('manana')}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-2 aspect-square sm:col-span-1 sm:aspect-auto ${getActiveStyles('manana')}`}
+                  className={`flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group w-[120px] aspect-square flex-shrink-0 sm:w-auto sm:aspect-auto sm:flex-shrink ${getActiveStyles('manana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Mañana</span>
                   <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4047,7 +4047,7 @@ export default function AdminPage() {
                 {/* Esta Semana Card */}
                 <button
                   onClick={() => setAgendaViewMode('semana')}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-3 aspect-[1.5/1] sm:col-span-1 sm:aspect-auto ${getActiveStyles('semana')}`}
+                  className={`flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group w-[120px] aspect-square flex-shrink-0 sm:w-auto sm:aspect-auto sm:flex-shrink ${getActiveStyles('semana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Esta Semana</span>
                   <span className="text-[9px] sm:text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4061,7 +4061,7 @@ export default function AdminPage() {
                 {/* Próx. Semana Card */}
                 <button
                   onClick={() => setAgendaViewMode('prox_semana')}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group col-span-3 aspect-[1.5/1] sm:col-span-1 sm:aspect-auto ${getActiveStyles('prox_semana')}`}
+                  className={`flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden cursor-pointer group w-[120px] aspect-square flex-shrink-0 sm:w-auto sm:aspect-auto sm:flex-shrink ${getActiveStyles('prox_semana')}`}
                 >
                   <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Próx. Semana</span>
                   <span className="text-[9px] sm:text-[10px] font-semibold tracking-wide font-mono opacity-80 group-hover:opacity-100 transition-opacity">
@@ -4073,7 +4073,7 @@ export default function AdminPage() {
                 </button>
 
                 {/* Custom Card */}
-                <div className="relative col-span-2 sm:col-span-1 aspect-square sm:aspect-auto">
+                <div className="relative w-[120px] aspect-square flex-shrink-0 sm:w-auto sm:aspect-auto sm:flex-shrink">
                   <input
                     type="date"
                     value={agendaCustomDate}
@@ -4086,7 +4086,7 @@ export default function AdminPage() {
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                   />
                   <div
-                    className={`h-full flex flex-col items-center justify-center p-2 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden group ${getActiveStyles('fecha')}`}
+                    className={`h-full flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border text-center transition-all duration-300 relative overflow-hidden group ${getActiveStyles('fecha')}`}
                   >
                     <span className="text-[9px] uppercase tracking-[0.15em] font-bold block mb-1">Elegir Fecha</span>
                     <span className="text-xs font-semibold tracking-wider font-mono opacity-80 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -4581,7 +4581,7 @@ export default function AdminPage() {
                                                          )}
                                                          <div className="grid grid-cols-2 gap-2 w-full">
                                                            <button
-                                                             disabled={(!isAdmin && isPast) || hasIncompleteBefore}
+                                                             disabled={booking.status !== 'en_proceso' && ((!isAdmin && isPast) || hasIncompleteBefore)}
                                                              onClick={() => {
                                                                setCheckoutPaymentMethod('efectivo');
                                                                setCheckoutModal({
@@ -4590,7 +4590,7 @@ export default function AdminPage() {
                                                                });
                                                              }}
                                                              className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
-                                                               (!isAdmin && isPast) || hasIncompleteBefore
+                                                               booking.status !== 'en_proceso' && ((!isAdmin && isPast) || hasIncompleteBefore)
                                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
                                                                  : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20 cursor-pointer'
                                                              }`}
@@ -4598,7 +4598,7 @@ export default function AdminPage() {
                                                              Pagado
                                                            </button>
                                                            <button
-                                                             disabled={(!isAdmin && isPast) || hasIncompleteBefore}
+                                                             disabled={booking.status !== 'en_proceso' && ((!isAdmin && isPast) || hasIncompleteBefore)}
                                                              onClick={() => {
                                                                setConfirmModal({
                                                                  isOpen: true,
@@ -4610,7 +4610,7 @@ export default function AdminPage() {
                                                                });
                                                              }}
                                                              className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
-                                                               (!isAdmin && isPast) || hasIncompleteBefore
+                                                               booking.status !== 'en_proceso' && ((!isAdmin && isPast) || hasIncompleteBefore)
                                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
                                                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer'
                                                              }`}
