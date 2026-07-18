@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, ChevronRight, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useContentStore from '@/store/useContentStore';
 import useUIStore from '@/store/useUIStore';
 
@@ -35,15 +36,15 @@ export default function HomePage() {
   const terapiasDesc = "Acompañamiento en procesos de equilibrio, bienestar y desarrollo personal a través de terapias energéticas y espirituales.";
 
   return (
-    <div className="w-full min-h-screen lg:h-screen lg:overflow-hidden bg-black text-white relative z-10 flex flex-col font-sans selection:bg-gold/30 selection:text-white justify-between">
+    <div className="w-full min-h-screen lg:h-screen lg:overflow-hidden overflow-x-hidden bg-black text-white relative z-10 flex flex-col font-sans selection:bg-gold/30 selection:text-white justify-between">
       {/* 1. CUSTOM TOP NAVBAR */}
       <header className="absolute top-0 left-0 w-full z-50 pt-5 pb-24 px-6 md:px-12 flex items-center justify-between bg-gradient-to-b from-black via-black/80 via-black/45 to-transparent">
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
-          <span className="font-serif text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C5A059] transition-all duration-300 group-hover:brightness-110">
+          <span className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C5A059] transition-all duration-300 group-hover:brightness-110">
             JEFÏTO LOPÊS
           </span>
-          <span className="text-[8px] sm:text-[9px] tracking-wider text-[#C5A059]/80 mt-1 font-semibold block transition-colors">
+          <span className="text-[7px] sm:text-[9px] tracking-wider text-[#C5A059]/80 mt-1 font-semibold block transition-colors">
             Cuidamos tu imagen, tu estilo y tu energía
           </span>
         </Link>
@@ -85,70 +86,94 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* Redesigned Mobile Menu Button */}
         <button
           onClick={() => setMobileMenuOpen(true)}
-          className="lg:hidden p-2 text-white hover:text-[#C5A059] transition-colors focus:outline-none"
+          className="lg:hidden p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:text-[#C5A059] hover:border-[#C5A059]/30 active:scale-95 transition-all focus:outline-none flex items-center justify-center cursor-pointer shadow-lg"
+          aria-label="Menú de Navegación"
         >
-          <Menu size={28} />
+          <Menu size={20} className="text-[#C5A059]" />
         </button>
       </header>
 
-      {/* Mobile Navigation Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-center px-8 relative">
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="absolute top-6 right-6 p-2 text-white hover:text-[#C5A059] transition-colors focus:outline-none"
-          >
-            <X size={28} />
-          </button>
-          <nav className="flex flex-col space-y-6 text-center">
-            <Link
-              href="/barberia"
+      {/* Redesigned Mobile Navigation Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop blur overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md"
+            />
+            {/* Drawer Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-[280px] max-w-full z-50 bg-[#070707]/95 backdrop-blur-xl border-l border-white/5 flex flex-col justify-between p-8"
             >
-              BARBERIA
-            </Link>
-            <Link
-              href="/peluqueria"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
-            >
-              PELUQUERÍA
-            </Link>
-            <Link
-              href="/terapias"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-2xl font-serif tracking-[0.2em] text-white hover:text-[#C5A059] transition-colors"
-            >
-              TERAPIAS HOLÍSTICAS
-            </Link>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                openBooking();
-              }}
-              className="text-2xl font-serif tracking-[0.2em] text-black bg-[#C5A059] px-8 py-3 rounded-full hover:bg-white hover:text-black transition-colors cursor-pointer text-center w-full max-w-xs mx-auto focus:outline-none font-bold"
-            >
-              AGENDAR
-            </button>
-            <div className="pt-6 flex justify-center">
-              <a
-                href="https://wa.me/56971465202"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#C5A059] hover:text-white transition-all duration-300 hover:scale-110 active:scale-90 flex items-center justify-center p-2"
-                aria-label="WhatsApp"
-              >
-                <svg className="w-10 h-10 fill-current filter drop-shadow-[0_0_12px_rgba(212,175,55,0.4)]" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.455h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413" />
-                </svg>
-              </a>
-            </div>
-          </nav>
-        </div>
-      )}
+              <div className="space-y-8">
+                {/* Header inside drawer */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <span className="font-serif text-sm font-bold tracking-[0.2em] text-[#C5A059]">JEFÏTO LOPÊS</span>
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-full bg-white/5 border border-white/10 text-white hover:text-[#C5A059] transition-colors cursor-pointer"
+                    aria-label="Cerrar Menú"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Nav Links */}
+                <nav className="flex flex-col space-y-5 text-left">
+                  {[
+                    { href: '/barberia', label: 'BARBERIA' },
+                    { href: '/peluqueria', label: 'PELUQUERÍA' },
+                    { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
+                  ].map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-sm font-serif tracking-[0.2em] text-white/80 hover:text-[#C5A059] hover:pl-2 transition-all duration-300 py-1"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Drawer Footer Actions */}
+              <div className="space-y-4 pt-6 border-t border-white/5">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openBooking();
+                  }}
+                  className="w-full text-center py-3 rounded-full bg-[#C5A059] text-black font-bold uppercase tracking-wider text-xs hover:bg-white hover:text-black transition-colors cursor-pointer shadow-lg shadow-[#C5A059]/10"
+                >
+                  AGENDAR HORA
+                </button>
+                <a
+                  href="https://wa.me/56971465202"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  <svg className="w-4 h-4 fill-current text-emerald-400" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.455h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413" />
+                  </svg>
+                  <span>WhatsApp</span>
+                </a>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* 2. THREE COLUMNS PANELS SECTION */}
       <section className="flex-1 grid grid-cols-1 lg:grid-cols-3 w-full relative pt-24 lg:pt-14">
@@ -377,15 +402,15 @@ export default function HomePage() {
       </section>
 
       {/* 3. BOTTOM FOOTER VALUES SECTION */}
-      <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative flex-shrink-0">
+      <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative flex-shrink-0 overflow-hidden">
         {/* Decorative backdrop glow */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[450px] h-[100px] bg-[#C5A059]/8 rounded-full blur-[60px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-1.5 items-center text-center">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 grid grid-cols-5 gap-1.5 sm:gap-3 lg:gap-1.5 items-center text-center">
           {/* Value 1: EQUILIBRIO */}
-          <div className="flex flex-col items-center space-y-1 p-1">
+          <div className="flex flex-col items-center space-y-0.5 sm:space-y-1 p-0.5">
             <div className="flex items-center justify-center">
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
                 <defs>
                   <linearGradient id="gold1" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#b8860b" />
@@ -403,19 +428,19 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
+              <span className="text-[6px] sm:text-[8px] md:text-[9px] uppercase tracking-[0.15em] sm:tracking-[0.25em] text-[#C5A059] font-bold block">
                 EQUILÍBRIO
               </span>
-              <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
+              <p className="hidden sm:block text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
                 Cuerpo, mente y espíritu en armonía.
               </p>
             </div>
           </div>
 
           {/* Value 2: BIENESTAR */}
-          <div className="flex flex-col items-center space-y-1 p-1">
+          <div className="flex flex-col items-center space-y-0.5 sm:space-y-1 p-0.5">
             <div className="flex items-center justify-center">
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
                 <defs>
                   <linearGradient id="gold2" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#b8860b" />
@@ -430,20 +455,20 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
+              <span className="text-[6px] sm:text-[8px] md:text-[9px] uppercase tracking-[0.15em] sm:tracking-[0.25em] text-[#C5A059] font-bold block">
                 BIENESTAR
               </span>
-              <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
+              <p className="hidden sm:block text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
                 Mejoramos tu energía y calidad de vida.
               </p>
             </div>
           </div>
 
           {/* Center piece: Great Lotus Logo from Loading Screen */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex justify-center py-1 lg:py-0">
+          <div className="col-span-1 flex justify-center py-1 lg:py-0">
             <Link 
               href="/admin"
-              className="relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 lg:w-28 lg:h-28 transition-all duration-500 hover:scale-110 cursor-pointer z-20 -translate-y-3 sm:-translate-y-4 lg:-translate-y-5"
+              className="relative flex items-center justify-center w-10 h-10 sm:w-16 sm:h-16 md:w-20 lg:w-28 lg:h-28 transition-all duration-500 hover:scale-110 cursor-pointer z-20 -translate-y-1 sm:-translate-y-3 lg:-translate-y-5"
               aria-label="Panel de Administración"
             >
               {/* Glowing aura */}
@@ -454,7 +479,7 @@ export default function HomePage() {
                   src="/meditando-loto.png"
                   alt="Lotus Meditando Templo Santuario"
                   fill
-                  sizes="(max-width: 768px) 110px, 128px"
+                  sizes="(max-width: 768px) 60px, 128px"
                   className="object-contain filter brightness-110 contrast-105 drop-shadow-[0_0_15px_rgba(212,175,55,0.85)]"
                   priority
                 />
@@ -463,9 +488,9 @@ export default function HomePage() {
           </div>
 
           {/* Value 3: TRANSFORMACION */}
-          <div className="flex flex-col items-center space-y-1 p-1">
+          <div className="flex flex-col items-center space-y-0.5 sm:space-y-1 p-0.5">
             <div className="flex items-center justify-center">
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
                 <defs>
                   <linearGradient id="gold4" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#b8860b" />
@@ -484,19 +509,19 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
+              <span className="text-[6px] sm:text-[8px] md:text-[9px] uppercase tracking-[0.15em] sm:tracking-[0.25em] text-[#C5A059] font-bold block">
                 TRANSFORMACIÓN
               </span>
-              <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
+              <p className="hidden sm:block text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
                 Crecimiento personal y espiritual.
               </p>
             </div>
           </div>
 
           {/* Value 4: PROPOSITO */}
-          <div className="flex flex-col items-center space-y-1 p-1">
+          <div className="flex flex-col items-center space-y-0.5 sm:space-y-1 p-0.5">
             <div className="flex items-center justify-center">
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9" viewBox="0 0 100 100" fill="none">
                 <defs>
                   <linearGradient id="gold5" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#b8860b" />
@@ -511,10 +536,10 @@ export default function HomePage() {
               </svg>
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] text-[#C5A059] font-bold block">
+              <span className="text-[6px] sm:text-[8px] md:text-[9px] uppercase tracking-[0.15em] sm:tracking-[0.25em] text-[#C5A059] font-bold block">
                 PROPÓSITO
               </span>
-              <p className="text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
+              <p className="hidden sm:block text-[9px] md:text-[10px] text-white/50 font-light max-w-[170px] leading-snug">
                 Conecta con tu esencia y vive en plenitud.
               </p>
             </div>
