@@ -887,39 +887,10 @@ export function BookingModal() {
                           <div>
                             <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 2</h4>
                             <h3 className="font-serif text-lg text-white font-bold mt-0.5">¿Quién te atenderá?</h3>
-                            <p className="text-xs text-text-secondary font-light mt-0.5">Selecciona tu especialista preferido o elige cualquiera para mayor disponibilidad.</p>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">Selecciona tu especialista preferido.</p>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1 pb-2">
-                            {/* Option: Cualquiera */}
-                            <button
-                              type="button"
-                              onClick={() => setSpecialistId('')}
-                              className={`p-4 rounded-2xl border text-left flex items-center space-x-4 transition-all duration-300 relative ${
-                                specialistId === ''
-                                  ? 'border-gold bg-gold/10 text-gold shadow-[0_0_15px_rgba(198,155,60,0.2)] scale-[1.02]'
-                                  : 'border-white/5 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.04]'
-                              }`}
-                            >
-                              <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 bg-gradient-to-br from-black to-zinc-900 flex-shrink-0 transition-transform duration-300 ${
-                                specialistId === ''
-                                  ? 'border-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
-                                  : 'border-white/10'
-                              }`}>
-                                <Sparkles className={`w-6 h-6 ${themeText}`} />
-                              </div>
-                              <div className="text-left flex-grow">
-                                <div className="font-serif text-sm font-bold tracking-wide text-white">Cualquier Profesional</div>
-                                <span className="text-[10px] text-text-secondary leading-tight mt-1 block font-light">Mayor disponibilidad de horarios</span>
-                              </div>
-                              {specialistId === '' && (
-                                <div className={`absolute top-3 right-3 w-4 h-4 rounded-full ${themeBg} text-black flex items-center justify-center shadow-md animate-scaleIn`}>
-                                  <svg className="w-2.5 h-2.5 stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </div>
-                              )}
-                            </button>
 
                             {/* Real specialists */}
                             {filteredSpecialistsList.map((specialist) => {
@@ -1224,22 +1195,53 @@ export function BookingModal() {
                               >
                                 <label className={labelClass}>Hora disponible *</label>
                                 <div className="grid grid-cols-4 gap-2 pr-1">
-                                  {[
-                                    { value: '07:00', label: '07:00 AM' },
-                                    { value: '08:00', label: '08:00 AM' },
-                                    { value: '09:00', label: '09:00 AM' },
-                                    { value: '10:00', label: '10:00 AM' },
-                                    { value: '11:00', label: '11:00 AM' },
-                                    { value: '12:00', label: '12:00 PM' },
-                                    { value: '13:00', label: '01:00 PM' },
-                                    { value: '14:00', label: '02:00 PM' },
-                                    { value: '15:00', label: '03:00 PM' },
-                                    { value: '16:00', label: '04:00 PM' },
-                                    { value: '17:00', label: '05:00 PM' },
-                                    { value: '18:00', label: '06:00 PM' },
-                                    { value: '19:00', label: '07:00 PM' },
-                                    { value: '20:00', label: '08:00 PM' }
-                                  ].map((slot) => {
+                                  {(category === 'barberia'
+                                    ? [
+                                        { value: '07:00', label: '07:00 AM' },
+                                        { value: '08:00', label: '08:00 AM' },
+                                        { value: '09:00', label: '09:00 AM' },
+                                        { value: '10:00', label: '10:00 AM' },
+                                        { value: '11:00', label: '11:00 AM' },
+                                        { value: '12:00', label: '12:00 PM' },
+                                        { value: '13:00', label: '01:00 PM' },
+                                        { value: '14:00', label: '02:00 PM' },
+                                        { value: '15:00', label: '03:00 PM' },
+                                        { value: '16:00', label: '04:00 PM' },
+                                        { value: '17:00', label: '05:00 PM' },
+                                        { value: '18:00', label: '06:00 PM' },
+                                        { value: '19:00', label: '07:00 PM' },
+                                        { value: '20:00', label: '08:00 PM' }
+                                      ]
+                                    : [
+                                        { value: '07:00', label: '07:00 AM' },
+                                        { value: '07:30', label: '07:30 AM' },
+                                        { value: '08:00', label: '08:00 AM' },
+                                        { value: '08:30', label: '08:30 AM' },
+                                        { value: '09:00', label: '09:00 AM' },
+                                        { value: '09:30', label: '09:30 AM' },
+                                        { value: '10:00', label: '10:00 AM' },
+                                        { value: '10:30', label: '10:30 AM' },
+                                        { value: '11:00', label: '11:00 AM' },
+                                        { value: '11:30', label: '11:30 AM' },
+                                        { value: '12:00', label: '12:00 PM' },
+                                        { value: '12:30', label: '12:30 PM' },
+                                        { value: '13:00', label: '01:00 PM' },
+                                        { value: '13:30', label: '01:30 PM' },
+                                        { value: '14:00', label: '02:00 PM' },
+                                        { value: '14:30', label: '02:30 PM' },
+                                        { value: '15:00', label: '03:00 PM' },
+                                        { value: '15:30', label: '03:30 PM' },
+                                        { value: '16:00', label: '04:00 PM' },
+                                        { value: '16:30', label: '04:30 PM' },
+                                        { value: '17:00', label: '05:00 PM' },
+                                        { value: '17:30', label: '05:30 PM' },
+                                        { value: '18:00', label: '06:00 PM' },
+                                        { value: '18:30', label: '06:30 PM' },
+                                        { value: '19:00', label: '07:00 PM' },
+                                        { value: '19:30', label: '07:30 PM' },
+                                        { value: '20:00', label: '08:00 PM' }
+                                      ]
+                                  ).map((slot) => {
                                     const isSelected = time === slot.value;
                                     const availability = checkTimeSlotAvailability(slot.value);
                                     return (
@@ -1553,6 +1555,7 @@ export function BookingModal() {
                           type="button"
                           disabled={
                             (step === 1 && !serviceId) ||
+                            (step === 2 && !specialistId) ||
                             (step === 3 && (!date || !time)) ||
                             (step === 4 && (name.trim() === '' || phoneNumOnly.length !== 9 || !!phoneError))
                           }
