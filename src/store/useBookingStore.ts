@@ -78,6 +78,18 @@ interface BookingStore {
   incrementClientNoShows: (phone: string) => Promise<void>;
   markDepositAsTransferred: (id: string) => Promise<void>;
   confirmDeposit: (id: string) => Promise<void>;
+  updateBookingDetails: (id: string, oldPhone: string, fields: {
+    clientName: string;
+    clientPhone: string;
+    clientEmail: string;
+    category: 'barberia' | 'peluqueria' | 'terapias';
+    serviceName: string;
+    price: string;
+    specialistName: string;
+    date: string;
+    time: string;
+    status: Booking['status'];
+  }) => Promise<void>;
 }
 
 const supabase = createClient();
@@ -705,6 +717,83 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       }));
     } catch (err) {
       console.error('Error confirming deposit:', err);
+    }
+  },
+
+  updateBookingDetails: async (id, oldPhone, fields) => {
+    try {
+      const numericPrice = typeof fields.price === 'number'
+        ? fields.price
+        : parseInt(fields.price.replace(/[^0-9]/g, ''), 10) || 0;
+
+      // 1. Update client details in 'clients' table
+      const { error: clientErr } = await supabase
+        .from('clients')
+        .update({
+          name: fields.clientName,
+          phone: fields.clientPhone,
+          email: fields.clientEmail
+        })
+        .eq('phone', oldPhone);
+
+      if (clientErr) throw clientErr;
+
+      // 2. Update booking details in 'bookings' table
+      const { error: bookingErr } = await supabase
+        .from('bookings')
+        .update({
+          client_phone: fields.clientPhone,
+          category: fields.category,
+          service_name: fields.serviceName,
+          price: numericPrice,
+          specialist_name: fields.specialistName,
+          date: fields.date,
+          time: fields.time,
+          status: fields.status
+        })
+        .eq('id', id);
+
+      if (bookingErr) throw bookingErr;
+
+      // 3. Update local state
+      set((state) => {
+        // Update client in clients list
+        let updatedClients = state.clients.map(c => 
+          c.phone === oldPhone ? { ...c, name: fields.clientName, phone: fields.clientPhone, email: fields.clientEmail } : c
+        );
+
+        // Update booking in bookings list
+        let updatedBookings = state.bookings.map(b => 
+          b.id === id ? {
+            ...b,
+            clientName: fields.clientName,
+            clientPhone: fields.clientPhone,
+            clientEmail: fields.clientEmail,
+            category: fields.category,
+            serviceName: fields.serviceName,
+            price: `$${numericPrice.toLocaleString('es-CL')}`,
+            specialistName: fields.specialistName,
+            date: fields.date,
+            time: fields.time,
+            status: fields.status
+          } : b
+        );
+
+        // If phone changed, we also need to update clientPhone references on other bookings of the same client
+        if (oldPhone !== fields.clientPhone) {
+          updatedBookings = updatedBookings.map(b => 
+            b.clientPhone === oldPhone ? { ...b, clientPhone: fields.clientPhone } : b
+          );
+        }
+
+        return {
+          bookings: updatedBookings,
+          clients: updatedClients
+        };
+      });
+    } catch (err) {
+      console.error('Error updating booking details:', err);
+      throw err;
     }
   }
 }));

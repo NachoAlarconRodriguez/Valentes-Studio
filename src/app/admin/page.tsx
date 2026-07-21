@@ -87,6 +87,7 @@ import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useScheduleStore, DailyShift, TimeBlock, parseDurationToMinutes } from '@/store/useScheduleStore';
 import { ManualBookingModal } from '@/components/ManualBookingModal';
+import { EditBookingModal } from '@/components/EditBookingModal';
 import Image from 'next/image';
 
 const Instagram = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -1048,6 +1049,10 @@ export default function AdminPage() {
   const [prefillSpecialistId, setPrefillSpecialistId] = useState<string | undefined>(undefined);
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
   const [prefillTime, setPrefillTime] = useState<string | undefined>(undefined);
+
+  // Edit Booking Modal State
+  const [isEditBookingOpen, setIsEditBookingOpen] = useState(false);
+  const [selectedEditBooking, setSelectedEditBooking] = useState<any | null>(null);
 
   // States for past unmanaged bookings (only for admin)
   const [isUnmanagedModalOpen, setIsUnmanagedModalOpen] = useState(false);
@@ -4381,7 +4386,21 @@ export default function AdminPage() {
                                             <>
                                               <div className="space-y-3.5 flex-grow">
                                                 <div className="flex items-start justify-between gap-2">
-                                                  <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[8px] font-mono text-text-secondary tracking-wider font-semibold uppercase">{booking.id}</span>
+                                                    {isAdmin && (
+                                                      <button
+                                                        onClick={() => {
+                                                          setSelectedEditBooking(booking);
+                                                          setIsEditBookingOpen(true);
+                                                        }}
+                                                        className="p-1 hover:bg-white/5 hover:text-white rounded text-text-secondary transition-all cursor-pointer flex items-center justify-center"
+                                                        title="Editar reserva"
+                                                      >
+                                                        <Edit3 size={9} />
+                                                      </button>
+                                                    )}
+                                                  </div>
                                                   <div className="flex flex-col gap-1.5 items-end">
                                                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[7px] uppercase tracking-widest font-bold border ${
                                                       computedStatus === 'En Proceso'
@@ -10707,6 +10726,13 @@ export default function AdminPage() {
         defaultTime={prefillTime}
         onBookingCreated={(code) => triggerNotification(`Reserva ${code} creada con éxito.`)}
         currentUser={currentUser}
+      />
+
+      <EditBookingModal
+        isOpen={isEditBookingOpen}
+        onClose={() => setIsEditBookingOpen(false)}
+        booking={selectedEditBooking}
+        onBookingUpdated={() => triggerNotification('Reserva actualizada con éxito.')}
       />
 
       {/* CHANGE PASSWORD OVERLAY */}

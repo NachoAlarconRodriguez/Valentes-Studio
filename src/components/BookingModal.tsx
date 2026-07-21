@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check, Search } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -64,6 +64,7 @@ export function BookingModal() {
   };
   const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('barberia');
   const [serviceId, setServiceId] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
@@ -197,11 +198,17 @@ export function BookingModal() {
     setDate('');
     setTime('');
     setDateType(null);
+    setServiceSearch('');
   };
 
   const { servicesData, loading } = useServicesStore();
   // Get current options based on category
-  const servicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
+  const allServicesList = (servicesData[category]?.services || []).filter(s => s.isActive !== false);
+  const servicesList = allServicesList.filter(s => {
+    if (!serviceSearch.trim()) return true;
+    const query = serviceSearch.toLowerCase();
+    return s.name.toLowerCase().includes(query) || (s.description && s.description.toLowerCase().includes(query));
+  });
   const selectedServiceObj = servicesList.find(s => s.id === serviceId);
   const specialistsList = servicesData[category]?.specialists || [];
 
@@ -483,6 +490,7 @@ export function BookingModal() {
     setEmail('');
     setCategory('barberia');
     setServiceId('');
+    setServiceSearch('');
     setStep(1);
     setSpecialistId('');
     setDate('');
@@ -796,16 +804,40 @@ export function BookingModal() {
                           </div>
 
                           {/* Services Cards list */}
-                          <div>
+                          <div className="space-y-3">
                             <label className={labelClass}>Selecciona tu Ritual *</label>
-                            <div className="space-y-2.5 pr-1 mt-1.5">
+                            
+                            {/* Buscador de servicios por palabra clave */}
+                            <div className="relative flex items-center">
+                              <Search size={14} className="absolute left-3.5 text-text-secondary" />
+                              <input
+                                type="text"
+                                placeholder="Buscar ritual por palabra clave..."
+                                value={serviceSearch}
+                                onChange={(e) => setServiceSearch(e.target.value)}
+                                className="w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-gold/40 focus:ring-0 rounded-xl py-2.5 pl-9 pr-8 text-xs text-white focus:outline-none transition-all duration-300"
+                              />
+                              {serviceSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setServiceSearch('')}
+                                  className="absolute right-3 p-1 rounded-full text-text-secondary hover:text-white transition-colors"
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="space-y-2.5 pr-1 mt-1.5 max-h-[45vh] md:max-h-[340px] overflow-y-auto scrollbar-thin">
                               {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12 space-y-3">
                                   <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin border-gold`} />
                                   <p className="text-xs text-white/40 tracking-wider uppercase">Cargando rituales...</p>
                                 </div>
                               ) : servicesList.length === 0 ? (
-                                <p className="text-xs text-white/40 italic">No hay servicios disponibles en esta área.</p>
+                                <p className="text-xs text-white/40 italic">
+                                  {serviceSearch ? "No se encontraron rituales que coincidan con tu búsqueda." : "No hay servicios disponibles en esta área."}
+                                </p>
                               ) : (
                                 servicesList.map((service) => {
                                   const isSelected = serviceId === service.id;

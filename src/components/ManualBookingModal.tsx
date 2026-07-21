@@ -17,7 +17,8 @@ import {
   Smartphone, 
   MessageSquare,
   MessageCircle,
-  DollarSign
+  DollarSign,
+  Search
 } from 'lucide-react';
 
 const Instagram = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -104,6 +105,7 @@ export function ManualBookingModal({
   const [timeError, setTimeError] = useState<string | null>(null);
   const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   const [serviceId, setServiceId] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -275,6 +277,7 @@ export function ManualBookingModal({
     setServiceId('');
     setSpecialistId('');
     setTime('');
+    setServiceSearch('');
   };
 
   const parsePhoneToPrefixAndDigits = (phoneStr: string) => {
@@ -340,6 +343,12 @@ export function ManualBookingModal({
   const servicesList = specialistId 
     ? rawServicesList.filter(s => s.specialistIds?.includes(specialistId))
     : rawServicesList;
+
+  const filteredServicesList = servicesList.filter(srv => {
+    if (!serviceSearch.trim()) return true;
+    const query = serviceSearch.toLowerCase();
+    return srv.name.toLowerCase().includes(query) || (srv.description && srv.description.toLowerCase().includes(query));
+  });
 
   const specialistsList = serviceId
     ? rawSpecialistsList.filter(sp => selectedServiceObj?.specialistIds?.includes(sp.id))
@@ -597,6 +606,7 @@ export function ManualBookingModal({
     setGiftCardError('');
     setGiftCardSuccess('');
     setForceBooking(false);
+    setServiceSearch('');
   };
 
   const handleClose = () => {
@@ -1045,36 +1055,66 @@ export function ManualBookingModal({
                                   initial={{ opacity: 0, y: -5 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -5 }}
-                                  className="absolute left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20 max-h-60 overflow-y-auto"
+                                  className="absolute left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20 flex flex-col max-h-64"
                                 >
-                                  {servicesList.map((srv) => {
-                                    const isSel = serviceId === srv.id;
-                                    return (
+                                  {/* Sticky Search bar inside dropdown */}
+                                  <div className="p-2 border-b border-white/5 bg-black/40 flex items-center gap-2 sticky top-0 z-10">
+                                    <Search size={12} className="text-text-secondary ml-1" />
+                                    <input
+                                      type="text"
+                                      placeholder="Buscar ritual o servicio..."
+                                      value={serviceSearch}
+                                      onChange={(e) => setServiceSearch(e.target.value)}
+                                      className="w-full bg-transparent border-0 p-1 text-xs text-white focus:outline-none focus:ring-0 placeholder:text-white/35"
+                                    />
+                                    {serviceSearch && (
                                       <button
-                                        key={srv.id}
                                         type="button"
-                                        onClick={() => {
-                                          setServiceId(srv.id);
-                                          setIsServiceOpen(false);
-                                          if (specialistId && !srv.specialistIds?.includes(specialistId)) {
-                                            setSpecialistId('');
-                                          }
-                                        }}
-                                        className={`w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/5 border-b border-white/5 last:border-b-0 flex justify-between items-center ${
-                                          isSel ? 'text-gold bg-white/[0.02] font-semibold' : 'text-white/80'
-                                        }`}
+                                        onClick={() => setServiceSearch('')}
+                                        className="p-1 rounded-full text-text-secondary hover:text-white transition-colors"
                                       >
-                                        <div className="flex flex-col">
-                                          <span>{srv.name}</span>
-                                          <span className="text-[10px] text-text-secondary">{srv.duration}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <span className={isSel ? textGoldClass : 'text-white font-medium'}>{srv.price}</span>
-                                          {isSel && <span className={`w-1.5 h-1.5 rounded-full ${bgThemeClass}`} />}
-                                        </div>
+                                        <X size={10} />
                                       </button>
-                                    );
-                                  })}
+                                    )}
+                                  </div>
+
+                                  <div className="overflow-y-auto max-h-48 divide-y divide-white/5">
+                                    {filteredServicesList.length === 0 ? (
+                                      <div className="p-3 text-[11px] text-white/40 text-center italic">
+                                        No se encontraron servicios
+                                      </div>
+                                    ) : (
+                                      filteredServicesList.map((srv) => {
+                                        const isSel = serviceId === srv.id;
+                                        return (
+                                          <button
+                                            key={srv.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setServiceId(srv.id);
+                                              setIsServiceOpen(false);
+                                              setServiceSearch('');
+                                              if (specialistId && !srv.specialistIds?.includes(specialistId)) {
+                                                setSpecialistId('');
+                                              }
+                                            }}
+                                            className={`w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/5 flex justify-between items-center ${
+                                              isSel ? 'text-gold bg-white/[0.02] font-semibold' : 'text-white/80'
+                                            }`}
+                                          >
+                                            <div className="flex flex-col">
+                                              <span>{srv.name}</span>
+                                              <span className="text-[10px] text-text-secondary">{srv.duration}</span>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <span className={isSel ? textGoldClass : 'text-white font-medium'}>{srv.price}</span>
+                                              {isSel && <span className={`w-1.5 h-1.5 rounded-full ${bgThemeClass}`} />}
+                                            </div>
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
                                 </motion.div>
                               </>
                             )}
