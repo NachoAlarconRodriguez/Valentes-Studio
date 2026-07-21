@@ -68,7 +68,7 @@ interface BookingStore {
   fetchBookingsAndClients: () => Promise<void>;
   fetchPublicBookings: () => Promise<void>;
   addBooking: (booking: Omit<Booking, 'id' | 'createdAt' | 'channel' | 'status'> & Partial<Pick<Booking, 'channel' | 'status'>>) => Promise<string>;
-  updateBookingStatus: (id: string, status: Booking['status'], metodoPago?: Booking['metodoPago']) => Promise<void>;
+  updateBookingStatus: (id: string, status: Booking['status'], metodoPago?: Booking['metodoPago'], serviceName?: string, price?: string) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   updateClientNotes: (phone: string, notes: string) => Promise<void>;
   markAsNotGoodClient: (phone: string) => Promise<void>;
@@ -425,11 +425,18 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     return randomCode;
   },
 
-  updateBookingStatus: async (id, status, metodoPago?: Booking['metodoPago']) => {
+  updateBookingStatus: async (id, status, metodoPago?: Booking['metodoPago'], serviceName?: string, price?: string) => {
     try {
       const updateData: any = { status };
       if (status === 'completado' && metodoPago) {
         updateData.metodo_pago = metodoPago;
+      }
+      if (serviceName) {
+        updateData.service_name = serviceName;
+      }
+      if (price) {
+        const numericPrice = typeof price === 'number' ? price : parseInt(price.replace(/[^0-9]/g, ''), 10) || 0;
+        updateData.price = numericPrice;
       }
 
       const { error } = await supabase
@@ -440,7 +447,13 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       if (error) throw error;
 
       set((state) => ({
-        bookings: state.bookings.map(b => b.id === id ? { ...b, status, metodoPago: metodoPago || b.metodoPago } : b)
+        bookings: state.bookings.map(b => b.id === id ? { 
+          ...b, 
+          status, 
+          metodoPago: metodoPago || b.metodoPago,
+          ...(serviceName ? { serviceName } : {}),
+          ...(price ? { price: typeof price === 'number' ? `$${price.toLocaleString('es-CL')}` : price } : {})
+        } : b)
       }));
     } catch (err) {
       console.error('Error updating booking status:', err);

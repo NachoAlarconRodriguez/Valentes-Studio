@@ -1053,11 +1053,18 @@ export default function AdminPage() {
   const [checkoutModal, setCheckoutModal] = useState<{
     isOpen: boolean;
     booking: any | null;
+    step: 1 | 2;
+    wasServiceModified?: boolean;
   }>({
     isOpen: false,
-    booking: null
+    booking: null,
+    step: 1,
+    wasServiceModified: false
   });
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta'>('efectivo');
+  const [isServiceExecutedAsReserved, setIsServiceExecutedAsReserved] = useState<boolean>(true);
+  const [selectedNewServiceId, setSelectedNewServiceId] = useState<string>('');
+  const [customPriceInput, setCustomPriceInput] = useState<string>('');
 
   // Agenda Filter States
   const [agendaViewMode, setAgendaViewMode] = useState<'hoy' | 'manana' | 'semana' | 'prox_semana' | 'fecha'>('hoy');
@@ -4575,9 +4582,14 @@ export default function AdminPage() {
                                                              disabled={booking.status !== 'en_proceso' && ((!isAdmin && isPast) || hasIncompleteBefore)}
                                                              onClick={() => {
                                                                setCheckoutPaymentMethod('efectivo');
+                                                               setIsServiceExecutedAsReserved(true);
+                                                               setSelectedNewServiceId('');
+                                                               setCustomPriceInput('');
                                                                setCheckoutModal({
                                                                  isOpen: true,
-                                                                 booking: booking
+                                                                 booking: booking,
+                                                                 step: 1,
+                                                                 wasServiceModified: false
                                                                });
                                                              }}
                                                              className={`py-2 text-[9px] font-bold rounded-xl uppercase tracking-wider border transition-all text-center ${
@@ -4941,9 +4953,14 @@ export default function AdminPage() {
                                           <button
                                             onClick={() => {
                                               setCheckoutPaymentMethod('efectivo');
+                                              setIsServiceExecutedAsReserved(true);
+                                              setSelectedNewServiceId('');
+                                              setCustomPriceInput('');
                                               setCheckoutModal({
                                                 isOpen: true,
-                                                booking: booking
+                                                booking: booking,
+                                                step: 1,
+                                                wasServiceModified: false
                                               });
                                             }}
                                             className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20 transition-all cursor-pointer"
@@ -10338,7 +10355,7 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
 
-      {/* CHECKOUT MODAL (PAYMENT METHOD SELECTOR) */}
+      {/* CHECKOUT MODAL (2-STEP STEPPER FOR SERVICE VERIFICATION & PAYMENT) */}
       <AnimatePresence>
         {checkoutModal.isOpen && checkoutModal.booking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -10349,102 +10366,327 @@ export default function AdminPage() {
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="bg-[#0c0c0c] border border-white/5 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden text-text-primary"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
-                    <DollarSign size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold tracking-wide text-text-primary">Finalizar y Cobrar</h3>
-                    <p className="text-[10px] text-text-secondary">Selecciona el método de pago del cliente</p>
-                  </div>
+              {/* Stepper Progress Indicator Header */}
+              <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/20">
+                    Paso {checkoutModal.step} de 2
+                  </span>
+                  <span className="text-[10px] text-text-secondary font-medium">
+                    {checkoutModal.step === 1 ? 'Verificación de Servicio' : 'Método de Pago'}
+                  </span>
                 </div>
                 <button
-                  onClick={() => setCheckoutModal({ isOpen: false, booking: null })}
+                  type="button"
+                  onClick={() => setCheckoutModal({ isOpen: false, booking: null, step: 1 })}
                   className="p-1.5 hover:bg-white/5 text-text-secondary hover:text-text-primary rounded-lg transition-all cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
 
-              {/* Service Details Card */}
-              <div className="bg-[#121212] border border-white/5 rounded-xl p-4 mb-5 space-y-2.5">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Cliente</h4>
-                    <p className="text-xs font-semibold text-text-primary">{checkoutModal.booking.clientName}</p>
-                    <p className="text-[10px] text-text-secondary">{checkoutModal.booking.clientPhone}</p>
+              {/* STEP 1: VERIFICAR SERVICIO EJECUTADO */}
+              {checkoutModal.step === 1 && (
+                <div className="space-y-4">
+                  {/* Title & Icon */}
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-400">
+                      <Scissors size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-semibold tracking-wide text-white">¿Se realizó el servicio reservado?</h3>
+                      <p className="text-[10px] text-text-secondary">Verifica si el cliente realizó el servicio original u otro diferente.</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Total a Pagar</h4>
-                    <p className="text-sm font-bold text-emerald-400">{checkoutModal.booking.price}</p>
-                  </div>
-                </div>
 
-                <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2 text-[10px]">
-                  <div>
-                    <span className="text-text-secondary">Servicio:</span>
-                    <p className="font-medium text-text-primary truncate">{checkoutModal.booking.serviceName}</p>
+                  {/* Booking Summary Card */}
+                  <div className="bg-[#121212] border border-white/5 rounded-xl p-3.5 space-y-2 text-left text-xs">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[9px] font-mono uppercase text-text-secondary tracking-wider block">Cliente</span>
+                        <span className="font-semibold text-white">{checkoutModal.booking.clientName}</span>
+                        <span className="text-[10px] text-text-secondary block">{checkoutModal.booking.clientPhone}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] font-mono uppercase text-text-secondary tracking-wider block">Especialista</span>
+                        <span className="font-medium text-white">{checkoutModal.booking.specialistName}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-text-secondary">Especialista:</span>
-                    <p className="font-medium text-text-primary">{checkoutModal.booking.specialistName}</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Payment Method Selector */}
-              <div className="space-y-3 mb-6">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Forma de Pago</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['efectivo', 'transferencia', 'tarjeta'] as const).map((method) => {
-                    const isSelected = checkoutPaymentMethod === method;
-                    let icon = <DollarSign size={18} />;
-                    if (method === 'transferencia') icon = <ArrowLeftRight size={18} />;
-                    if (method === 'tarjeta') icon = <CreditCard size={18} />;
-
-                    return (
+                  {/* Radio Selector: Is Service Same? */}
+                  <div className="space-y-2.5 text-left">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+                      Confirmación de Servicio *
+                    </label>
+                    <div className="space-y-2">
+                      {/* Option A: Yes, same service */}
                       <button
-                        key={method}
-                        onClick={() => setCheckoutPaymentMethod(method)}
-                        className={`p-3.5 flex flex-col items-center justify-center space-y-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/5'
-                            : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-text-secondary hover:text-text-primary'
+                        type="button"
+                        onClick={() => {
+                          setIsServiceExecutedAsReserved(true);
+                          setSelectedNewServiceId('');
+                          setCustomPriceInput('');
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                          isServiceExecutedAsReserved
+                            ? 'bg-emerald-500/10 border-emerald-500/40 text-white shadow-md shadow-emerald-950/20'
+                            : 'bg-white/[0.02] border-white/5 text-text-secondary hover:border-white/10'
                         }`}
                       >
-                        <div className={isSelected ? 'text-emerald-400' : 'text-text-secondary'}>
-                          {icon}
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-bold block text-white">
+                            Sí, realizó el servicio reservado
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-mono font-medium block">
+                            {checkoutModal.booking.serviceName} ({checkoutModal.booking.price})
+                          </span>
                         </div>
-                        <span>
-                          {method === 'efectivo' ? 'Efectivo' : method === 'transferencia' ? 'Transfer' : 'Tarjeta'}
-                        </span>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                          isServiceExecutedAsReserved ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-white/20'
+                        }`}>
+                          {isServiceExecutedAsReserved && <Check size={12} className="stroke-[3]" />}
+                        </div>
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setCheckoutModal({ isOpen: false, booking: null })}
-                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-text-secondary hover:text-text-primary text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
-                >
-                  Volver
-                </button>
-                <button
-                  onClick={async () => {
-                    await updateBookingStatus(checkoutModal.booking.id, 'completado', checkoutPaymentMethod);
-                    triggerNotification(`Servicio para ${checkoutModal.booking.clientName} cobrado con ${checkoutPaymentMethod.toUpperCase()} y completado.`);
-                    setCheckoutModal({ isOpen: false, booking: null });
-                  }}
-                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow-lg shadow-emerald-950/20"
-                >
-                  Confirmar Pago
-                </button>
-              </div>
+                      {/* Option B: No, changed service */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsServiceExecutedAsReserved(false);
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                          !isServiceExecutedAsReserved
+                            ? 'bg-amber-500/10 border-amber-500/40 text-white shadow-md shadow-amber-950/20'
+                            : 'bg-white/[0.02] border-white/5 text-text-secondary hover:border-white/10'
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-bold block text-white">
+                            No, realizó otro servicio o cambió el valor
+                          </span>
+                          <span className="text-[10px] text-amber-400 font-mono block">
+                            Seleccionar nuevo servicio o ingresar monto
+                          </span>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                          !isServiceExecutedAsReserved ? 'bg-amber-500 border-amber-500 text-black' : 'border-white/20'
+                        }`}>
+                          {!isServiceExecutedAsReserved && <Check size={12} className="stroke-[3]" />}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Controls if service changed */}
+                  {!isServiceExecutedAsReserved && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="space-y-3 pt-2 text-left border-t border-white/5"
+                    >
+                      {/* Select catalog service */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">
+                          Seleccionar Servicio Realizado *
+                        </label>
+                        {(() => {
+                          const cat = (checkoutModal.booking.category || 'barberia') as 'barberia' | 'peluqueria' | 'terapias';
+                          const catalog = (servicesData[cat]?.services || []).filter((s: any) => s.isActive !== false);
+                          
+                          return (
+                            <CustomSelect
+                              value={selectedNewServiceId}
+                              onChange={(val) => {
+                                setSelectedNewServiceId(val);
+                                const found = catalog.find((s: any) => s.id === val);
+                                if (found) {
+                                  const formattedPrice = typeof found.price === 'number' ? `$${found.price.toLocaleString('es-CL')}` : found.price;
+                                  setCustomPriceInput(formattedPrice);
+                                }
+                              }}
+                              options={[
+                                { value: '', label: '-- Seleccionar del Catálogo --' },
+                                ...catalog.map((s: any) => ({
+                                  value: s.id,
+                                  label: `${s.name} (${typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CL')}` : s.price})`
+                                }))
+                              ]}
+                              buttonClassName="w-full bg-black/50 border border-amber-500/30 rounded-xl py-2.5 px-3 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-amber-400"
+                            />
+                          );
+                        })()}
+                      </div>
+
+                      {/* Custom Price Modification */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block">
+                          Monto Total Real ($CLP) *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej: $18.000"
+                          value={customPriceInput}
+                          onChange={(e) => setCustomPriceInput(e.target.value)}
+                          className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Actions for Step 1 */}
+                  <div className="flex space-x-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutModal({ isOpen: false, booking: null, step: 1 })}
+                      className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-text-secondary hover:text-text-primary text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isServiceExecutedAsReserved) {
+                          const cat = (checkoutModal.booking.category || 'barberia') as 'barberia' | 'peluqueria' | 'terapias';
+                          const catalog = (servicesData[cat]?.services || []);
+                          const foundService = catalog.find((s: any) => s.id === selectedNewServiceId);
+                          
+                          const newServiceName = foundService ? foundService.name : checkoutModal.booking.serviceName;
+                          const newPrice = customPriceInput.trim() ? customPriceInput.trim() : checkoutModal.booking.price;
+
+                          setCheckoutModal(prev => ({
+                            ...prev,
+                            step: 2,
+                            wasServiceModified: true,
+                            booking: {
+                              ...prev.booking,
+                              serviceName: newServiceName,
+                              price: newPrice
+                            }
+                          }));
+                        } else {
+                          setCheckoutModal(prev => ({
+                            ...prev,
+                            step: 2,
+                            wasServiceModified: false
+                          }));
+                        }
+                      }}
+                      className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-black text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow-lg shadow-amber-950/20"
+                    >
+                      Continuar a Cobro &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: FINALIZAR Y COBRAR (PAYMENT METHOD SELECTOR) */}
+              {checkoutModal.step === 2 && (
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center space-x-3 mb-1">
+                    <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
+                      <DollarSign size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-semibold tracking-wide text-text-primary">Finalizar y Cobrar</h3>
+                      <p className="text-[10px] text-text-secondary">Selecciona el método de pago del cliente</p>
+                    </div>
+                  </div>
+
+                  {/* Service Details Card */}
+                  <div className="bg-[#121212] border border-white/5 rounded-xl p-4 mb-3 space-y-2.5 text-left">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Cliente</h4>
+                        <p className="text-xs font-semibold text-text-primary">{checkoutModal.booking.clientName}</p>
+                        <p className="text-[10px] text-text-secondary">{checkoutModal.booking.clientPhone}</p>
+                      </div>
+                      <div className="text-right">
+                        <h4 className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Total a Pagar</h4>
+                        <p className="text-sm font-bold text-emerald-400">{checkoutModal.booking.price}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2 text-[10px]">
+                      <div>
+                        <span className="text-text-secondary">Servicio Ejecutado:</span>
+                        <p className="font-medium text-text-primary truncate flex items-center gap-1">
+                          {checkoutModal.booking.serviceName}
+                          {checkoutModal.wasServiceModified && (
+                            <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">Modificado</span>
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-text-secondary">Especialista:</span>
+                        <p className="font-medium text-text-primary">{checkoutModal.booking.specialistName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div className="space-y-2.5 text-left mb-4">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Forma de Pago</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['efectivo', 'transferencia', 'tarjeta'] as const).map((method) => {
+                        const isSelected = checkoutPaymentMethod === method;
+                        let icon = <DollarSign size={18} />;
+                        if (method === 'transferencia') icon = <ArrowLeftRight size={18} />;
+                        if (method === 'tarjeta') icon = <CreditCard size={18} />;
+
+                        return (
+                          <button
+                            key={method}
+                            type="button"
+                            onClick={() => setCheckoutPaymentMethod(method)}
+                            className={`p-3.5 flex flex-col items-center justify-center space-y-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/5'
+                                : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-text-secondary hover:text-text-primary'
+                            }`}
+                          >
+                            <div className={isSelected ? 'text-emerald-400' : 'text-text-secondary'}>
+                              {icon}
+                            </div>
+                            <span>
+                              {method === 'efectivo' ? 'Efectivo' : method === 'transferencia' ? 'Transfer' : 'Tarjeta'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Actions for Step 2 */}
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutModal(prev => ({ ...prev, step: 1 }))}
+                      className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-text-secondary hover:text-text-primary text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                    >
+                      &larr; Volver
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await updateBookingStatus(
+                          checkoutModal.booking.id, 
+                          'completado', 
+                          checkoutPaymentMethod,
+                          checkoutModal.wasServiceModified ? checkoutModal.booking.serviceName : undefined,
+                          checkoutModal.wasServiceModified ? checkoutModal.booking.price : undefined
+                        );
+                        triggerNotification(`Servicio (${checkoutModal.booking.serviceName}) para ${checkoutModal.booking.clientName} cobrado con ${checkoutPaymentMethod.toUpperCase()} y completado.`);
+                        setCheckoutModal({ isOpen: false, booking: null, step: 1 });
+                      }}
+                      className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow-lg shadow-emerald-950/20"
+                    >
+                      Confirmar Pago
+                    </button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
