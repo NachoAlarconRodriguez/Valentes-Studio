@@ -129,6 +129,7 @@ interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   buttonClassName?: string;
+  dropUp?: boolean;
 }
 
 function CustomSelect({ 
@@ -137,7 +138,8 @@ function CustomSelect({
   options, 
   placeholder = 'Seleccionar...', 
   className = '',
-  buttonClassName = ''
+  buttonClassName = '',
+  dropUp = false
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -157,7 +159,9 @@ function CustomSelect({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#0d0d0d]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 max-h-60 overflow-y-auto text-left">
+          <div className={`absolute left-0 right-0 z-50 bg-[#0d0d0d]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 max-h-60 overflow-y-auto text-left ${
+            dropUp ? 'bottom-full mb-2' : 'top-full mt-2'
+          }`}>
             {options.map((opt) => {
               const isSelected = opt.value === value;
               return (
@@ -10365,7 +10369,7 @@ export default function AdminPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-[#0c0c0c] border border-white/5 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden text-text-primary"
+              className="bg-[#0c0c0c] border border-white/5 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-text-primary"
             >
               {/* Stepper Progress Indicator Header */}
               <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
@@ -10513,6 +10517,7 @@ export default function AdminPage() {
                                   label: `${s.name} (${typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CL')}` : s.price})`
                                 }))
                               ]}
+                              dropUp={true}
                               buttonClassName="w-full bg-black/50 border border-amber-500/30 rounded-xl py-2.5 px-3 text-xs text-white flex items-center justify-between cursor-pointer focus:outline-none focus:border-amber-400"
                             />
                           );
