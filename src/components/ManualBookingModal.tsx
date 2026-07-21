@@ -517,6 +517,28 @@ export function ManualBookingModal({
     setSubmissionError(null);
 
     try {
+      // Auto-asignar especialista real si no fue seleccionado manualmente
+      const resolvedSpecialistName = (() => {
+        if (selectedSpecialistObj?.name) return selectedSpecialistObj.name;
+        // Buscar especialistas disponibles para este bloque horario
+        const duration = selectedServiceObj
+          ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration))
+          : 60;
+        const availableSpecs = specialistsList.filter(s =>
+          isSpecialistAvailable(s.id, date, finalTime, duration, category).available
+        );
+        if (availableSpecs.length > 0) {
+          // Balancear carga: asignar al que tenga menos reservas en el día
+          const bookingsOnDate = useBookingStore.getState().bookings.filter(b => b.date === date);
+          const getBookingCount = (specName: string) =>
+            bookingsOnDate.filter(b => b.specialistName.trim().toLowerCase() === specName.trim().toLowerCase()).length;
+          availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
+          return availableSpecs[0].name;
+        }
+        // Último recurso: primer especialista de la lista (no dejar "Cualquiera")
+        return specialistsList[0]?.name || 'Sin Asignar';
+      })();
+
       const code = await addBooking({
         clientName,
         clientPhone,
@@ -524,7 +546,7 @@ export function ManualBookingModal({
         category,
         serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
         price: finalPriceStr,
-        specialistName: selectedSpecialistObj?.name || 'Cualquiera',
+        specialistName: resolvedSpecialistName,
         date,
         time: finalTime,
         channel,

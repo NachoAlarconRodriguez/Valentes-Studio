@@ -413,12 +413,13 @@ export function BookingModal() {
       
       const assignedName = (() => {
         if (specialistId) {
-          return selectedSpecialistObj?.name || 'Cualquiera';
+          // Si hay un especialista seleccionado explícitamente, usarlo siempre
+          return selectedSpecialistObj?.name || filteredSpecialistsList.find(s => s.id === specialistId)?.name || filteredSpecialistsList[0]?.name || 'Sin Asignar';
         }
         const dur = displayDurationMins;
         const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur, category).available);
         if (availableSpecs.length > 0) {
-          // Sort available specialists by their number of bookings on this date (load balance)
+          // Balancear carga: asignar al que tenga menos reservas en el día
           const bookingsOnDate = useBookingStore.getState().bookings.filter(b => b.date === date);
           const getBookingCount = (specName: string) => {
             return bookingsOnDate.filter(b => b.specialistName.trim().toLowerCase() === specName.trim().toLowerCase()).length;
@@ -426,7 +427,8 @@ export function BookingModal() {
           availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
           return availableSpecs[0].name;
         }
-        return 'Cualquiera';
+        // Último recurso: asignar al primer especialista de la lista (no dejar "Cualquiera")
+        return filteredSpecialistsList[0]?.name || 'Sin Asignar';
       })();
       setAssignedSpecialistName(assignedName);
 

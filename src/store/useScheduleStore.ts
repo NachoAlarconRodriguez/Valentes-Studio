@@ -399,6 +399,31 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           };
         }
       }
+
+      // Red de seguridad: reservas con "Cualquiera" legacy bloquean disponibilidad de todos los especialistas
+      const cualquieraBookings = useBookingStore.getState().bookings.filter(
+        b => b.date === date &&
+             b.status !== 'bloqueado' &&
+             b.status !== 'cancelado' &&
+             b.status !== 'no_llego' &&
+             (b.specialistName.trim().toLowerCase() === 'cualquiera' || b.specialistName.trim().toLowerCase() === 'sin asignar')
+      );
+
+      for (const booking of cualquieraBookings) {
+        const bookingStart = timeToMinutes(booking.time);
+        const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
+        const bookingDuration = bookedService
+          ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
+          : 60;
+        const bookingEnd = bookingStart + bookingDuration;
+
+        if (slotStart < bookingEnd && slotEnd > bookingStart) {
+          return {
+            available: false,
+            reason: `Reserva sin especialista asignado en este horario (${booking.time} - ${booking.serviceName})`
+          };
+        }
+      }
     }
     
     return { available: true };
