@@ -48,7 +48,8 @@ import {
   Minimize2,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Scissors
 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';

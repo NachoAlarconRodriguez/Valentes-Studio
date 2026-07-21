@@ -452,7 +452,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
           status, 
           metodoPago: metodoPago || b.metodoPago,
           ...(serviceName ? { serviceName } : {}),
-          ...(price ? { price: typeof price === 'number' ? `$${price.toLocaleString('es-CL')}` : price } : {})
+          ...(price ? { price } : {})
         } : b)
       }));
     } catch (err) {
