@@ -1648,10 +1648,73 @@ export default function AdminPage() {
     setTimeout(() => setNotification(null), 3000);
   }
 
+  const compressImageOnClient = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
+        return resolve(file);
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve(file);
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                return resolve(file);
+              }
+              const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || 'image';
+              const compressedFile = new File([blob], `${nameWithoutExt}.jpg`, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
   const optimizeAndUploadImage = async (file: File): Promise<string> => {
     try {
+      const fileToUpload = await compressImageOnClient(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', fileToUpload);
       
       const response = await fetch('/api/upload', {
         method: 'POST',
