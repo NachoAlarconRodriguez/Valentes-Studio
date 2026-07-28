@@ -4057,13 +4057,10 @@ export default function AdminPage() {
                             : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/25'
                         }`}>
                           {photo ? (
-                            <Image
+                            <img
                               src={photo}
                               alt={sp.name}
-                              fill
-                              unoptimized
-                              sizes="48px"
-                              className="object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
                             <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-white">
@@ -8195,13 +8192,10 @@ export default function AdminPage() {
                           </div>
 
                           {staff.imageUrl ? (
-                            <Image
+                            <img
                               src={staff.imageUrl}
                               alt={staff.name}
-                              fill
-                              unoptimized
-                              sizes="(max-width: 768px) 100vw, 30vw"
-                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black flex flex-col items-center justify-center space-y-4">
@@ -8785,13 +8779,10 @@ export default function AdminPage() {
                     <div className="flex items-center space-x-2.5">
                       {selectedStaffObj?.imageUrl ? (
                         <div className="w-5 h-5 rounded-full overflow-hidden relative border border-white/10 flex-shrink-0">
-                          <Image
+                          <img
                             src={selectedStaffObj.imageUrl}
                             alt={selectedStaffObj.name}
-                            fill
-                            unoptimized
-                            sizes="20px"
-                            className="object-cover"
+                            className="absolute inset-0 w-full h-full object-cover"
                           />
                         </div>
                       ) : (
@@ -8830,13 +8821,10 @@ export default function AdminPage() {
                               <div className="flex items-center space-x-2">
                                 {spec.imageUrl ? (
                                   <div className="w-5 h-5 rounded-full overflow-hidden relative border border-white/10 flex-shrink-0">
-                                    <Image
+                                    <img
                                       src={spec.imageUrl}
                                       alt={spec.name}
-                                      fill
-                                      unoptimized
-                                      sizes="20px"
-                                      className="object-cover"
+                                      className="absolute inset-0 w-full h-full object-cover"
                                     />
                                   </div>
                                 ) : (
