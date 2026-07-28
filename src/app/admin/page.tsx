@@ -1691,8 +1691,7 @@ export default function AdminPage() {
               if (!blob) {
                 return resolve(file);
               }
-              const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || 'image';
-              const compressedFile = new File([blob], `${nameWithoutExt}.jpg`, {
+              const compressedFile = new File([blob], 'compressed_image.jpg', {
                 type: 'image/jpeg',
                 lastModified: Date.now(),
               });
@@ -8688,13 +8687,10 @@ export default function AdminPage() {
                             {/* Preview */}
                             <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center flex-shrink-0 relative">
                               {staffFormImageUrl ? (
-                                <Image
+                                <img
                                   src={staffFormImageUrl}
                                   alt="Preview"
-                                  fill
-                                  unoptimized
-                                  sizes="64px"
-                                  className="object-cover"
+                                  className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <span className="text-[10px] text-white/30 text-center font-light leading-none">Sin foto</span>
