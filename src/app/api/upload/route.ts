@@ -6,8 +6,8 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    if (!file) {
-      return NextResponse.json({ error: 'No se proporcionó ningún archivo' }, { status: 400 });
+    if (!file || file.size === 0) {
+      return NextResponse.json({ error: 'El archivo recibido está vacío o corrupto (0 bytes)' }, { status: 400 });
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

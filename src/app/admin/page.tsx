@@ -1648,7 +1648,7 @@ export default function AdminPage() {
     setTimeout(() => setNotification(null), 3000);
   }
 
-  const compressImageOnClient = (file: File): Promise<File> => {
+  const compressImageOnClient = (file: File): Promise<Blob | File> => {
     return new Promise((resolve) => {
       if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
         return resolve(file);
@@ -1691,11 +1691,7 @@ export default function AdminPage() {
               if (!blob) {
                 return resolve(file);
               }
-              const compressedFile = new File([blob], 'compressed_image.jpg', {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
+              resolve(blob);
             },
             'image/jpeg',
             0.85
@@ -1713,7 +1709,13 @@ export default function AdminPage() {
     try {
       const fileToUpload = await compressImageOnClient(file);
       const formData = new FormData();
-      formData.append('file', fileToUpload);
+      
+      if (fileToUpload instanceof File) {
+        formData.append('file', fileToUpload);
+      } else {
+        // Appending a Blob directly with a clean filename is 100% compatible on iOS Safari
+        formData.append('file', fileToUpload, 'compressed_image.jpg');
+      }
       
       const response = await fetch('/api/upload', {
         method: 'POST',
