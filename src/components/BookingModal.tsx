@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check, Search } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check, Search, AlertTriangle } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { useServicesStore } from '@/store/useServicesStore';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -463,6 +463,7 @@ export function BookingModal() {
         date: date,
         time: time,
         channel: bookingChannel,
+        status: (category === 'peluqueria' || category === 'terapias') ? 'pendiente' : 'confirmado',
         giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined
       });
 
@@ -1429,8 +1430,28 @@ export function BookingModal() {
                                 <div className="flex justify-between pt-1.5 mt-1.5 border-t border-white/5 text-[11px]"><span className="text-gold font-bold">Monto Abono:</span><strong className="text-gold">$20.000 CLP</strong></div>
                               </div>
 
-                              <p className="text-[9px] text-text-secondary/60 leading-relaxed font-light">
-                                * En caso de cancelación o cambio de horario, les pedimos avisar con al menos 24 horas de anticipación. Siempre existe la posibilidad de reagendar, avisando con tiempo.
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs text-amber-100 text-left space-y-3">
+                                <div className="flex items-center space-x-2 font-bold text-amber-400 text-xs uppercase tracking-wide">
+                                  <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
+                                  <span>Confirmación Obligatoria</span>
+                                </div>
+                                <p className="leading-relaxed font-normal text-xs text-amber-100/90">
+                                  Para asegurar tu cupo, realiza la transferencia y <strong>envía el comprobante por WhatsApp</strong> dentro del plazo correspondiente:
+                                </p>
+                                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                                  <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
+                                    <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas Futuras</div>
+                                    <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 24 hrs</div>
+                                  </div>
+                                  <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
+                                    <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas para Hoy</div>
+                                    <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 1 hr</div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <p className="text-[11px] text-white/50 leading-relaxed text-left mt-2">
+                                * <strong>Cancelación o cambio de hora:</strong> Avisar con al menos 24 horas de anticipación.
                               </p>
                             </div>
                           )}
@@ -1658,15 +1679,35 @@ export function BookingModal() {
 
                       {/* Deposit (Abono) confirmation notice on success */}
                       {(category === 'peluqueria' || category === 'terapias') && (
-                        <div className="w-full mt-4 text-center space-y-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl p-4 animate-fadeIn">
-                          <div className="flex items-center justify-center space-x-1.5 text-emerald-400">
-                            <CheckCircle2 size={14} className="stroke-[2.5]" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Abono Notificado</span>
+                        <div className="w-full mt-4 text-center space-y-2 bg-amber-500/10 border border-amber-500/20 text-amber-100 rounded-2xl p-4 animate-fadeIn">
+                          <div className="flex items-center justify-center space-x-1.5 text-amber-400">
+                            <AlertTriangle size={14} className="stroke-[2.5]" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Enviar Comprobante</span>
                           </div>
-                          <p className="text-[11px] text-emerald-300/80 leading-relaxed font-light">
-                            Tu abono de <strong>$20.000</strong> ha sido registrado. Tu reserva se encuentra en estado <strong>pre-confirmada</strong> a la espera de que el staff valide la transferencia.
+                          <p className="text-xs text-amber-100/90 leading-relaxed font-normal">
+                            Para confirmar tu reserva, recuerda transferir el abono de <strong>$20.000</strong> y enviar el comprobante por WhatsApp presionando el botón verde de abajo.
                           </p>
                         </div>
+                      )}
+
+                      {(category === 'peluqueria' || category === 'terapias') && (
+                        <a
+                          href={`https://wa.me/56971465202?text=${encodeURIComponent(
+                            `Hola, adjunto el comprobante de transferencia de $20.000 para mi reserva.\n\n` +
+                            `• Código: ${bookingCode}\n` +
+                            `• Servicio: ${selectedServiceObj?.name || 'Servicio'}\n` +
+                            `• Fecha: ${formatDateToDMY(date)} a las ${time} hrs\n` +
+                            `• Cliente: ${name}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full mt-5 py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold uppercase tracking-wider text-xs flex items-center justify-center space-x-2 transition-all shadow-lg hover:scale-[1.02] cursor-pointer"
+                        >
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436.002 9.852-4.411 9.856-9.85.002-2.635-1.022-5.11-2.884-6.974S14.307 2.115 11.994 2.113c-5.447 0-9.866 4.416-9.87 9.86-.001 1.833.493 3.626 1.429 5.187l-.993 3.628 3.734-.979zm11.236-4.577c-.3-.15-1.782-.88-2.056-.98-.275-.1-.475-.15-.675.15-.2.3-.775.98-.95 1.18-.175.2-.35.225-.65.075-1.025-.515-1.745-.775-2.425-1.37-.52-.45-.875-1.01-1.025-1.26-.15-.25-.015-.385.12-.52.12-.12.275-.325.4-.485.12-.175.162-.3.243-.5.08-.199.04-.375-.02-.525-.06-.15-.475-1.145-.65-1.57-.172-.413-.343-.356-.475-.363-.12-.007-.26-.008-.4-.008-.14 0-.368.05-.56.26-.192.21-.734.717-.734 1.748 0 1.03.75 2.025.855 2.162.105.137 1.474 2.25 3.572 3.15.5.215.89.34 1.196.438.502.16 1.028.138 1.412.08.43-.064 1.78-.727 2.03-1.43.25-.702.25-1.3.175-1.43-.075-.13-.275-.21-.575-.36z"/>
+                          </svg>
+                          <span>Enviar Comprobante por WhatsApp</span>
+                        </a>
                       )}
 
                       <button

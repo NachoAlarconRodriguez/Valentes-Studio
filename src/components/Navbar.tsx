@@ -35,10 +35,10 @@ export function Navbar() {
 
   const getLinkColors = (path: string) => {
     return {
-      textActive: 'text-gold',
-      borderActive: 'bg-gold',
-      hoverText: 'group-hover:text-gold',
-      borderHover: 'group-hover:bg-gold'
+      textActive: 'text-[#D7AF68]',
+      borderActive: 'bg-[#D7AF68]',
+      hoverText: 'group-hover:text-[#D7AF68]',
+      borderHover: 'group-hover:bg-[#D7AF68]'
     };
   };
 
@@ -103,10 +103,10 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] text-gold-gradient transition-all duration-300">
                     SANTUARIO
                   </span>
-                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
                     DE BIENESTAR
                   </span>
                 </div>
@@ -124,10 +124,10 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] text-gold-gradient transition-all duration-300">
                     VALENTES
                   </span>
-                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
                     BARBER STUDIO
                   </span>
                 </div>
@@ -145,10 +145,10 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold text-gold-gradient transition-all duration-300">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] text-gold-gradient transition-all duration-300">
                     ALMA BELA
                   </span>
-                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-gold transition-colors duration-300 leading-none mt-0.5">
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
                     STUDIO
                   </span>
                 </div>
@@ -166,7 +166,7 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-gold bg-gradient-to-r from-white via-gold to-text-secondary bg-clip-text text-transparent transition-all duration-300">
+                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] bg-gradient-to-r from-white via-[#D7AF68] to-text-secondary bg-clip-text text-transparent transition-all duration-300">
                     JEFÏTO LOPÊS
                   </span>
                 </div>
@@ -209,21 +209,21 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/giftcards"
-              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5"
+              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-[#D7AF68]/20 text-[#D7AF68]/75 hover:text-[#9C7442] hover:border-[#9C7442]/40 hover:bg-white/5"
               title="Comprar Tarjeta de Regalo"
             >
               <Gift size={16} />
             </Link>
             <Link
               href="/admin"
-              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-gold/20 text-gold/75 hover:text-gold hover:border-gold/40 hover:bg-white/5"
+              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-[#D7AF68]/20 text-[#D7AF68]/75 hover:text-[#9C7442] hover:border-[#9C7442]/40 hover:bg-white/5"
               title="Panel de Administración"
             >
               <User size={16} />
             </Link>
             <button
               onClick={() => openBooking()}
-              className="px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 border-gold/40 text-gold hover:bg-gold hover:shadow-gold/20 shadow-gold/5"
+              className="px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 border-[#D7AF68]/40 text-[#D7AF68] hover:bg-[#D7AF68] hover:shadow-[#D7AF68]/20 shadow-[#D7AF68]/5"
             >
               Agendar Ritual
             </button>

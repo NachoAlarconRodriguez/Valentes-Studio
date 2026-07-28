@@ -203,7 +203,7 @@ export default function BarberiaLayout() {
                        <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-[0.25em] text-gold animate-text-gold-flow leading-none select-none">
                          {content.barberia.heroTitle}
                        </h1>
-                       <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-gold uppercase font-medium leading-none pl-1 select-none">
+                       <h2 className="font-serif text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.6em] text-[#D7AF68] uppercase font-medium leading-none pl-1 select-none">
                          {content.barberia.heroSubtitle}
                        </h2>
                      </div>
@@ -212,7 +212,7 @@ export default function BarberiaLayout() {
                    <div className="pt-6">
                      <button
                        onClick={() => setShowIntro(false)}
-                       className="px-8 py-3.5 rounded-full border border-gold/30 text-gold text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-gold/15 hover:scale-105 active:scale-95 group shimmer-button"
+                       className="px-8 py-3.5 rounded-full border border-[#D7AF68]/30 text-[#D7AF68] text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-[#D7AF68] hover:text-black hover:border-[#D7AF68] transition-all duration-500 flex items-center space-x-2 mx-auto md:mx-0 cursor-pointer shadow-lg hover:shadow-[#D7AF68]/15 hover:scale-105 active:scale-95 group shimmer-button"
                      >
                        <span>{content.barberia.discoverBtn}</span>
                        <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />

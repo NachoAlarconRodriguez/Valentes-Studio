@@ -112,7 +112,7 @@ canvas {
 }
 
 @utility animate-text-gold-flow {
-  background: linear-gradient(120deg, #F4EFE7 0%, #C89A4B 50%, #F4EFE7 100%);
+  background: linear-gradient(120deg, #C69A4A 0%, #D7AF68 50%, #C69A4A 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -267,7 +267,7 @@ canvas {
 }
 
 @utility animate-text-copper-flow {
-  background: linear-gradient(120deg, #F4EFE7 0%, #8A6230 50%, #F4EFE7 100%);
+  background: linear-gradient(120deg, #C69A4A 0%, #D7AF68 50%, #C69A4A 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -289,7 +289,7 @@ canvas {
 }
 
 @utility animate-text-platinum-flow {
-  background: linear-gradient(120deg, #F4EFE7 0%, #9CA3AF 50%, #F4EFE7 100%);
+  background: linear-gradient(120deg, #C69A4A 0%, #D7AF68 50%, #C69A4A 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;

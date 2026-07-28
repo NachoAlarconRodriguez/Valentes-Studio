@@ -4275,6 +4275,31 @@ export default function AdminPage() {
                                   return (slotMins + 30) < currentMins;
                                 })();
 
+                                const isAbonoOverdue = (() => {
+                                  if (!booking) return false;
+                                  if (
+                                    (booking.category !== 'peluqueria' && booking.category !== 'terapias') ||
+                                    booking.status !== 'pendiente' ||
+                                    booking.abonoConfirmado
+                                  ) {
+                                    return false;
+                                  }
+
+                                  if (!booking.createdAt) return false;
+
+                                  const createdTime = new Date(booking.createdAt).getTime();
+                                  const now = new Date().getTime();
+                                  const diffHours = (now - createdTime) / (1000 * 60 * 60);
+
+                                  const isSameDayBooking = booking.date === booking.createdAt.split('T')[0];
+
+                                  if (isSameDayBooking) {
+                                    return diffHours >= 1;
+                                  } else {
+                                    return diffHours >= 24;
+                                  }
+                                })();
+
                                 if (booking) {
                                   if (booking.status === 'bloqueado') {
                                     return (
@@ -4348,10 +4373,14 @@ export default function AdminPage() {
                                         isPast ? 'opacity-70 select-none' : ''
                                       }`}
                                     >
-                                      <div className={`h-full flex flex-col justify-between bg-white/[0.02] border rounded-2xl p-4 transition-all duration-300 ${
-                                        hoveredBookingId === booking.id
-                                          ? 'border-gold/40 bg-gold/[0.03] shadow-lg shadow-gold/5 scale-[1.02]'
-                                          : 'border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
+                                      <div className={`h-full flex flex-col justify-between border rounded-2xl p-4 transition-all duration-300 ${
+                                        isAbonoOverdue
+                                          ? hoveredBookingId === booking.id
+                                            ? 'border-red-500/80 bg-red-950/30 shadow-lg shadow-red-950/30 scale-[1.02]'
+                                            : 'border-red-500/50 bg-red-950/20 shadow-lg shadow-red-950/20'
+                                          : hoveredBookingId === booking.id
+                                            ? 'border-gold/40 bg-gold/[0.03] shadow-lg shadow-gold/5 scale-[1.02]'
+                                            : 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.03]'
                                       }`}>
                                         {(() => {
                                           const isTimeReached = (() => {
@@ -4457,6 +4486,12 @@ export default function AdminPage() {
                                                         </span>
                                                       </span>
                                                     )}
+
+                                                    {isAbonoOverdue && (
+                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[6px] uppercase tracking-wider font-bold border bg-red-500/20 border-red-500/40 text-red-300 animate-pulse">
+                                                        <span>Plazo Vencido</span>
+                                                      </span>
+                                                    )}
                                                   </div>
                                                 </div>
 
@@ -4534,7 +4569,7 @@ export default function AdminPage() {
                                                 ) : (
                                                   <div className="flex flex-col gap-2 w-full">
                                                     {/* Botón de Confirmar Abono si el cliente notificó pero no ha sido confirmado */}
-                                                    {(booking.category === 'peluqueria' || booking.category === 'terapias') && booking.abonoTransferido && !booking.abonoConfirmado && (
+                                                    {(booking.category === 'peluqueria' || booking.category === 'terapias') && booking.status === 'pendiente' && !booking.abonoConfirmado && (
                                                       <button
                                                         type="button"
                                                         onClick={() => {
@@ -10862,10 +10897,10 @@ export default function AdminPage() {
               {/* Gold Top Glow */}
               <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
-              <h3 className="font-serif text-base text-white mb-2 tracking-wide font-bold">
+              <h3 className="font-sans text-[15px] text-white mb-2.5 tracking-wide font-bold uppercase">
                 {confirmModal.title}
               </h3>
-              <p className="text-xs text-text-secondary leading-relaxed mb-6 px-2">
+              <p className="font-sans text-xs text-white/80 leading-relaxed mb-6 px-2 font-normal">
                 {confirmModal.message}
               </p>
               

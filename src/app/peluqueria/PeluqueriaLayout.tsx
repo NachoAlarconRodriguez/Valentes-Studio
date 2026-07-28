@@ -296,8 +296,8 @@ export default function PeluqueriaLayout() {
 
                 {/* Subtitle Separator */}
                 <div className="flex flex-col items-center space-y-4 w-full">
-                  <div className="w-20 h-[1px] bg-gold/50" />
-                  <span className="text-xs uppercase tracking-[0.7em] text-gold/90 font-semibold filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">
+                  <div className="w-20 h-[1px] bg-[#D7AF68]/50" />
+                  <span className="text-xs uppercase tracking-[0.7em] text-[#D7AF68]/90 font-semibold filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">
                     {content.peluqueria.overlaySubtitle}
                   </span>
                 </div>
@@ -305,7 +305,7 @@ export default function PeluqueriaLayout() {
                 {/* Enter Button */}
                 <button
                   onClick={() => setIsEntered(true)}
-                  className="w-full max-w-[260px] py-4 border border-gold/45 text-gold text-xs uppercase tracking-[0.3em] rounded-full hover:bg-gold hover:text-black hover:border-gold transition-all duration-500 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-lg shadow-black/30 bg-black/20 backdrop-blur-xs font-semibold"
+                  className="w-full max-w-[260px] py-4 border border-[#D7AF68]/45 text-[#D7AF68] text-xs uppercase tracking-[0.3em] rounded-full hover:bg-[#D7AF68] hover:text-black hover:border-[#D7AF68] transition-all duration-500 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-lg shadow-black/30 bg-black/20 backdrop-blur-xs font-semibold"
                 >
                   INGRESAR AL RITUAL
                 </button>
