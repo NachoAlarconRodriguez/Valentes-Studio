@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
+import { 
+  addSpecialistAction, 
+  updateSpecialistAction, 
+  deleteSpecialistAction 
+} from '@/app/admin/actions';
 
 export interface ServiceItem {
   id: string;
@@ -337,65 +342,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
     };
 
     try {
-      const { error } = await supabase.from('specialists').insert({
-        id,
-        name: specialist.name,
-        role: specialist.role,
-        specialty: specialist.specialty,
-        bio: specialist.bio,
-        avatar: specialist.avatar,
-        email: specialist.email,
-        profile_type: specialist.profileType,
-        assigned_agendas: specialist.assignedAgendas,
-        image_url: specialist.imageUrl || '',
-        phone: specialist.phone || '',
-        is_active: specialist.isActive !== false
-      });
-
-      if (error) throw error;
-
-      // Create default work shifts for the new specialist in the database
-      const shiftsToInsert = [];
-      // Mon-Fri active
-      for (let i = 1; i <= 5; i++) {
-        shiftsToInsert.push({
-          id: `${id}_shift_${i}`,
-          specialist_id: id,
-          day_of_week: i,
-          is_active: true,
-          start_time: '09:00',
-          end_time: '18:00',
-          has_break: true,
-          break_start_time: '13:00',
-          break_end_time: '14:00'
-        });
-      }
-      // Sat active
-      shiftsToInsert.push({
-        id: `${id}_shift_6`,
-        specialist_id: id,
-        day_of_week: 6,
-        is_active: true,
-        start_time: '09:00',
-        end_time: '13:00',
-        has_break: false,
-        break_start_time: '13:00',
-        break_end_time: '14:00'
-      });
-      // Sun inactive
-      shiftsToInsert.push({
-        id: `${id}_shift_0`,
-        specialist_id: id,
-        day_of_week: 0,
-        is_active: false,
-        start_time: '09:00',
-        end_time: '18:00',
-        has_break: false,
-        break_start_time: '13:00',
-        break_end_time: '14:00'
-      });
-
-      await supabase.from('work_shifts').insert(shiftsToInsert);
+      await addSpecialistAction(category, id, specialist);
 
       set((state) => {
         const updatedSpecialists = [...state.specialistsList, newSpecialist];
@@ -415,6 +362,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       });
     } catch (err: any) {
       console.error('Error adding specialist:', err);
+      throw err;
     }
   },
 
@@ -435,15 +383,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       // Only update the specialists table if there are fields to update there
       if (Object.keys(payload).length > 0) {
-        const { error } = await supabase
-          .from('specialists')
-          .update(payload)
-          .eq('id', specialistId);
-
-        if (error) {
-          console.error('Error updating specialist in DB:', error);
-          throw error;
-        }
+        await updateSpecialistAction(specialistId, payload);
       }
 
       // Always update local state to reflect the save
@@ -468,18 +408,14 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       });
     } catch (err: any) {
       console.error('Error updating specialist:', err);
+      throw err;
     }
   },
 
 
   deleteSpecialist: async (category, specialistId) => {
     try {
-      const { error } = await supabase
-        .from('specialists')
-        .delete()
-        .eq('id', specialistId);
-
-      if (error) throw error;
+      await deleteSpecialistAction(specialistId);
 
       set((state) => {
         const updatedSpecialists = state.specialistsList.filter((sp) => sp.id !== specialistId);
@@ -500,6 +436,7 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       });
     } catch (err: any) {
       console.error('Error deleting specialist:', err);
+      throw err;
     }
   }
 }));

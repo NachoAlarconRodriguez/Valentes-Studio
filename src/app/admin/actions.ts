@@ -78,3 +78,131 @@ export async function uploadImageAction(formData: FormData): Promise<string> {
   const { data: publicUrlData } = supabase.storage.from('cms-images').getPublicUrl(finalFilename);
   return publicUrlData.publicUrl;
 }
+
+export async function addSpecialistAction(category: string, id: string, specialist: any): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Faltan variables de entorno de Supabase en el servidor');
+  }
+
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+
+  // 1. Insert specialist
+  const { error: specError } = await supabase.from('specialists').insert({
+    id,
+    name: specialist.name,
+    role: specialist.role,
+    specialty: specialist.specialty,
+    bio: specialist.bio,
+    avatar: specialist.avatar,
+    email: specialist.email,
+    profile_type: specialist.profileType,
+    assigned_agendas: specialist.assignedAgendas,
+    image_url: specialist.imageUrl || '',
+    phone: specialist.phone || '',
+    is_active: specialist.isActive !== false
+  });
+
+  if (specError) {
+    console.error('Error inserting specialist in Server Action:', specError);
+    throw new Error(specError.message);
+  }
+
+  // 2. Create default work shifts for the new specialist
+  const shiftsToInsert = [];
+  // Mon-Fri active
+  for (let i = 1; i <= 5; i++) {
+    shiftsToInsert.push({
+      id: `${id}_shift_${i}`,
+      specialist_id: id,
+      day_of_week: i,
+      is_active: true,
+      start_time: '09:00',
+      end_time: '18:00',
+      has_break: true,
+      break_start_time: '13:00',
+      break_end_time: '14:00'
+    });
+  }
+  // Sat active
+  shiftsToInsert.push({
+    id: `${id}_shift_6`,
+    specialist_id: id,
+    day_of_week: 6,
+    is_active: true,
+    start_time: '09:00',
+    end_time: '13:00',
+    has_break: false,
+    break_start_time: '13:00',
+    break_end_time: '14:00'
+  });
+  // Sun inactive
+  shiftsToInsert.push({
+    id: `${id}_shift_0`,
+    specialist_id: id,
+    day_of_week: 0,
+    is_active: false,
+    start_time: '09:00',
+    end_time: '18:00',
+    has_break: false,
+    break_start_time: '13:00',
+    break_end_time: '14:00'
+  });
+
+  const { error: shiftsError } = await supabase.from('work_shifts').insert(shiftsToInsert);
+  if (shiftsError) {
+    console.error('Error inserting default shifts in Server Action:', shiftsError);
+    throw new Error(shiftsError.message);
+  }
+}
+
+export async function updateSpecialistAction(specialistId: string, payload: any): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Faltan variables de entorno de Supabase en el servidor');
+  }
+
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+
+  const { error } = await supabase
+    .from('specialists')
+    .update(payload)
+    .eq('id', specialistId);
+
+  if (error) {
+    console.error('Error updating specialist in Server Action:', error);
+    throw new Error(error.message);
+  }
+}
+
+export async function deleteSpecialistAction(specialistId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error('Faltan variables de entorno de Supabase en el servidor');
+  }
+
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+
+  const { error } = await supabase
+    .from('specialists')
+    .delete()
+    .eq('id', specialistId);
+
+  if (error) {
+    console.error('Error deleting specialist in Server Action:', error);
+    throw new Error(error.message);
+  }
+}
+
