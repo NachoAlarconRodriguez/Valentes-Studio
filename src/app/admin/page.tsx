@@ -57,8 +57,9 @@ import { useBookingStore, normalizePhone } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';
 import LoyaltySettingsTab from '@/components/admin/LoyaltySettingsTab';
 import { useLoyaltyStore, checkLoyaltyEligibility } from '@/store/useLoyaltyStore';
+import { useFrequencyLoyaltyStore, checkFrequencyEligibility } from '@/store/useFrequencyLoyaltyStore';
 
-const formatDateDMY = (dateStr?: string): string => {
+const formatDateDMY = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
   if (parts.length === 3) {
@@ -964,10 +965,12 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'agenda' | 'crm' | 'giftcards' | 'vsm' | 'servicios' | 'profesionales' | 'perfil' | 'horarios' | 'fidelizacion'>('dashboard');
 
   const { config: loyaltyConfig, fetchConfig: fetchLoyaltyConfig } = useLoyaltyStore();
+  const { config: frequencyLoyaltyConfig, fetchConfig: fetchFrequencyLoyaltyConfig } = useFrequencyLoyaltyStore();
 
   useEffect(() => {
     fetchLoyaltyConfig();
-  }, [fetchLoyaltyConfig]);
+    fetchFrequencyLoyaltyConfig();
+  }, [fetchLoyaltyConfig, fetchFrequencyLoyaltyConfig]);
 
   // Prevent visual CMS on mobile
   useEffect(() => {
@@ -3291,8 +3294,8 @@ export default function AdminPage() {
       </AnimatePresence>
 
       {/* Sidebar Navigation (Hidden on mobile) */}
-      <aside className="hidden md:flex md:w-64 bg-[#0a0a0a] border-r border-white/5 flex-col justify-between p-6 md:h-screen md:sticky md:top-0 z-20">
-        <div className="md:flex-1 md:overflow-y-auto pr-2 md:-mr-2 min-h-0 space-y-10">
+      <aside className="hidden md:flex md:w-64 bg-[#0a0a0a] border-r border-white/5 flex-col justify-between p-6 fixed top-0 left-0 h-screen z-20 select-none">
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-0 space-y-10 scrollbar-none">
           {/* Brand Logo */}
           <Link href="/" className="flex flex-col select-none">
             <span className="font-serif text-xl font-bold tracking-[0.18em] text-gold text-gold-gradient leading-none">
@@ -3605,7 +3608,7 @@ export default function AdminPage() {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 pt-24 pb-28 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full relative">
+      <main className="flex-1 md:ml-64 p-4 pt-24 pb-28 md:p-10 max-w-7xl mx-auto w-full relative">
         
         {/* HEADER AREA */}
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-8 border-b border-white/5 mb-8 gap-4">
@@ -4589,33 +4592,6 @@ export default function AdminPage() {
                                                         <span>Plazo Vencido</span>
                                                       </span>
                                                     )}
-
-                                                    {(() => {
-                                                       if (booking.category !== 'barberia') return null;
-                                                       const loyalty = checkLoyaltyEligibility(booking.clientPhone, booking.date, bookings, loyaltyConfig);
-                                                       if (loyalty.rule) {
-                                                         return (
-                                                           <button
-                                                             type="button"
-                                                             onClick={(e) => {
-                                                               e.stopPropagation();
-                                                               setLoyaltyAuditModal({
-                                                                 isOpen: true,
-                                                                 clientPhone: booking.clientPhone,
-                                                                 clientName: booking.clientName,
-                                                                 targetDate: booking.date
-                                                               });
-                                                             }}
-                                                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[6px] uppercase tracking-wider font-bold bg-[#D7AF68]/20 border border-[#D7AF68]/50 text-[#D7AF68] hover:bg-[#D7AF68] hover:text-black transition-all cursor-pointer shadow-sm active:scale-95"
-                                                             title="Ver historial de atenciones y justificación de fidelidad"
-                                                           >
-                                                             <Award size={8} />
-                                                             <span>Fidelidad {loyalty.discountPercent}% OFF</span>
-                                                           </button>
-                                                         );
-                                                       }
-                                                       return null;
-                                                     })()}
                                                   </div>
                                                 </div>
 
@@ -4633,6 +4609,62 @@ export default function AdminPage() {
                                                         <Smartphone size={9} className="text-emerald-500/80" />
                                                         <span>{booking.clientPhone}</span>
                                                       </a>
+                                                    );
+                                                  })()}
+
+                                                  {/* Loyalty Badges (Retorno & Frecuencia) */}
+                                                  {(() => {
+                                                    const loyaltyRetorno = booking.category === 'barberia' ? checkLoyaltyEligibility(booking.clientPhone, booking.date, bookings, loyaltyConfig) : { rule: null, discountPercent: 0 };
+                                                    const loyaltyFreq = checkFrequencyEligibility(booking.clientPhone, booking.category, bookings, frequencyLoyaltyConfig);
+
+                                                    if (!loyaltyRetorno.rule && !loyaltyFreq.isEligible) return null;
+
+                                                    return (
+                                                      <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                                                        {loyaltyRetorno.rule && (
+                                                          <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              setLoyaltyAuditModal({
+                                                                isOpen: true,
+                                                                clientPhone: booking.clientPhone,
+                                                                clientName: booking.clientName,
+                                                                targetDate: booking.date
+                                                              });
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] uppercase tracking-wider font-bold bg-[#D7AF68]/20 border border-[#D7AF68]/50 text-[#D7AF68] hover:bg-[#D7AF68] hover:text-black transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                                            title="Ver historial de atenciones y justificación de fidelidad"
+                                                          >
+                                                            <Award size={8} />
+                                                            <span>Fidelidad {loyaltyRetorno.discountPercent}% OFF</span>
+                                                          </button>
+                                                        )}
+
+                                                        {loyaltyFreq.isEligible && (
+                                                          <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              setLoyaltyAuditModal({
+                                                                isOpen: true,
+                                                                clientPhone: booking.clientPhone,
+                                                                clientName: booking.clientName,
+                                                                targetDate: booking.date
+                                                              });
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] uppercase tracking-wider font-bold bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                                            title="Ver avance de frecuencia y tarjeta de fidelización"
+                                                          >
+                                                            <Gift size={8} />
+                                                            <span>
+                                                              {loyaltyFreq.rewardType === 'discount'
+                                                                ? `Recompensa ${loyaltyFreq.rewardDiscountPercent}% OFF`
+                                                                : `Premio: ${loyaltyFreq.rewardPrizeName}`}
+                                                            </span>
+                                                          </button>
+                                                        )}
+                                                      </div>
                                                     );
                                                   })()}
                                                 </div>
@@ -10914,6 +10946,70 @@ export default function AdminPage() {
                     );
                   })()}
 
+                  {/* Frequency Loyalty Reward Banner */}
+                  {(() => {
+                    const loyaltyFreq = checkFrequencyEligibility(
+                      checkoutModal.booking.clientPhone,
+                      checkoutModal.booking.category,
+                      bookings,
+                      frequencyLoyaltyConfig
+                    );
+
+                    if (!loyaltyFreq.isEligible) return null;
+
+                    const currentPriceNum = parseInt((checkoutModal.booking.price || '0').replace(/[^0-9]/g, ''), 10) || 0;
+
+                    return (
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-left space-y-2 mb-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center space-x-1.5 text-emerald-400 font-bold text-xs">
+                            <Gift size={14} className="shrink-0" />
+                            <span>¡Recompensa por Frecuencia Alcanzada!</span>
+                          </div>
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500 text-black shrink-0 whitespace-nowrap leading-none shadow-sm">
+                              {loyaltyFreq.rewardType === 'discount'
+                                ? `${loyaltyFreq.rewardDiscountPercent}% OFF`
+                                : loyaltyFreq.rewardPrizeName}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-text-secondary">
+                          ¡El cliente completó <strong className="text-white">{loyaltyFreq.requiredVisits} visitas</strong> en esta categoría! Esta atención #{loyaltyFreq.totalCompletedVisits + 1} califica para su premio.
+                        </p>
+
+                        {loyaltyFreq.rewardType === 'discount' && (
+                          <div className="flex items-center justify-between pt-1.5 border-t border-emerald-500/20">
+                            <span className="text-[10px] text-white/80">
+                              Sugerido: <strong className="text-emerald-400">${(Math.round(currentPriceNum * (1 - loyaltyFreq.rewardDiscountPercent / 100))).toLocaleString('es-CL')}</strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const discAmount = Math.round(currentPriceNum * (loyaltyFreq.rewardDiscountPercent / 100));
+                                const newPriceNum = currentPriceNum - discAmount;
+                                const newPriceFormatted = `$${newPriceNum.toLocaleString('es-CL')}`;
+
+                                setCheckoutModal(prev => ({
+                                  ...prev,
+                                  wasServiceModified: true,
+                                  booking: {
+                                    ...prev.booking,
+                                    price: newPriceFormatted
+                                  }
+                                }));
+                              }}
+                              className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-[9px] font-bold rounded-lg uppercase tracking-wider transition-all shadow cursor-pointer"
+                            >
+                              Aplicar Recompensa
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Payment Method Selector */}
                   <div className="space-y-2.5 text-left mb-4">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Forma de Pago</label>
@@ -11060,6 +11156,40 @@ export default function AdminPage() {
                     </p>
                   </div>
                 )}
+
+                {/* Frequency Loyalty Verdict Banner */}
+                {(() => {
+                  const targetBooking = clientBookings[0];
+                  const cat = targetBooking?.category || 'barberia';
+                  const freqVerdict = checkFrequencyEligibility(loyaltyAuditModal.clientPhone, cat, bookings, frequencyLoyaltyConfig);
+
+                  if (!freqVerdict.categoryConfig || !freqVerdict.categoryConfig.enabled) return null;
+
+                  return (
+                    <div className={`border rounded-2xl p-4 space-y-2 text-left ${
+                      freqVerdict.isEligible
+                        ? 'bg-gradient-to-r from-emerald-950/40 via-emerald-900/30 to-emerald-950/40 border-emerald-500/50'
+                        : 'bg-white/[0.03] border-white/10'
+                    }`}>
+                      <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                          <Gift size={14} className="text-emerald-400" />
+                          <span>Programa de Frecuencia ({cat})</span>
+                        </span>
+                        <span className="text-[10px] font-mono tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+                          {freqVerdict.totalCompletedVisits} Visita{freqVerdict.totalCompletedVisits === 1 ? '' : 's'} completada{freqVerdict.totalCompletedVisits === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-text-secondary font-light leading-relaxed">
+                        Meta de frecuencia: <strong className="text-white font-mono">{freqVerdict.requiredVisits} visitas</strong>. {freqVerdict.isEligible ? (
+                          <strong className="text-emerald-400 font-bold">¡Premio disponible en esta atención! ({freqVerdict.rewardType === 'discount' ? `${freqVerdict.rewardDiscountPercent}% OFF` : freqVerdict.rewardPrizeName})</strong>
+                        ) : (
+                          <span>Faltan <strong className="text-white font-mono">{Math.max(1, freqVerdict.requiredVisits - freqVerdict.currentCycleVisits)} visitas</strong> para desbloquear la recompensa.</span>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Historical Appointments List */}
                 <div className="space-y-3">
