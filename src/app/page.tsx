@@ -257,13 +257,13 @@ export default function HomePage() {
             </p>
 
             {/* CTA Button */}
-            <Link
-              href="/barberia"
+            <a
+              href="https://www.valentes.cl"
               className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
             >
               <span>RESERVAR HORA</span>
               <Calendar size={12} />
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -332,13 +332,13 @@ export default function HomePage() {
             </p>
 
             {/* CTA Button */}
-            <Link
-              href="/peluqueria"
+            <a
+              href="https://www.almabela.cl"
               className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
             >
               <span>VER SERVICIOS</span>
               <ChevronRight size={12} className="transform group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            </a>
           </div>
         </div>
 
