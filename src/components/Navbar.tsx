@@ -33,6 +33,7 @@ export function Navbar() {
       return [
         { name: 'Inicio', path: '/' },
         { name: 'Barbería', path: '/barberia' },
+        { name: 'Gift Cards', path: '/giftcards' },
       ];
     }
     if (isAlmaBela) {
@@ -40,6 +41,7 @@ export function Navbar() {
         { name: 'Inicio', path: '/' },
         { name: 'Peluquería', path: '/peluqueria' },
         { name: 'Terapias', path: '/terapias' },
+        { name: 'Gift Cards', path: '/giftcards' },
       ];
     }
     return [
@@ -47,6 +49,7 @@ export function Navbar() {
       { name: 'Barbería', path: '/barberia' },
       { name: 'Peluquería', path: '/peluqueria' },
       { name: 'Terapias', path: '/terapias' },
+      { name: 'Gift Cards', path: '/giftcards' },
     ];
   }, [isValentes, isAlmaBela]);
 
@@ -191,59 +194,53 @@ export function Navbar() {
             )}
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-10">
-            {navLinks.map((link) => {
-              const isActive =
-                link.path === '/'
-                  ? pathname === '/'
-                  : link.path.startsWith('http')
-                  ? pathname.startsWith('/terapias')
-                  : pathname.startsWith(link.path);
-              const colors = getLinkColors(link.path);
+          {/* Desktop Right Navigation & Action Controls */}
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <nav className="flex items-center space-x-6 lg:space-x-8">
+              {navLinks.map((link) => {
+                const isActive =
+                  link.path === '/'
+                    ? pathname === '/'
+                    : link.path.startsWith('http')
+                    ? pathname.startsWith('/terapias')
+                    : pathname.startsWith(link.path);
+                const colors = getLinkColors(link.path);
 
-              return (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  className="relative text-sm tracking-widest uppercase font-medium transition-all duration-300 py-2 group"
-                >
-                  <span className={isActive ? colors.textActive : `text-text-secondary ${colors.hoverText}`}>
-                    {link.name}
-                  </span>
-                  {/* Subtle hover line */}
-                  <span
-                    className={`absolute bottom-0 left-0 h-[1.5px] ${colors.borderActive} transition-all duration-400 ${
-                      isActive ? 'w-full' : `w-0 ${colors.borderHover}`
-                    }`}
-                  />
-                </Link>
-              );
-            })}
-          </nav>
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    className="relative text-xs sm:text-sm tracking-widest uppercase font-medium transition-all duration-300 py-2 group"
+                  >
+                    <span className={isActive ? colors.textActive : `text-text-secondary ${colors.hoverText}`}>
+                      {link.name}
+                    </span>
+                    {/* Subtle hover line */}
+                    <span
+                      className={`absolute bottom-0 left-0 h-[1.5px] ${colors.borderActive} transition-all duration-400 ${
+                        isActive ? 'w-full' : `w-0 ${colors.borderHover}`
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+            </nav>
 
-          {/* Action CTA Button & Admin Panel Access */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link
-              href="/giftcards"
-              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-[#D7AF68]/20 text-[#D7AF68]/75 hover:text-[#9C7442] hover:border-[#9C7442]/40 hover:bg-white/5"
-              title="Comprar Tarjeta de Regalo"
-            >
-              <Gift size={16} />
-            </Link>
-            <Link
-              href="/admin"
-              className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-[#D7AF68]/20 text-[#D7AF68]/75 hover:text-[#9C7442] hover:border-[#9C7442]/40 hover:bg-white/5"
-              title="Panel de Administración"
-            >
-              <User size={16} />
-            </Link>
-            <button
-              onClick={() => openBooking()}
-              className="px-6 py-2.5 rounded-full border text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 border-[#D7AF68]/40 text-[#D7AF68] hover:bg-[#D7AF68] hover:shadow-[#D7AF68]/20 shadow-[#D7AF68]/5"
-            >
-              Agendar Ritual
-            </button>
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/admin"
+                className="p-2.5 rounded-full border transition-all duration-500 hover:scale-105 active:scale-95 flex items-center justify-center border-[#D7AF68]/20 text-[#D7AF68]/75 hover:text-[#9C7442] hover:border-[#9C7442]/40 hover:bg-white/5"
+                title="Panel de Administración"
+              >
+                <User size={16} />
+              </Link>
+              <button
+                onClick={() => openBooking()}
+                className="px-6 py-2.5 rounded-full border text-xs sm:text-sm tracking-wider uppercase font-semibold hover:text-bg-base transition-all duration-500 shadow-lg hover:scale-105 active:scale-95 border-[#D7AF68]/40 text-[#D7AF68] hover:bg-[#D7AF68] hover:shadow-[#D7AF68]/20 shadow-[#D7AF68]/5 cursor-pointer"
+              >
+                Agendar Ritual
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu Toggle Button */}
