@@ -93,6 +93,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }
 
 
+  let loadingImg = "/loading-logo-v1.jpg";
+  if (isAlmaBela || pathname.startsWith('/peluqueria')) {
+    loadingImg = "/loading-almabela.jpg";
+  } else if (isValentes || pathname.startsWith('/barberia')) {
+    loadingImg = "/hands-logo-v4.png";
+  }
+
   return (
     <div className="min-h-screen text-text-primary flex flex-col font-sans select-none relative">
       {/* Global Transition Loader */}
@@ -123,7 +130,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 className="relative w-72 h-72 sm:w-96 sm:h-96 md:w-[450px] md:h-[450px] select-none pointer-events-none"
               >
                 <img
-                  src="/loading-logo-v1.jpg"
+                  src={loadingImg}
                   alt="Santuario de Bienestar Logo"
                   className="object-contain w-full h-full filter brightness-110 contrast-105"
                 />
