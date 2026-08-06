@@ -64,17 +64,20 @@ export const useFrequencyLoyaltyStore = create<FrequencyLoyaltyStore>((set, get)
     try {
       set({ loading: true });
       const { data, error } = await supabase
-        .from('kv_store_7d96d7c8')
-        .select('value')
+        .from('page_content')
+        .select('content')
         .eq('key', 'frequency_loyalty_config')
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.warn('kv_store table or frequency_loyalty_config key missing:', error.message);
+      if (error) {
+        console.warn('page_content table fetch warning for frequency_loyalty_config:', error.message);
       }
 
-      if (data && data.value) {
-        set({ config: data.value, loading: false });
+      if (data && data.content) {
+        set({ config: data.content, loading: false });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('valentes_frequency_loyalty_config', JSON.stringify(data.content));
+        }
       } else {
         // Fallback to local storage if available
         if (typeof window !== 'undefined') {
@@ -98,11 +101,11 @@ export const useFrequencyLoyaltyStore = create<FrequencyLoyaltyStore>((set, get)
     set({ config: newConfig });
     try {
       const { error } = await supabase
-        .from('kv_store_7d96d7c8')
-        .upsert({ key: 'frequency_loyalty_config', value: newConfig }, { onConflict: 'key' });
+        .from('page_content')
+        .upsert({ key: 'frequency_loyalty_config', content: newConfig }, { onConflict: 'key' });
 
       if (error) {
-        console.warn('Could not save frequency_loyalty_config in Supabase, saved locally:', error.message);
+        console.warn('Could not save frequency_loyalty_config in Supabase page_content:', error.message);
       }
       if (typeof window !== 'undefined') {
         localStorage.setItem('valentes_frequency_loyalty_config', JSON.stringify(newConfig));
