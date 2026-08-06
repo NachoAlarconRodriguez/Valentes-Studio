@@ -4796,7 +4796,7 @@ export default function AdminPage() {
                                           <span className="text-[8px] font-mono text-amber-500/40 tracking-wider">FUERA JORNADA</span>
                                           <span className="text-[10px] text-white/20 font-medium mt-1">Disponible (Sobrecupo)</span>
                                         </div>
-                                        <div className="flex justify-end pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex justify-end pt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                           <button
                                             disabled={isPast}
                                             onClick={() => {
@@ -4805,7 +4805,7 @@ export default function AdminPage() {
                                               setPrefillTime(time);
                                               setIsManualBookingOpen(true);
                                             }}
-                                            className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
+                                            className={`px-2.5 py-1.5 text-[9px] sm:text-[10px] font-bold rounded-lg border transition-all flex items-center space-x-1 ${
                                               isPast
                                                 ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
                                                 : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20 cursor-pointer shadow-sm shadow-amber-500/5'
@@ -4826,7 +4826,7 @@ export default function AdminPage() {
                                         <span className="text-[8px] font-mono text-text-secondary/50 tracking-wider">DISPONIBLE</span>
                                         <span className="text-[10px] text-white/40 font-medium mt-1">Sin agendar</span>
                                       </div>
-                                      <div className="flex items-center justify-end gap-1.5 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className="flex items-center justify-end gap-1.5 pt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                         <button
                                           disabled={isPast}
                                           onClick={() => {
@@ -4835,14 +4835,14 @@ export default function AdminPage() {
                                             setPrefillTime(time);
                                             setIsManualBookingOpen(true);
                                           }}
-                                          className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                          className={`px-2.5 py-1.5 text-[9px] sm:text-[10px] font-bold rounded-lg border transition-all ${
                                             isPast
                                               ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
                                               : activeBusinessTab === 'barberia'
-                                              ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer'
+                                              ? 'bg-gold/10 hover:bg-gold/20 text-gold border-gold/20 cursor-pointer shadow-sm'
                                               : activeBusinessTab === 'peluqueria'
-                                              ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer'
-                                              : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer'
+                                              ? 'bg-[#CD7F32]/10 hover:bg-[#CD7F32]/20 text-[#CD7F32] border-[#CD7F32]/20 cursor-pointer shadow-sm'
+                                              : 'bg-[#E2E0D8]/10 hover:bg-[#E2E0D8]/20 text-[#E2E0D8] border-[#E2E0D8]/20 cursor-pointer shadow-sm'
                                           }`}
                                         >
                                           Agendar
@@ -4865,10 +4865,10 @@ export default function AdminPage() {
                                             });
                                             triggerNotification(`Horario ${time} bloqueado.`);
                                           }}
-                                          className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                          className={`px-2.5 py-1.5 text-[9px] sm:text-[10px] font-bold rounded-lg border transition-all ${
                                             isPast
                                               ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                              : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer'
+                                              : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer shadow-sm'
                                           }`}
                                         >
                                           Bloquear
