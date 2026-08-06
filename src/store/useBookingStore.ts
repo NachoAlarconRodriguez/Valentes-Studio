@@ -2,6 +2,21 @@ import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
 import { useServicesStore } from './useServicesStore';
 
+export const normalizePhone = (phone: string): string => {
+  if (!phone) return '';
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 11 && clean.startsWith('569')) {
+    return clean;
+  }
+  if (clean.length === 9 && clean.startsWith('9')) {
+    return `56${clean}`;
+  }
+  if (clean.length === 8) {
+    return `569${clean}`;
+  }
+  return clean;
+};
+
 const parseDurationToMinutes = (durationStr: string): number => {
   if (!durationStr) return 60;
   const clean = durationStr.toLowerCase().trim();
@@ -286,12 +301,14 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         }
       }
 
+      const normalizedPhone = normalizePhone(bookingData.clientPhone) || bookingData.clientPhone;
+
       // 1. Fetch or update CRM Client details in Supabase (Required first due to foreign key constraint)
       try {
         const { data: existingClient, error: cFetchErr } = await supabase
           .from('clients')
           .select('*')
-          .eq('phone', bookingData.clientPhone)
+          .eq('phone', normalizedPhone)
           .maybeSingle();
 
         if (cFetchErr) throw cFetchErr;
@@ -311,12 +328,12 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
               total_spent: (existingClient.total_spent || 0) + bookingPrice,
               last_visit: bookingData.date
             })
-            .eq('phone', bookingData.clientPhone);
+            .eq('phone', normalizedPhone);
 
           if (cUpdateErr) throw cUpdateErr;
         } else {
           const { error: cInsertErr } = await supabase.from('clients').insert({
-            phone: bookingData.clientPhone,
+            phone: normalizedPhone,
             name: bookingData.clientName,
             email: bookingData.clientEmail || '',
             businesses: [bookingData.category],
@@ -343,7 +360,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       // 2. Insert Booking in Supabase (Omit client_name and client_email as they are dropped from raw table)
       const { error: bErr } = await supabase.from('bookings').insert({
         id: randomCode,
-        client_phone: bookingData.clientPhone,
+        client_phone: normalizedPhone,
         category: bookingData.category,
         service_name: bookingData.serviceName,
         price: bookingPrice,
@@ -363,6 +380,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       // 3. Update local state
       const newBooking: Booking = {
         ...bookingData,
+        clientPhone: normalizedPhone,
         id: randomCode,
         clientEmail: bookingData.clientEmail || '',
         channel,
@@ -374,7 +392,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
       set((state) => {
         const updatedBookings = [newBooking, ...state.bookings];
-        const existingIdx = state.clients.findIndex(c => c.phone === bookingData.clientPhone);
+        const existingIdx = state.clients.findIndex(c => c.phone === normalizedPhone);
         let updatedClients = [...state.clients];
 
         if (existingIdx !== -1) {
@@ -391,7 +409,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         } else {
           updatedClients.push({
             name: bookingData.clientName,
-            phone: bookingData.clientPhone,
+            phone: normalizedPhone,
             email: bookingData.clientEmail || '',
             businesses: [bookingData.category],
             totalSpent: bookingPrice,
@@ -661,22 +679,25 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
   updateClient: async (oldPhone, updatedFields) => {
     try {
+      const normOldPhone = normalizePhone(oldPhone) || oldPhone;
+      const normNewPhone = normalizePhone(updatedFields.phone) || updatedFields.phone;
+
       const { error: cErr } = await supabase
         .from('clients')
         .update({
           name: updatedFields.name,
-          phone: updatedFields.phone,
+          phone: normNewPhone,
           email: updatedFields.email
         })
-        .eq('phone', oldPhone);
+        .eq('phone', normOldPhone);
 
       if (cErr) throw cErr;
 
       set((state) => ({
-        clients: state.clients.map(c => c.phone === oldPhone ? { ...c, ...updatedFields } : c),
-        bookings: state.bookings.map(b => b.clientPhone === oldPhone ? { 
+        clients: state.clients.map(c => c.phone === normOldPhone ? { ...c, ...updatedFields, phone: normNewPhone } : c),
+        bookings: state.bookings.map(b => b.clientPhone === normOldPhone ? { 
           ...b, 
-          clientPhone: updatedFields.phone,
+          clientPhone: normNewPhone,
           clientName: updatedFields.name,
           clientEmail: updatedFields.email 
         } : b)
@@ -722,6 +743,8 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
 
   updateBookingDetails: async (id, oldPhone, fields) => {
     try {
+      const normOldPhone = normalizePhone(oldPhone) || oldPhone;
+      const normNewPhone = normalizePhone(fields.clientPhone) || fields.clientPhone;
       const numericPrice = typeof fields.price === 'number'
         ? fields.price
         : parseInt(fields.price.replace(/[^0-9]/g, ''), 10) || 0;
@@ -731,10 +754,10 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         .from('clients')
         .update({
           name: fields.clientName,
-          phone: fields.clientPhone,
+          phone: normNewPhone,
           email: fields.clientEmail
         })
-        .eq('phone', oldPhone);
+        .eq('phone', normOldPhone);
 
       if (clientErr) throw clientErr;
 
@@ -742,7 +765,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       const { error: bookingErr } = await supabase
         .from('bookings')
         .update({
-          client_phone: fields.clientPhone,
+          client_phone: normNewPhone,
           category: fields.category,
           service_name: fields.serviceName,
           price: numericPrice,

@@ -80,7 +80,7 @@ export function ManualBookingModal({
   onBookingCreated,
   currentUser
 }: ManualBookingModalProps) {
-  const { clients, addBooking } = useBookingStore();
+  const { clients, bookings, addBooking } = useBookingStore();
   const { servicesData } = useServicesStore();
   const { workShifts } = useScheduleStore();
 
@@ -119,7 +119,10 @@ export function ManualBookingModal({
   // Client suggestions state
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredClients, setFilteredClients] = useState<typeof clients>([]);
+  const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
+  const [phoneSuggestions, setPhoneSuggestions] = useState<Array<{ name: string; email: string; phone: string }>>([]);
   const nameInputRef = useRef<HTMLDivElement>(null);
+  const phoneInputRef = useRef<HTMLDivElement>(null);
   const formContainerRef = useRef<HTMLDivElement>(null);
 
   // Dropdowns visual states
@@ -252,25 +255,61 @@ export function ManualBookingModal({
       if (nameInputRef.current && !nameInputRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
+      if (phoneInputRef.current && !phoneInputRef.current.contains(event.target as Node)) {
+        setShowPhoneSuggestions(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Autofill client name and email if phone number exists in DB
+  // Phone number autocomplete suggestions list generator
   useEffect(() => {
-    if (phoneDigits.length === 9) {
-      const matchedClient = clients.find(c => {
-        const cleanDb = c.phone.replace(/\D/g, '');
-        return cleanDb.endsWith(phoneDigits);
+    if (phoneDigits.length >= 3) {
+      const cleanPhoneQuery = phoneDigits.replace(/\D/g, '');
+
+      // 1. Search in clients store
+      const matchedFromClients = clients
+        .filter(c => {
+          const cleanDb = c.phone.replace(/\D/g, '');
+          return cleanDb.includes(cleanPhoneQuery);
+        })
+        .map(c => ({ name: c.name, email: c.email || '', phone: c.phone }));
+
+      // 2. Search in historical bookings
+      const matchedFromBookings: Array<{ name: string; email: string; phone: string }> = [];
+      (bookings || []).forEach(b => {
+        if (b.clientPhone) {
+          const cleanBPhone = b.clientPhone.replace(/\D/g, '');
+          if (cleanBPhone.includes(cleanPhoneQuery)) {
+            const alreadyInClients = matchedFromClients.some(c => c.name.toLowerCase() === b.clientName.toLowerCase());
+            const alreadyInBookings = matchedFromBookings.some(mb => mb.name.toLowerCase() === b.clientName.toLowerCase());
+            if (!alreadyInClients && !alreadyInBookings) {
+              matchedFromBookings.push({
+                name: b.clientName,
+                email: b.clientEmail || '',
+                phone: b.clientPhone
+              });
+            }
+          }
+        }
       });
-      if (matchedClient) {
-        setClientName(matchedClient.name);
-        setClientEmail(matchedClient.email || '');
+
+      const combined = [...matchedFromClients, ...matchedFromBookings];
+      setPhoneSuggestions(combined);
+      setShowPhoneSuggestions(combined.length > 0);
+
+      // Auto-fill single match if exactly 9 digits entered and 1 exact match
+      if (phoneDigits.length === 9 && combined.length === 1) {
+        setClientName(combined[0].name);
+        if (combined[0].email) setClientEmail(combined[0].email);
         setPhoneError(null);
       }
+    } else {
+      setShowPhoneSuggestions(false);
+      setPhoneSuggestions([]);
     }
-  }, [phoneDigits, clients]);
+  }, [phoneDigits, clients, bookings]);
 
   const handleCategoryChange = (cat: 'barberia' | 'peluqueria' | 'terapias') => {
     setCategory(cat);
@@ -281,18 +320,34 @@ export function ManualBookingModal({
   };
 
   const parsePhoneToPrefixAndDigits = (phoneStr: string) => {
+    if (!phoneStr) return { prefix: '+56', digits: '' };
+    
+    // Clean all whitespace
     const clean = phoneStr.replace(/\s+/g, '');
-    const match = clean.match(/^(\+\d+)(.*)$/);
-    if (match) {
-      const prefix = match[1];
-      const digits = match[2].replace(/\D/g, '').substring(0, 9);
-      return { prefix, digits };
+    const digitsOnly = clean.replace(/\D/g, '');
+
+    // Known country codes supported in dropdown (without plus sign)
+    const knownPrefixes = ['56', '54', '51', '57', '52', '598', '34', '1'];
+
+    // 1. Check for explicit +<prefix> format
+    for (const pref of knownPrefixes) {
+      if (clean.startsWith(`+${pref}`)) {
+        const remaining = clean.slice(pref.length + 1).replace(/\D/g, '').slice(-9);
+        return { prefix: `+${pref}`, digits: remaining };
+      }
     }
-    const digitsOnly = phoneStr.replace(/\D/g, '');
-    if (digitsOnly.startsWith('56')) {
-      return { prefix: '+56', digits: digitsOnly.substring(2).substring(0, 9) };
+
+    // 2. Check for <prefix> at start of digits (e.g., 56953332492)
+    for (const pref of knownPrefixes) {
+      if (digitsOnly.startsWith(pref) && digitsOnly.length > 9) {
+        const remaining = digitsOnly.slice(pref.length).slice(-9);
+        return { prefix: `+${pref}`, digits: remaining };
+      }
     }
-    return { prefix: '+56', digits: digitsOnly.substring(0, 9) };
+
+    // 3. Fallback: return +56 with the last 9 digits
+    const remaining = digitsOnly.slice(-9);
+    return { prefix: '+56', digits: remaining };
   };
 
   const handlePhoneDigitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -307,6 +362,18 @@ export function ManualBookingModal({
     } else {
       setPhoneError(null);
     }
+  };
+
+  const handleSelectPhoneClient = (client: { name: string; email: string; phone?: string }) => {
+    setClientName(client.name);
+    setClientEmail(client.email || '');
+    if (client.phone) {
+      const { prefix, digits } = parsePhoneToPrefixAndDigits(client.phone);
+      setSelectedCountry(prefix);
+      setPhoneDigits(digits);
+    }
+    setPhoneError(null);
+    setShowPhoneSuggestions(false);
   };
 
   const handleClientSelect = (client: typeof clients[0]) => {
@@ -865,8 +932,8 @@ export function ManualBookingModal({
                               </AnimatePresence>
                             </div>
 
-                            {/* Phone digits input */}
-                            <div className="relative flex-grow flex items-center">
+                            {/* Phone digits input with suggestions */}
+                            <div className="relative flex-grow flex items-center" ref={phoneInputRef}>
                               <input
                                 type="text"
                                 inputMode="numeric"
@@ -875,8 +942,50 @@ export function ManualBookingModal({
                                 placeholder="Ingrese número"
                                 value={phoneDigits}
                                 onChange={handlePhoneDigitsChange}
+                                onFocus={() => {
+                                  if (phoneSuggestions.length > 0) setShowPhoneSuggestions(true);
+                                }}
                                 className={`w-full bg-[#0a0a0a] border border-white/10 hover:border-white/20 focus:border-white/30 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none transition-colors ${borderFocusClass} ${phoneError ? 'border-red-500/50 focus:border-red-500' : ''}`}
                               />
+
+                              {/* Client suggestions dropdown for Phone input */}
+                              <AnimatePresence>
+                                {showPhoneSuggestions && phoneSuggestions.length > 0 && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="absolute top-full left-0 right-0 mt-1.5 bg-[#0e0e0e] border border-[#D7AF68]/40 rounded-xl shadow-2xl z-50 max-h-56 overflow-y-auto divide-y divide-white/5"
+                                  >
+                                    <div className="px-3.5 py-1.5 bg-[#D7AF68]/10 text-[9px] uppercase tracking-wider font-bold text-[#D7AF68] flex items-center justify-between sticky top-0 backdrop-blur-md">
+                                      <span>Clientes asociados ({phoneSuggestions.length})</span>
+                                      <User size={11} />
+                                    </div>
+                                    {phoneSuggestions.map((client, idx) => (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => handleSelectPhoneClient(client)}
+                                        className="w-full text-left px-3.5 py-2.5 hover:bg-[#D7AF68]/15 transition-colors flex items-center justify-between group cursor-pointer"
+                                      >
+                                        <div className="min-w-0 pr-2">
+                                          <span className="block text-xs font-semibold text-white group-hover:text-[#D7AF68] transition-colors truncate">
+                                            {client.name}
+                                          </span>
+                                          {client.email && (
+                                            <span className="block text-[10px] text-text-secondary truncate">
+                                              {client.email}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="text-[9px] text-[#D7AF68] bg-[#D7AF68]/10 border border-[#D7AF68]/30 px-2 py-1 rounded-md font-mono shrink-0 font-semibold group-hover:bg-[#D7AF68] group-hover:text-black transition-all">
+                                          Seleccionar
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
                           </div>
                           {phoneError && (

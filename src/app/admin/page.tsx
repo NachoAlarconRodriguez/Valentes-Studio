@@ -49,10 +49,24 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  Scissors
+  Scissors,
+  Award,
+  CheckCircle
 } from 'lucide-react';
-import { useBookingStore } from '@/store/useBookingStore';
+import { useBookingStore, normalizePhone } from '@/store/useBookingStore';
 import { useContentStore } from '@/store/useContentStore';
+import LoyaltySettingsTab from '@/components/admin/LoyaltySettingsTab';
+import { useLoyaltyStore, checkLoyaltyEligibility } from '@/store/useLoyaltyStore';
+
+const formatDateDMY = (dateStr?: string): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+  return dateStr;
+};
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -947,7 +961,13 @@ export default function AdminPage() {
   const [reqEmail, setReqEmail] = useState('');
   const [reqBusiness, setReqBusiness] = useState<'barberia' | 'peluqueria' | 'terapias'>('barberia');
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'agenda' | 'crm' | 'giftcards' | 'vsm' | 'servicios' | 'profesionales' | 'perfil' | 'horarios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'agenda' | 'crm' | 'giftcards' | 'vsm' | 'servicios' | 'profesionales' | 'perfil' | 'horarios' | 'fidelizacion'>('dashboard');
+
+  const { config: loyaltyConfig, fetchConfig: fetchLoyaltyConfig } = useLoyaltyStore();
+
+  useEffect(() => {
+    fetchLoyaltyConfig();
+  }, [fetchLoyaltyConfig]);
 
   // Prevent visual CMS on mobile
   useEffect(() => {
@@ -1075,6 +1095,19 @@ export default function AdminPage() {
   const [isServiceExecutedAsReserved, setIsServiceExecutedAsReserved] = useState<boolean>(true);
   const [selectedNewServiceId, setSelectedNewServiceId] = useState<string>('');
   const [customPriceInput, setCustomPriceInput] = useState<string>('');
+  const [appliedLoyaltyDiscount, setAppliedLoyaltyDiscount] = useState<{
+    originalPrice: string;
+    discountedPrice: string;
+    discountPercent: number;
+    discountAmount: number;
+  } | null>(null);
+
+  const [loyaltyAuditModal, setLoyaltyAuditModal] = useState<{
+    isOpen: boolean;
+    clientPhone: string;
+    clientName: string;
+    targetDate: string;
+  } | null>(null);
 
   // Agenda Filter States
   const [agendaViewMode, setAgendaViewMode] = useState<'hoy' | 'manana' | 'semana' | 'prox_semana' | 'fecha'>('hoy');
@@ -3293,6 +3326,7 @@ export default function AdminPage() {
                 title: 'Marketing y CMS',
                 items: [
                   { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] },
+                  { id: 'fidelizacion', label: 'Fidelización', icon: Award, allowed: ['admin'] },
                   { id: 'vsm', label: 'Visual CMS', icon: Edit3, allowed: ['admin'] }
                 ]
               },
@@ -3584,6 +3618,7 @@ export default function AdminPage() {
               {activeTab === 'profesionales' && 'GESTIÓN DE PROFESIONALES'}
               {activeTab === 'horarios' && 'HORARIOS Y BLOQUEOS'}
               {activeTab === 'giftcards' && 'TARJETAS DE REGALO'}
+              {activeTab === 'fidelizacion' && 'PROGRAMA DE FIDELIZACIÓN'}
               {activeTab === 'vsm' && 'VISUAL CMS'}
               {activeTab === 'perfil' && 'PERFIL DE USUARIO'}
             </span>
@@ -3595,6 +3630,7 @@ export default function AdminPage() {
               {activeTab === 'profesionales' && 'Administración del Equipo & Roles'}
               {activeTab === 'horarios' && 'Gestión de Jornadas & Bloqueos de Horas'}
               {activeTab === 'giftcards' && 'Gestión & Canje de Gift Cards'}
+              {activeTab === 'fidelizacion' && 'Promociones de Retorno Barbería'}
               {activeTab === 'vsm' && 'Gestor de Contenido en Vivo'}
               {activeTab === 'perfil' && 'Mi Cuenta Administrativa'}
             </h2>
@@ -4553,6 +4589,33 @@ export default function AdminPage() {
                                                         <span>Plazo Vencido</span>
                                                       </span>
                                                     )}
+
+                                                    {(() => {
+                                                       if (booking.category !== 'barberia') return null;
+                                                       const loyalty = checkLoyaltyEligibility(booking.clientPhone, booking.date, bookings, loyaltyConfig);
+                                                       if (loyalty.rule) {
+                                                         return (
+                                                           <button
+                                                             type="button"
+                                                             onClick={(e) => {
+                                                               e.stopPropagation();
+                                                               setLoyaltyAuditModal({
+                                                                 isOpen: true,
+                                                                 clientPhone: booking.clientPhone,
+                                                                 clientName: booking.clientName,
+                                                                 targetDate: booking.date
+                                                               });
+                                                             }}
+                                                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[6px] uppercase tracking-wider font-bold bg-[#D7AF68]/20 border border-[#D7AF68]/50 text-[#D7AF68] hover:bg-[#D7AF68] hover:text-black transition-all cursor-pointer shadow-sm active:scale-95"
+                                                             title="Ver historial de atenciones y justificación de fidelidad"
+                                                           >
+                                                             <Award size={8} />
+                                                             <span>Fidelidad {loyalty.discountPercent}% OFF</span>
+                                                           </button>
+                                                         );
+                                                       }
+                                                       return null;
+                                                     })()}
                                                   </div>
                                                 </div>
 
@@ -5786,7 +5849,12 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* 4. VISUAL CMS TAB */}
+        {/* 4. FIDELIZACIÓN TAB */}
+        {activeTab === 'fidelizacion' && (
+          <LoyaltySettingsTab />
+        )}
+
+        {/* 5. VISUAL CMS TAB */}
         {activeTab === 'vsm' && (
           <div className={vsmFullscreen ? "fixed inset-0 z-50 bg-[#080808] p-4 overflow-y-auto flex flex-col" : "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"}>
             
@@ -10719,20 +10787,132 @@ export default function AdminPage() {
 
                     <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2 text-[10px]">
                       <div>
-                        <span className="text-text-secondary">Servicio Ejecutado:</span>
-                        <p className="font-medium text-text-primary truncate flex items-center gap-1">
-                          {checkoutModal.booking.serviceName}
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-text-secondary">Servicio Ejecutado:</span>
                           {checkoutModal.wasServiceModified && (
-                            <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">Modificado</span>
+                            <span className="text-[8px] bg-amber-500/20 border border-amber-500/30 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap leading-none">
+                              Modificado
+                            </span>
                           )}
+                        </div>
+                        <p className="font-medium text-text-primary truncate mt-0.5" title={checkoutModal.booking.serviceName}>
+                          {checkoutModal.booking.serviceName}
                         </p>
                       </div>
                       <div>
                         <span className="text-text-secondary">Especialista:</span>
-                        <p className="font-medium text-text-primary">{checkoutModal.booking.specialistName}</p>
+                        <p className="font-medium text-text-primary mt-0.5 truncate">{checkoutModal.booking.specialistName}</p>
                       </div>
                     </div>
                   </div>
+
+                  {/* Barberia Loyalty Discount Banner */}
+                  {(() => {
+                    if (checkoutModal.booking.category !== 'barberia') return null;
+                    const loyalty = checkLoyaltyEligibility(
+                      checkoutModal.booking.clientPhone,
+                      checkoutModal.booking.date,
+                      bookings,
+                      loyaltyConfig
+                    );
+
+                    if (!loyalty.rule) return null;
+
+                    const currentPriceNum = parseInt((checkoutModal.booking.price || '0').replace(/[^0-9]/g, ''), 10) || 0;
+
+                    return (
+                      <div className="bg-[#D7AF68]/10 border border-[#D7AF68]/30 rounded-xl p-3 text-left space-y-2 mb-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center space-x-1.5 text-[#D7AF68] font-bold text-xs">
+                            <Award size={14} className="shrink-0" />
+                            <span>Promoción por Fidelidad de Barbería</span>
+                          </div>
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoyaltyAuditModal({
+                                  isOpen: true,
+                                  clientPhone: checkoutModal.booking.clientPhone,
+                                  clientName: checkoutModal.booking.clientName,
+                                  targetDate: checkoutModal.booking.date
+                                });
+                              }}
+                              className="text-[9px] text-[#D7AF68] hover:underline flex items-center gap-1 font-semibold cursor-pointer bg-[#D7AF68]/10 hover:bg-[#D7AF68]/20 px-2 py-1 rounded-md border border-[#D7AF68]/30 transition-all leading-none"
+                              title="Auditar historial de citas anteriores"
+                            >
+                              <Clock size={10} />
+                              <span>Ver historial</span>
+                            </button>
+                            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-[#D7AF68] text-black shrink-0 whitespace-nowrap leading-none shadow-sm">
+                              {loyalty.discountPercent}% OFF
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-text-secondary">
+                          Cliente atendiéndose en <strong className="text-white">{loyalty.daysSinceLastVisit} días</strong> desde su última visita el {formatDateDMY(loyalty.lastVisitDate)}.
+                        </p>
+
+                        {appliedLoyaltyDiscount ? (
+                          <div className="flex items-center justify-between pt-1.5 border-t border-[#D7AF68]/20">
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle size={12} /> Descuento de ${appliedLoyaltyDiscount.discountAmount.toLocaleString('es-CL')} aplicado
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCheckoutModal(prev => ({
+                                  ...prev,
+                                  booking: {
+                                    ...prev.booking,
+                                    price: appliedLoyaltyDiscount.originalPrice
+                                  }
+                                }));
+                                setAppliedLoyaltyDiscount(null);
+                              }}
+                              className="text-[9px] text-rose-400 hover:underline uppercase tracking-wider font-bold cursor-pointer"
+                            >
+                              Descartar Descuento
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between pt-1.5 border-t border-[#D7AF68]/20">
+                            <span className="text-[10px] text-white/80">
+                              Sugerido: <strong className="text-[#D7AF68]">${(Math.round(currentPriceNum * (1 - loyalty.discountPercent / 100))).toLocaleString('es-CL')}</strong> (Ahorra ${Math.round(currentPriceNum * (loyalty.discountPercent / 100)).toLocaleString('es-CL')})
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const discAmount = Math.round(currentPriceNum * (loyalty.discountPercent / 100));
+                                const newPriceNum = currentPriceNum - discAmount;
+                                const newPriceFormatted = `$${newPriceNum.toLocaleString('es-CL')}`;
+
+                                setAppliedLoyaltyDiscount({
+                                  originalPrice: checkoutModal.booking.price,
+                                  discountedPrice: newPriceFormatted,
+                                  discountPercent: loyalty.discountPercent,
+                                  discountAmount: discAmount
+                                });
+
+                                setCheckoutModal(prev => ({
+                                  ...prev,
+                                  wasServiceModified: true,
+                                  booking: {
+                                    ...prev.booking,
+                                    price: newPriceFormatted
+                                  }
+                                }));
+                              }}
+                              className="px-2.5 py-1 bg-[#D7AF68] hover:bg-[#D7AF68]/90 text-black text-[9px] font-bold rounded-lg uppercase tracking-wider transition-all shadow cursor-pointer"
+                            >
+                              Aplicar Descuento
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Payment Method Selector */}
                   <div className="space-y-2.5 text-left mb-4">
@@ -10799,6 +10979,167 @@ export default function AdminPage() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* LOYALTY AUDIT MODAL */}
+      <AnimatePresence>
+        {loyaltyAuditModal?.isOpen && (() => {
+          const normPhone = normalizePhone(loyaltyAuditModal.clientPhone || '');
+          const clientBookings = bookings.filter(b => {
+            const bNorm = normalizePhone(b.clientPhone || '');
+            return bNorm === normPhone;
+          }).sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`).getTime() - new Date(`${a.date}T${a.time || '00:00'}`).getTime());
+
+          const loyaltyVerdict = checkLoyaltyEligibility(loyaltyAuditModal.clientPhone, loyaltyAuditModal.targetDate, bookings, loyaltyConfig);
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setLoyaltyAuditModal(null)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+
+              {/* Modal Window */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="relative w-full max-w-2xl bg-[#0c0c0c] border border-[#D7AF68]/30 text-white rounded-3xl overflow-hidden shadow-2xl p-6 md:p-8 space-y-6 z-10 max-h-[85vh] overflow-y-auto text-left"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-white/10 pb-4">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#D7AF68]/10 border border-[#D7AF68]/30 text-[#D7AF68] text-[10px] uppercase tracking-widest font-bold">
+                      <Award size={12} />
+                      <span>Auditoría de Fidelización</span>
+                    </div>
+                    <h3 className="font-serif text-xl font-bold text-white tracking-wide">
+                      Historial de Visitas - {loyaltyAuditModal.clientName}
+                    </h3>
+                    <p className="text-xs text-text-secondary font-mono">
+                      ID WhatsApp: +{normPhone}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLoyaltyAuditModal(null)}
+                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Loyalty Verdict Banner */}
+                {loyaltyVerdict.rule ? (
+                  <div className="bg-gradient-to-r from-[#1c140a] via-[#161007] to-[#0d0905] border border-[#D7AF68]/40 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#D7AF68] flex items-center gap-1.5">
+                        <CheckCircle size={14} className="text-emerald-400" />
+                        <span>Promoción Elegible: {loyaltyVerdict.discountPercent}% OFF</span>
+                      </span>
+                      <span className="text-[10px] uppercase font-mono tracking-widest text-[#D7AF68] bg-[#D7AF68]/10 border border-[#D7AF68]/20 px-2.5 py-0.5 rounded-full font-bold">
+                        Tramo {loyaltyVerdict.rule.id}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-secondary font-light leading-relaxed">
+                      Su última atención de Barbería completada fue el <strong className="text-white font-mono">{formatDateDMY(loyaltyVerdict.lastVisitDate)}</strong> (hace <strong className="text-[#D7AF68] font-mono">{loyaltyVerdict.daysSinceLastVisit} días</strong> desde la fecha <span className="font-mono text-white">{formatDateDMY(loyaltyAuditModal.targetDate)}</span>).
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                      <AlertCircle size={14} className="text-amber-400" />
+                      <span>Sin Promoción de Retorno Activa</span>
+                    </span>
+                    <p className="text-xs text-text-secondary font-light">
+                      No se registran atenciones de Barbería completadas dentro de los tramos de días configurados (≤15, ≤20 o ≤25 días).
+                    </p>
+                  </div>
+                )}
+
+                {/* Historical Appointments List */}
+                <div className="space-y-3">
+                  <h4 className="text-xs uppercase tracking-wider font-bold text-text-secondary flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#D7AF68]" />
+                    <span>Historial de Citas del Cliente ({clientBookings.length})</span>
+                  </h4>
+
+                  {clientBookings.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-text-secondary italic bg-white/[0.02] border border-white/5 rounded-2xl">
+                      No hay historial de citas previas registradas para este número.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {clientBookings.map((b) => {
+                        const isBarberia = b.category === 'barberia';
+                        const isCompleted = b.status === 'completado';
+                        
+                        return (
+                          <div
+                            key={b.id}
+                            className={`p-3.5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs ${
+                              isCompleted && isBarberia
+                                ? 'bg-emerald-950/20 border-emerald-500/30'
+                                : 'bg-white/[0.02] border-white/5'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-mono font-bold text-white text-xs">
+                                  {formatDateDMY(b.date)} {b.time ? `(${b.time})` : ''}
+                                </span>
+                                <span className={`text-[9px] uppercase px-2 py-0.5 rounded-md font-bold tracking-wider ${
+                                  isBarberia ? 'bg-[#D7AF68]/15 text-[#D7AF68] border border-[#D7AF68]/30' : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                                }`}>
+                                  {b.category}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-text-secondary">
+                                <strong className="text-white font-medium">{b.serviceName}</strong> • {b.specialistName}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3 shrink-0">
+                              {isCompleted && isBarberia ? (
+                                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+                                  <CheckCircle size={10} />
+                                  <span>Válida para Fidelización</span>
+                                </span>
+                              ) : (
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider border ${
+                                  b.status === 'completado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                  b.status === 'cancelado' || b.status === 'no_llego' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                                  'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                }`}>
+                                  {b.status}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Close Button */}
+                <div className="pt-3 border-t border-white/10 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setLoyaltyAuditModal(null)}
+                    className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Cerrar Auditoría
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       <ManualBookingModal 
