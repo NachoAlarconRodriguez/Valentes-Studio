@@ -12,9 +12,9 @@
   --color-emerald-glow: #20B39A;
   --color-emerald-dark: #063B36;
   
-  --color-bg-base: #090909;
-  --color-bg-card: #151515;
-  --color-bg-brown-card: #22160F;
+  --color-bg-base: #030303;
+  --color-bg-card: #090909;
+  --color-bg-brown-card: #130a05;
   
   --color-text-primary: #F4EFE7;
   --color-text-secondary: #A0A0A0;
@@ -25,12 +25,12 @@
 }
 
 :root {
-  --background: #090909;
+  --background: #030303;
   --foreground: #F4EFE7;
 }
 
 html {
-  background-color: #090909;
+  background-color: #030303;
   overflow-x: hidden;
 }
 
@@ -81,7 +81,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090909;
+  background: #030303;
 }
 
 ::-webkit-scrollbar-thumb {

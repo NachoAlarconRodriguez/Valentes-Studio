@@ -7,6 +7,7 @@ import { Calendar, ChevronRight, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useContentStore from '@/store/useContentStore';
 import useUIStore from '@/store/useUIStore';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -25,6 +26,24 @@ export default function HomePage() {
   const { content } = useContentStore();
   const { openBooking } = useUIStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isValentes, isAlmaBela } = useBrandDomain();
+
+  const navLinks = React.useMemo(() => {
+    if (isValentes) {
+      return [{ href: '/barberia', label: 'BARBERIA' }];
+    }
+    if (isAlmaBela) {
+      return [
+        { href: '/peluqueria', label: 'PELUQUERÍA' },
+        { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
+      ];
+    }
+    return [
+      { href: '/barberia', label: 'BARBERIA' },
+      { href: '/peluqueria', label: 'PELUQUERÍA' },
+      { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
+    ];
+  }, [isValentes, isAlmaBela]);
 
   // Fallbacks in case content store isn't populated
   const barberiaBg = content.home?.panel1Image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80';
@@ -38,7 +57,7 @@ export default function HomePage() {
   return (
     <div className="w-full min-h-screen lg:h-screen lg:overflow-hidden overflow-x-hidden bg-black text-white relative z-10 flex flex-col font-sans selection:bg-gold/30 selection:text-white justify-between">
       {/* 1. CUSTOM TOP NAVBAR */}
-      <header className="absolute top-0 left-0 w-full z-50 pt-5 pb-24 px-6 md:px-12 flex items-center justify-between bg-gradient-to-b from-black via-black/80 via-black/45 to-transparent">
+      <header className="absolute top-0 left-0 w-full z-50 pt-5 pb-24 px-6 md:px-12 flex items-center justify-between bg-gradient-to-b from-black via-black/92 via-black/60 to-transparent">
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
           <span className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C69A4A] transition-all duration-300 group-hover:brightness-110">
@@ -51,15 +70,15 @@ export default function HomePage() {
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center space-x-8 xl:space-x-12">
-          <Link href="/barberia" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D7AF68] transition-colors pb-1">
-            BARBERIA
-          </Link>
-          <Link href="/peluqueria" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D7AF68] transition-colors pb-1">
-            PELUQUERÍA
-          </Link>
-          <Link href="/terapias" className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D7AF68] transition-colors pb-1">
-            TERAPIAS HOLÍSTICAS
-          </Link>
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs tracking-[0.25em] uppercase font-bold text-white/70 hover:text-[#D7AF68] transition-colors pb-1"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Action Group: WhatsApp & Agendar (Golden Button) */}
@@ -114,7 +133,7 @@ export default function HomePage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-[280px] max-w-full z-50 bg-[#070707]/95 backdrop-blur-xl border-l border-white/5 flex flex-col justify-between p-8"
+              className="fixed top-0 right-0 bottom-0 w-[280px] max-w-full z-50 bg-[#020202]/95 backdrop-blur-xl border-l border-white/5 flex flex-col justify-between p-8"
             >
               <div className="space-y-8">
                 {/* Header inside drawer */}
@@ -131,11 +150,7 @@ export default function HomePage() {
 
                 {/* Nav Links */}
                 <nav className="flex flex-col space-y-5 text-left">
-                  {[
-                    { href: '/barberia', label: 'BARBERIA' },
-                    { href: '/peluqueria', label: 'PELUQUERÍA' },
-                    { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
-                  ].map((link) => (
+                  {navLinks.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
@@ -188,7 +203,7 @@ export default function HomePage() {
                 loop
                 muted
                 playsInline
-                className="object-cover w-full h-full grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             ) : (
               <Image
@@ -197,10 +212,11 @@ export default function HomePage() {
                 fill
                 priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
             <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
           </div>
 
@@ -262,7 +278,7 @@ export default function HomePage() {
                 loop
                 muted
                 playsInline
-                className="object-cover w-full h-full grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             ) : (
               <Image
@@ -271,10 +287,11 @@ export default function HomePage() {
                 fill
                 priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
             <div className="absolute inset-0 bg-bronze/5 group-hover:bg-bronze/10 transition-colors duration-700 mix-blend-color z-1" />
           </div>
 
@@ -336,7 +353,7 @@ export default function HomePage() {
                 loop
                 muted
                 playsInline
-                className="object-cover w-full h-full grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             ) : (
               <Image
@@ -345,10 +362,11 @@ export default function HomePage() {
                 fill
                 priority={true}
                 sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-40 brightness-[0.4] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
             <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
           </div>
 
@@ -402,9 +420,9 @@ export default function HomePage() {
       </section>
 
       {/* 3. BOTTOM FOOTER VALUES SECTION */}
-      <footer className="bg-[#070707] border-t border-white/5 py-2 lg:py-1.5 relative flex-shrink-0 overflow-hidden">
+      <footer className="bg-[#060606] border-t border-white/5 py-2 lg:py-1.5 relative flex-shrink-0 overflow-hidden">
         {/* Decorative backdrop glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[450px] h-[100px] bg-[#D7AF68]/8 rounded-full blur-[60px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[450px] h-[100px] bg-[#D7AF68]/6 rounded-full blur-[70px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-2 sm:px-6 grid grid-cols-5 gap-1.5 sm:gap-3 lg:gap-1.5 items-center text-center">
           {/* Value 1: EQUILIBRIO */}

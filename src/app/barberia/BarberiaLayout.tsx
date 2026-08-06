@@ -11,6 +11,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import useContentStore from '@/store/useContentStore';
 import JsonLd from '@/components/SEO/JsonLd';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -46,6 +47,7 @@ const barberPhotos: Record<string, string> = {
 export default function BarberiaLayout() {
   const { content } = useContentStore();
   const { servicesData } = useServicesStore();
+  const { isValentes } = useBrandDomain();
   const data = React.useMemo(() => {
     const original = servicesData.barberia;
     if (!original) return null;
@@ -875,7 +877,7 @@ export default function BarberiaLayout() {
             </section>
 
             {/* 4. CROSS-SELLING MODULE */}
-            {crossSell && (
+            {crossSell && !isValentes && (
               <section className="max-w-7xl mx-auto px-6 pb-32 pt-12 relative z-20 bg-[#000000]">
                 <div className="relative rounded-3xl overflow-hidden apple-gold-glass p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-10 border border-gold/15 bg-white/[0.01]">
                   <div className="absolute -top-12 -left-12 w-80 h-80 bg-gold/5 rounded-full blur-[80px] pointer-events-none" />

@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import useContentStore from '@/store/useContentStore';
 import JsonLd from '@/components/SEO/JsonLd';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 const isVideoUrl = (url?: string) => {
   if (!url) return false;
@@ -46,6 +47,7 @@ const specialistPhotos: Record<string, string> = {
 };
 
 export default function PeluqueriaLayout() {
+  const { isAlmaBela } = useBrandDomain();
   const [isEntered, setIsEntered] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSpecialistsOpen, setIsSpecialistsOpen] = useState(false);
@@ -246,7 +248,7 @@ export default function PeluqueriaLayout() {
   };
 
   return (
-    <div className="bg-[#0A0A0A] text-[#fdfbf7] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
+    <div className="bg-[#030303] text-[#fdfbf7] min-h-screen relative font-sans transition-colors duration-700 overflow-x-hidden">
       <JsonLd data={schemaData} />
       
       {/* 1. ENTRANCE OVERLAY (COVER SCREEN) */}
@@ -345,7 +347,7 @@ export default function PeluqueriaLayout() {
                     setIsServicesOpen(true);
                   }
                 }}
-                className={`relative overflow-hidden rounded-3xl bg-[#121212] border border-white/5 cursor-pointer group transition-all duration-500 shadow-md hover:shadow-xl ${card.gridClass}`}
+                className={`relative overflow-hidden rounded-3xl bg-[#090909] border border-white/5 cursor-pointer group transition-all duration-500 shadow-md hover:shadow-xl ${card.gridClass}`}
               >
                 {/* Asymmetrical grid image or video with gold-tinted overlay */}
                 {isVideoUrl(card.imageUrl) ? (
@@ -471,7 +473,7 @@ export default function PeluqueriaLayout() {
 
 
         {/* 4. CROSS-SELLING MODULE */}
-        {crossSell && (
+        {crossSell && !isAlmaBela && (
           <section className="max-w-7xl mx-auto px-6 pb-32 relative z-20">
             <div className="relative rounded-3xl overflow-hidden apple-gold-glass p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-10 border border-gold/15">
               <div className="space-y-5 relative z-10 max-w-3xl text-left">
@@ -518,7 +520,7 @@ export default function PeluqueriaLayout() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-4xl bg-[#090909] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl grid grid-cols-1 md:grid-cols-12 min-h-[500px] max-h-[90vh] md:max-h-[80vh]"
+              className="relative w-full max-w-4xl bg-[#020202] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl grid grid-cols-1 md:grid-cols-12 min-h-[500px] max-h-[90vh] md:max-h-[80vh]"
             >
               {/* Close Button */}
               <button
@@ -600,7 +602,7 @@ export default function PeluqueriaLayout() {
               </div>
 
               {/* Right Panel: Thumbnails Grid & Booking Prompt */}
-              <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between bg-[#070707] overflow-y-auto">
+              <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between bg-[#020202] overflow-y-auto">
                 <div className="space-y-6">
                   <div>
                     <h3 className="font-serif text-xl text-gold tracking-wide">Galería de Trabajos</h3>
@@ -703,7 +705,7 @@ export default function PeluqueriaLayout() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-4xl bg-[#090909] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl p-8 flex flex-col justify-between max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
+              className="relative w-full max-w-4xl bg-[#020202] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl p-8 flex flex-col justify-between max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button
@@ -805,7 +807,7 @@ export default function PeluqueriaLayout() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-3xl bg-[#090909] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl p-8 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
+              className="relative w-full max-w-3xl bg-[#020202] text-[#fdfbf7] rounded-[32px] overflow-hidden z-10 border border-gold/25 shadow-2xl p-8 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button

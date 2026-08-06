@@ -448,7 +448,7 @@ export function EditBookingModal({ isOpen, onClose, booking, onBookingUpdated }:
             </div>
 
             {/* RIGHT COLUMN: Edit Form */}
-            <div className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#070707] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
+            <div className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#020202] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
               <div className="max-w-xl w-full mx-auto space-y-6">
                 <div>
                   <h3 className={`font-serif text-xl ${textGoldClass} tracking-wide text-left`}>Editar Detalles</h3>

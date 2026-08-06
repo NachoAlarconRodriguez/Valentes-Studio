@@ -776,7 +776,7 @@ export function ManualBookingModal({
             </div>
 
             {/* RIGHT FORM PANEL */}
-            <div ref={formContainerRef} className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#070707] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
+            <div ref={formContainerRef} className="col-span-1 md:col-span-8 flex flex-col justify-between p-8 bg-[#020202] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
               {!isSuccess ? (
                 <div className="flex-grow flex flex-col justify-center max-w-xl w-full mx-auto space-y-6">
                   <div>

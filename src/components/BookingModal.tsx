@@ -10,6 +10,7 @@ import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useScheduleStore, parseDurationToMinutes } from '@/store/useScheduleStore';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 const specialistPhotos: Record<string, string> = {
   sp1: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80', // Sofia Valente
@@ -103,6 +104,33 @@ export function BookingModal() {
   const fetchPublicBookings = useBookingStore(state => state.fetchPublicBookings);
   const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
 
+  const { isValentes, isAlmaBela } = useBrandDomain();
+
+  const isPageBarberia = pathname.startsWith('/barberia');
+  const isPagePeluqueria = pathname.startsWith('/peluqueria');
+  const isPageTerapias = pathname.startsWith('/terapias');
+
+  const categoryOptions = React.useMemo(() => {
+    if (isValentes || isPageBarberia) return [{ id: 'barberia', name: 'Barbería' }];
+    if (isAlmaBela || isPagePeluqueria) {
+      return [
+        { id: 'peluqueria', name: 'Peluquería' },
+        { id: 'terapias', name: 'Terapias' }
+      ];
+    }
+    if (isPageTerapias) {
+      return [
+        { id: 'terapias', name: 'Terapias' },
+        { id: 'peluqueria', name: 'Peluquería' }
+      ];
+    }
+    return [
+      { id: 'barberia', name: 'Barbería' },
+      { id: 'peluqueria', name: 'Peluquería' },
+      { id: 'terapias', name: 'Terapias' }
+    ];
+  }, [isValentes, isAlmaBela, isPageBarberia, isPagePeluqueria, isPageTerapias]);
+
   // Fetch real-time schedule, booking and specialist data from Supabase when the modal is opened
   useEffect(() => {
     if (isBookingOpen) {
@@ -114,6 +142,8 @@ export function BookingModal() {
 
   // Prefill service/category if passed from CTA or based on the host/pathname/bookingCategory
   useEffect(() => {
+    if (!isBookingOpen) return;
+
     if (selectedServiceForBooking) {
       // Find category
       let foundCategory: 'barberia' | 'peluqueria' | 'terapias' = 'barberia';
@@ -121,7 +151,6 @@ export function BookingModal() {
       else if (selectedServiceForBooking.id.startsWith('p')) foundCategory = 'peluqueria';
       else if (selectedServiceForBooking.id.startsWith('t')) foundCategory = 'terapias';
       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCategory(foundCategory);
       setServiceId(selectedServiceForBooking.id);
       setStep(2);
@@ -131,43 +160,18 @@ export function BookingModal() {
       setStep(1);
     } else {
       setServiceId('');
-      
-      // Check hostname first for multi-domain routing
-      if (typeof window !== 'undefined') {
-        const host = window.location.hostname;
-        if (host.includes('almabela.cl')) {
-          setCategory('peluqueria');
-        } else if (host.includes('valentes.cl')) {
-          setCategory('barberia');
-        } else if (host.includes('jeffersonlopes.cl')) {
-          if (pathname.includes('/terapias')) {
-            setCategory('terapias');
-          } else {
-            setCategory('barberia');
-          }
-        } else {
-          // Fallback to pathnames (for localhost development)
-          if (pathname.includes('/peluqueria')) {
-            setCategory('peluqueria');
-          } else if (pathname.includes('/terapias')) {
-            setCategory('terapias');
-          } else {
-            setCategory('barberia');
-          }
-        }
+      if (isValentes || isPageBarberia) {
+        setCategory('barberia');
+      } else if (isAlmaBela || isPagePeluqueria) {
+        setCategory('peluqueria');
+      } else if (isPageTerapias) {
+        setCategory('terapias');
       } else {
-        // Fallback for SSR
-        if (pathname.includes('/peluqueria')) {
-          setCategory('peluqueria');
-        } else if (pathname.includes('/terapias')) {
-          setCategory('terapias');
-        } else {
-          setCategory('barberia');
-        }
+        setCategory('barberia');
       }
       setStep(1);
     }
-  }, [selectedServiceForBooking, bookingCategory, isBookingOpen, pathname, fetchServicesAndSpecialists]);
+  }, [isBookingOpen, selectedServiceForBooking, bookingCategory, isValentes, isAlmaBela, isPageBarberia, isPagePeluqueria, isPageTerapias]);
 
   // Helper to format date with offset in YYYY-MM-DD
   const getFormattedDate = (daysOffset = 0) => {
@@ -725,7 +729,7 @@ export function BookingModal() {
             </div>
 
             {/* Panel Derecho: Formulario Paso a Paso */}
-            <div className="col-span-1 md:col-span-7 flex flex-col justify-between p-6 md:p-8 bg-[#070707] relative overflow-hidden h-full">
+            <div className="col-span-1 md:col-span-7 flex flex-col justify-between p-6 md:p-8 bg-[#020202] relative overflow-hidden h-full">
               {/* Botón de cerrar flotante */}
               <button
                 onClick={handleClose}
@@ -777,32 +781,30 @@ export function BookingModal() {
                       {step === 1 && (
                         <div className="space-y-5">
                           {/* Segment Selector for category/welfare area */}
-                          <div>
-                            <label className={labelClass}>Área de Bienestar</label>
-                            <div className="grid grid-cols-3 gap-2 mt-1.5">
-                              {[
-                                { id: 'barberia', name: 'Barbería' },
-                                { id: 'peluqueria', name: 'Peluquería' },
-                                { id: 'terapias', name: 'Terapias' }
-                              ].map((opt) => {
-                                const isSelected = category === opt.id;
-                                return (
-                                  <button
-                                    key={opt.id}
-                                    type="button"
-                                    onClick={() => handleCategoryChange(opt.id as 'barberia' | 'peluqueria' | 'terapias')}
-                                    className={`py-2.5 px-1 text-center rounded-xl border text-[10px] uppercase tracking-wider font-bold transition-all duration-300 focus:outline-none ${
-                                      isSelected
-                                        ? 'border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.15)]'
-                                        : 'border-white/5 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/10'
-                                    }`}
-                                  >
-                                    {opt.name}
-                                  </button>
-                                );
-                              })}
+                          {categoryOptions.length > 1 && (
+                            <div>
+                              <label className={labelClass}>Área de Bienestar</label>
+                              <div className={`grid grid-cols-${categoryOptions.length} gap-2 mt-1.5`}>
+                                {categoryOptions.map((opt) => {
+                                  const isSelected = category === opt.id;
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => handleCategoryChange(opt.id as 'barberia' | 'peluqueria' | 'terapias')}
+                                      className={`py-2.5 px-1 text-center rounded-xl border text-[10px] uppercase tracking-wider font-bold transition-all duration-300 focus:outline-none ${
+                                        isSelected
+                                          ? 'border-gold bg-gold/10 text-gold shadow-[0_0_8px_rgba(198,155,60,0.15)]'
+                                          : 'border-white/5 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/10'
+                                      }`}
+                                    >
+                                      {opt.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
+                          )}
 
                           {/* Services Cards list */}
                           <div className="space-y-3">

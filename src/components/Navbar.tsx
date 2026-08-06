@@ -7,11 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Calendar, User, Gift } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import Image from 'next/image';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 export function Navbar() {
   const pathname = usePathname();
   const { isMenuOpen, toggleMenu, setMenuOpen, openBooking } = useUIStore();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { isValentes, isAlmaBela } = useBrandDomain();
 
   // Monitor scroll to trigger glassmorphism background
   useEffect(() => {
@@ -26,12 +28,27 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: 'Inicio', path: '/' },
-    { name: 'Barbería', path: '/barberia' },
-    { name: 'Peluquería', path: '/peluqueria' },
-    { name: 'Terapias', path: 'https://www.jeffersonlopes.cl/terapias' },
-  ];
+  const navLinks = React.useMemo(() => {
+    if (isValentes) {
+      return [
+        { name: 'Inicio', path: '/' },
+        { name: 'Barbería', path: '/barberia' },
+      ];
+    }
+    if (isAlmaBela) {
+      return [
+        { name: 'Inicio', path: '/' },
+        { name: 'Peluquería', path: '/peluqueria' },
+        { name: 'Terapias', path: '/terapias' },
+      ];
+    }
+    return [
+      { name: 'Inicio', path: '/' },
+      { name: 'Barbería', path: '/barberia' },
+      { name: 'Peluquería', path: '/peluqueria' },
+      { name: 'Terapias', path: '/terapias' },
+    ];
+  }, [isValentes, isAlmaBela]);
 
   const getLinkColors = (path: string) => {
     return {
