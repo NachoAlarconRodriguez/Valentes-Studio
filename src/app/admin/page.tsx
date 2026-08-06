@@ -3278,16 +3278,16 @@ export default function AdminPage() {
               initial={{ opacity: 0, y: -20, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: -20, x: '-50%' }}
-              className={`fixed top-6 left-1/2 z-50 bg-[#121212] border text-xs px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
-                isError ? 'border-red-500/40 text-red-400 shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : 'border-gold/40 text-gold shadow-[0_4px_20px_rgba(198,155,60,0.1)]'
+              className={`fixed top-4 md:top-6 left-1/2 z-50 w-[92vw] sm:w-auto max-w-lg bg-[#0d0d0d]/95 border text-xs px-4 py-3 sm:px-6 sm:py-3.5 rounded-2xl shadow-2xl flex items-start sm:items-center space-x-3 font-medium tracking-wide backdrop-blur-xl transition-all duration-300 ${
+                isError ? 'border-red-500/40 text-red-400 shadow-[0_8px_30px_rgba(239,68,68,0.2)]' : 'border-[#D7AF68]/40 text-[#D7AF68] shadow-[0_8px_30px_rgba(215,175,104,0.15)]'
               }`}
             >
               {isError ? (
-                <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5 sm:mt-0" />
               ) : (
-                <Sparkles size={14} className="animate-pulse flex-shrink-0 text-gold" />
+                <Sparkles size={16} className="animate-pulse shrink-0 text-[#D7AF68] mt-0.5 sm:mt-0" />
               )}
-              <span>{notification}</span>
+              <span className="leading-snug text-left text-white/90 text-xs">{notification}</span>
             </motion.div>
           );
         })()}
@@ -3486,7 +3486,9 @@ export default function AdminPage() {
                     {
                       title: 'Marketing y CMS',
                       items: [
-                        { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] }
+                        { id: 'giftcards', label: 'Gift Cards', icon: Gift, allowed: ['admin'] },
+                        { id: 'fidelizacion', label: 'Fidelización', icon: Award, allowed: ['admin'] },
+                        { id: 'vsm', label: 'Visual CMS', icon: Edit3, allowed: ['admin'] }
                       ]
                     },
                     {
