@@ -13,6 +13,7 @@ import { useBookingStore } from '@/store/useBookingStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useGiftCardStore } from '@/store/useGiftCardStore';
 import { useContentStore } from '@/store/useContentStore';
+import { useBrandDomain } from '@/hooks/useBrandDomain';
 
 // Dynamically import the WebGL Canvas, disabling server-side rendering
 // because WebGL, Three.js, and browser events require client-side execution.
@@ -27,6 +28,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const setMenuOpen = useUIStore((state) => state.setMenuOpen);
   const openBooking = useUIStore((state) => state.openBooking);
   const [mounted, setMounted] = useState(false);
+  const { isValentes, isAlmaBela } = useBrandDomain();
 
   // Load initial data actions from Supabase
   const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
@@ -135,7 +137,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       <WebGLCanvas />
 
       {/* Global Navigation Header */}
-      {pathname !== '/' && !pathname.startsWith('/admin') && <Navbar />}
+      {!pathname.startsWith('/admin') && (pathname !== '/' || isValentes || isAlmaBela) && <Navbar />}
 
       {/* Main UI Layer */}
       <main className={`flex-grow relative z-10 w-full ${pathname === '/' || pathname.startsWith('/barberia') || pathname.startsWith('/terapias') || pathname.startsWith('/admin') ? '' : 'pt-24'}`}>

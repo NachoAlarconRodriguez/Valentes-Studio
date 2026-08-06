@@ -59,8 +59,8 @@ export function Navbar() {
     };
   };
 
-  const isPeluqueria = pathname.startsWith('/peluqueria');
-  const isBarberia = pathname.startsWith('/barberia');
+  const isPeluqueria = pathname.startsWith('/peluqueria') || isAlmaBela;
+  const isBarberia = pathname.startsWith('/barberia') || isValentes;
   const isTerapias = pathname.startsWith('/terapias');
   const isAdmin = pathname.startsWith('/admin');
 
