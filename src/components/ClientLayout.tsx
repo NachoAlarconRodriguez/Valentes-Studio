@@ -93,7 +93,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }
 
 
-  let loadingImg = "/loading-logo-v1.jpg";
+  let loadingImg = "/loading-dos-caminos.jpg";
   if (isAlmaBela || pathname.startsWith('/peluqueria')) {
     loadingImg = "/loading-almabela.jpg";
   } else if (isValentes || pathname.startsWith('/barberia')) {
