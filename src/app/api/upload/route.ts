@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
+import convert from 'heic-convert';
 
 export async function POST(request: Request) {
   try {
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       else if (extLower === 'png') contentType = 'image/png';
       else if (extLower === 'webp') contentType = 'image/webp';
       else if (extLower === 'gif') contentType = 'image/gif';
+      else if (extLower === 'heic' || extLower === 'heif') contentType = 'image/heic';
       else contentType = 'image/jpeg';
     }
 
@@ -61,12 +63,29 @@ export async function POST(request: Request) {
     let finalContentType = contentType;
     let finalFilename = filename;
 
-    const isImage = contentType.startsWith('image/');
+    const isHeic = contentType.includes('heic') || contentType.includes('heif') || extLower === 'heic' || extLower === 'heif';
+    const isImage = contentType.startsWith('image/') || isHeic;
     const isSvgOrGif = contentType.includes('svg') || contentType.includes('gif') || extLower === 'svg' || extLower === 'gif';
 
     if (isImage && !isSvgOrGif) {
+      let imageBufferToProcess: Buffer = buffer;
+
+      if (isHeic) {
+        try {
+          const output = await convert({
+            buffer,
+            format: 'JPEG',
+            quality: 0.9
+          });
+          imageBufferToProcess = Buffer.from(output);
+          contentType = 'image/jpeg';
+        } catch (heicErr) {
+          console.error('Error converting HEIC with heic-convert:', heicErr);
+        }
+      }
+
       try {
-        finalBuffer = await sharp(buffer)
+        finalBuffer = await sharp(imageBufferToProcess)
           .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
           .webp({ quality: 80 })
           .toBuffer();
@@ -75,7 +94,24 @@ export async function POST(request: Request) {
         const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
         finalFilename = `${nameWithoutExt}.webp`;
       } catch (sharpError) {
-        console.error('Error compressing image with sharp, uploading original:', sharpError);
+        console.error('Error compressing image with sharp, trying HEIC fallback:', sharpError);
+        try {
+          const output = await convert({
+            buffer,
+            format: 'JPEG',
+            quality: 0.85
+          });
+          const convertedJpeg = Buffer.from(output);
+          finalBuffer = await sharp(convertedJpeg)
+            .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+          finalContentType = 'image/webp';
+          const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+          finalFilename = `${nameWithoutExt}.webp`;
+        } catch (fallbackErr) {
+          console.error('Fallback HEIC conversion failed, uploading original:', fallbackErr);
+        }
       }
     }
 
@@ -99,3 +135,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || 'Error interno al procesar el archivo' }, { status: 500 });
   }
 }
+
