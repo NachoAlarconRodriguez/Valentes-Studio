@@ -926,6 +926,28 @@ export default function AdminPage() {
       try {
         const targetCat = (editingStaff as any).primaryCategory || 'barberia';
         await updateSpecialist(targetCat, editingStaff.id, staffPayload as any);
+
+        // Extra guarantee: persist imageUrl directly via API route (bypasses Server Action limitations)
+        if (staffFormImageUrl.trim()) {
+          try {
+            const res = await fetch('/api/update-specialist', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                specialistId: editingStaff.id,
+                email: staffFormEmail.trim(),
+                imageUrl: staffFormImageUrl.trim()
+              })
+            });
+            const result = await res.json();
+            if (result.warning) {
+              console.warn('[update-specialist API]', result.warning);
+            }
+          } catch (apiErr) {
+            console.error('[update-specialist API] Error:', apiErr);
+          }
+        }
+
         setFailedImages(prev => {
           const next = { ...prev };
           delete next[editingStaff.id];
