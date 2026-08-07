@@ -388,9 +388,10 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       // Always update local state to reflect the save
       set((state) => {
-        const updatedSpecialists = state.specialistsList.map((sp) =>
-          sp.id === specialistId ? { ...sp, ...updatedFields } : sp
-        );
+        const updatedSpecialists = state.specialistsList.map((sp) => {
+          const isMatch = sp.id === specialistId || (sp.email && updatedFields.email && sp.email.toLowerCase() === updatedFields.email.toLowerCase());
+          return isMatch ? { ...sp, ...updatedFields } : sp;
+        });
 
         const newServicesData: any = {};
         Object.keys(state.servicesData).forEach((cat) => {

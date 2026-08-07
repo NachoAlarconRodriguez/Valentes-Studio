@@ -172,14 +172,28 @@ export async function updateSpecialistAction(specialistId: string, payload: any)
     auth: { persistSession: false }
   });
 
-  const { error } = await supabase
+  // Try updating by ID first
+  const { error, count } = await supabase
     .from('specialists')
-    .update(payload)
+    .update(payload, { count: 'exact' })
     .eq('id', specialistId);
 
   if (error) {
-    console.error('Error updating specialist in Server Action:', error);
+    console.error('Error updating specialist by ID in Server Action:', error);
     throw new Error(error.message);
+  }
+
+  // If 0 rows were updated by ID and we have an email, update by email
+  if (count === 0 && payload.email) {
+    const { error: emailError } = await supabase
+      .from('specialists')
+      .update(payload)
+      .eq('email', payload.email);
+
+    if (emailError) {
+      console.error('Error updating specialist by Email in Server Action:', emailError);
+      throw new Error(emailError.message);
+    }
   }
 }
 

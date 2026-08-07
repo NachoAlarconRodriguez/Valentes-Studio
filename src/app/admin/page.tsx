@@ -926,6 +926,12 @@ export default function AdminPage() {
       try {
         const targetCat = (editingStaff as any).primaryCategory || 'barberia';
         await updateSpecialist(targetCat, editingStaff.id, staffPayload as any);
+        setFailedImages(prev => {
+          const next = { ...prev };
+          delete next[editingStaff.id];
+          if (editingStaff.email) delete next[editingStaff.email];
+          return next;
+        });
         triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
       } catch (err: any) {
         console.error('Error updating specialist:', err);
