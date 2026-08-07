@@ -533,6 +533,8 @@ export default function AdminPage() {
   const [isStaffDrawerOpen, setIsStaffDrawerOpen] = useState(false);
   const [isUploadingStaffImage, setIsUploadingStaffImage] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   // Staff Form state
   const [staffFormName, setStaffFormName] = useState('');
@@ -1684,19 +1686,37 @@ export default function AdminPage() {
     setTimeout(() => setNotification(null), 3000);
   }
 
-  const compressImageOnClient = (file: File): Promise<Blob | File> => {
-    return new Promise((resolve) => {
-      const extLower = file.name?.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
-      const isHeic = file.type?.includes('heic') || file.type?.includes('heif') || extLower === 'heic' || extLower === 'heif';
-      
-      if (!file.type.startsWith('image/') && !isHeic) {
-        return resolve(file);
-      }
+  const compressImageOnClient = async (file: File): Promise<Blob | File> => {
+    let fileToProcess: File = file;
+    const extLower = file.name?.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    const isHeic = file.type?.includes('heic') || file.type?.includes('heif') || extLower === 'heic' || extLower === 'heif';
 
-      if (isHeic || file.type.includes('svg') || file.type.includes('gif')) {
-        return resolve(file);
+    if (isHeic && typeof window !== 'undefined') {
+      try {
+        const heic2any = (await import('heic2any')).default;
+        const converted = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.85
+        });
+        const blobResult = Array.isArray(converted) ? converted[0] : converted;
+        fileToProcess = new File([blobResult], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+          type: 'image/jpeg'
+        });
+      } catch (err) {
+        console.error('Error converting HEIC client-side with heic2any:', err);
       }
-      
+    }
+
+    if (!fileToProcess.type.startsWith('image/')) {
+      return fileToProcess;
+    }
+
+    if (fileToProcess.type.includes('svg') || fileToProcess.type.includes('gif')) {
+      return fileToProcess;
+    }
+
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new window.Image();
@@ -1724,7 +1744,7 @@ export default function AdminPage() {
           
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            return resolve(file);
+            return resolve(fileToProcess);
           }
           
           ctx.drawImage(img, 0, 0, width, height);
@@ -1732,7 +1752,7 @@ export default function AdminPage() {
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                return resolve(file);
+                return resolve(fileToProcess);
               }
               resolve(blob);
             },
@@ -1740,11 +1760,11 @@ export default function AdminPage() {
             0.85
           );
         };
-        img.onerror = () => resolve(file);
+        img.onerror = () => resolve(fileToProcess);
         img.src = event.target?.result as string;
       };
-      reader.onerror = () => resolve(file);
-      reader.readAsDataURL(file);
+      reader.onerror = () => resolve(fileToProcess);
+      reader.readAsDataURL(fileToProcess);
     });
   };
 
@@ -1757,8 +1777,8 @@ export default function AdminPage() {
         formData.append('file', fileToUpload);
       } else {
         // Appending a Blob directly with a clean filename is 100% compatible on iOS Safari
-        const filename = file.name || 'compressed_image.jpg';
-        formData.append('file', fileToUpload, filename);
+        const cleanName = (file.name || 'compressed_image.jpg').replace(/\.(heic|heif)$/i, '.jpg');
+        formData.append('file', fileToUpload, cleanName);
       }
       
       const response = await fetch('/api/upload', {
@@ -8303,10 +8323,11 @@ export default function AdminPage() {
                             )}
                           </div>
 
-                          {staff.imageUrl ? (
+                          {staff.imageUrl && !failedImages[staff.id] ? (
                             <img
                               src={staff.imageUrl}
                               alt={staff.name}
+                              onError={() => setFailedImages(prev => ({ ...prev, [staff.id]: true }))}
                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
@@ -8784,58 +8805,60 @@ export default function AdminPage() {
                           </label>
                         </div>
 
-                        {/* Imagen del Profesional */}
-                        <div className="space-y-3">
-                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
-                            Imagen del Profesional
-                          </label>
-                          <div className="flex items-center space-x-4">
-                            {/* Preview */}
-                            <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center flex-shrink-0 relative">
-                              {staffFormImageUrl ? (
-                                <img
-                                  src={staffFormImageUrl}
-                                  alt="Preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-white/30 text-center font-light leading-none">Sin foto</span>
-                              )}
-                            </div>
-                            
-                            {/* File Upload Trigger */}
-                            <div className="flex-1">
-                              <label className="inline-block py-2.5 px-4 rounded-xl border border-white/10 text-white hover:border-gold/30 hover:text-gold transition-colors text-[10px] uppercase tracking-widest font-bold bg-white/5 cursor-pointer text-center w-full">
-                                {isUploadingStaffImage ? (
-                                  <div className="flex items-center justify-center space-x-2 py-0.5">
-                                    <span className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />
-                                    <span>Subiendo...</span>
-                                  </div>
+                          {/* Imagen del Profesional */}
+                          <div className="space-y-3">
+                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                              Imagen del Profesional
+                            </label>
+                            <div className="flex items-center space-x-4">
+                              {/* Preview */}
+                              <div className="w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center flex-shrink-0 relative">
+                                {staffFormImageUrl && !previewFailed ? (
+                                  <img
+                                    src={staffFormImageUrl}
+                                    alt="Preview"
+                                    onError={() => setPreviewFailed(true)}
+                                    className="w-full h-full object-cover"
+                                  />
                                 ) : (
-                                  <>
-                                    <span>Subir Imagen</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      disabled={isUploadingStaffImage}
-                                      onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          setIsUploadingStaffImage(true);
-                                          try {
-                                            const publicUrl = await optimizeAndUploadImage(file);
-                                            setStaffFormImageUrl(publicUrl);
-                                            triggerNotification('Imagen subida con éxito.');
-                                          } catch (err: any) {
-                                            console.error(err);
-                                            triggerNotification('Error al subir la imagen.');
-                                          } finally {
-                                            setIsUploadingStaffImage(false);
+                                  <span className="text-[10px] text-white/30 text-center font-light leading-none">Sin foto</span>
+                                )}
+                              </div>
+                              
+                              {/* File Upload Trigger */}
+                              <div className="flex-1">
+                                <label className="inline-block py-2.5 px-4 rounded-xl border border-white/10 text-white hover:border-gold/30 hover:text-gold transition-colors text-[10px] uppercase tracking-widest font-bold bg-white/5 cursor-pointer text-center w-full">
+                                  {isUploadingStaffImage ? (
+                                    <div className="flex items-center justify-center space-x-2 py-0.5">
+                                      <span className="w-3 h-3 border border-gold border-t-transparent rounded-full animate-spin" />
+                                      <span>Subiendo...</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span>Subir Imagen</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*,.heic,.heif"
+                                        className="hidden"
+                                        disabled={isUploadingStaffImage}
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            setIsUploadingStaffImage(true);
+                                            try {
+                                              const publicUrl = await optimizeAndUploadImage(file);
+                                              setStaffFormImageUrl(publicUrl);
+                                              setPreviewFailed(false);
+                                              triggerNotification('Imagen subida con éxito.');
+                                            } catch (err: any) {
+                                              console.error(err);
+                                              triggerNotification('Error al subir la imagen.');
+                                            } finally {
+                                              setIsUploadingStaffImage(false);
+                                            }
                                           }
-                                        }
-                                      }}
-                                    />
+                                        }}
+                                      />
                                   </>
                                 )}
                               </label>
