@@ -1332,7 +1332,7 @@ export default function AdminPage() {
             // Fallback to Administrator for custom emails like the user's
             const isAdminEmail = email?.toLowerCase() === 'ialarconr.684@gmail.com';
             setCurrentUser({
-              id: 'admin',
+              id: isAdminEmail ? 'sp_ignacio' : 'admin',
               name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
               email: email || '',
               phone: isAdminEmail ? '+56953332492' : undefined,
@@ -1433,7 +1433,7 @@ export default function AdminPage() {
         } else {
           const isAdminEmail = username.trim().toLowerCase() === 'ialarconr.684@gmail.com';
           setCurrentUser({
-            id: 'admin',
+            id: isAdminEmail ? 'sp_ignacio' : 'admin',
             name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
             email: username.trim(),
             phone: isAdminEmail ? '+56953332492' : undefined,
