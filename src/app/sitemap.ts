@@ -1,25 +1,23 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const domains = [
-    'https://www.valentes.cl',
-    'https://www.almabela.cl',
-    'https://www.jeffersonlopes.cl'
-  ];
-  const routes = ['', '/barberia', '/peluqueria', '/terapias', '/giftcards'];
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const headersList = await headers();
+  const host = (headersList.get('host') || '').toLowerCase();
 
-  const sitemapEntries: MetadataRoute.Sitemap = [];
-
-  for (const domain of domains) {
-    for (const route of routes) {
-      sitemapEntries.push({
-        url: `${domain}${route}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly',
-        priority: route === '' ? 1.0 : 0.8,
-      });
-    }
+  let baseUrl = 'https://www.jeffersonlopes.cl';
+  if (host.includes('valentes.cl')) {
+    baseUrl = 'https://www.valentes.cl';
+  } else if (host.includes('almabela.cl')) {
+    baseUrl = 'https://www.almabela.cl';
   }
 
-  return sitemapEntries;
+  const routes = ['', '/barberia', '/peluqueria', '/terapias', '/giftcards'];
+
+  return routes.map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: route === '' ? 1.0 : 0.8,
+  }));
 }
