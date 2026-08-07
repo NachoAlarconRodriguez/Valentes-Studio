@@ -63,7 +63,9 @@ export async function POST(request: Request) {
     let finalContentType = contentType;
     let finalFilename = filename;
 
-    const isHeic = contentType.includes('heic') || contentType.includes('heif') || extLower === 'heic' || extLower === 'heif';
+    const headerStr = buffer.slice(4, 12).toString('ascii');
+    const isMagicHeic = headerStr.includes('ftyp') || headerStr.includes('heic') || headerStr.includes('mif1');
+    const isHeic = isMagicHeic || contentType.includes('heic') || contentType.includes('heif') || extLower === 'heic' || extLower === 'heif';
     const isImage = contentType.startsWith('image/') || isHeic;
     const isSvgOrGif = contentType.includes('svg') || contentType.includes('gif') || extLower === 'svg' || extLower === 'gif';
 
