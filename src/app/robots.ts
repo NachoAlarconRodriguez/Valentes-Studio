@@ -7,6 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin', '/api', '/reset-password'],
     },
-    sitemap: 'https://santuariodebienestar.cl/sitemap.xml',
+    sitemap: [
+      'https://www.valentes.cl/sitemap.xml',
+      'https://www.almabela.cl/sitemap.xml',
+      'https://www.jeffersonlopes.cl/sitemap.xml',
+    ],
   };
 }
