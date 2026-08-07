@@ -26,24 +26,24 @@ export default function HomePage() {
   const { content } = useContentStore();
   const { openBooking } = useUIStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isValentes, isAlmaBela } = useBrandDomain();
+  const { isValentes, isAlmaBela, isAll } = useBrandDomain();
 
   const navLinks = React.useMemo(() => {
     if (isValentes) {
       return [{ href: '/barberia', label: 'BARBERIA' }];
     }
-    if (isAlmaBela) {
+    if (isAll) {
       return [
+        { href: '/barberia', label: 'BARBERIA' },
         { href: '/peluqueria', label: 'PELUQUERÍA' },
         { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
       ];
     }
     return [
-      { href: '/barberia', label: 'BARBERIA' },
       { href: '/peluqueria', label: 'PELUQUERÍA' },
       { href: '/terapias', label: 'TERAPIAS HOLÍSTICAS' }
     ];
-  }, [isValentes, isAlmaBela]);
+  }, [isValentes, isAll]);
 
   // Fallbacks in case content store isn't populated
   const barberiaBg = content.home?.panel1Image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80';
@@ -61,10 +61,10 @@ export default function HomePage() {
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
           <span className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C69A4A] transition-all duration-300 group-hover:brightness-110">
-            JEFÏTO LOPÊS
+            {isValentes ? 'VALENTES STUDIO' : 'JEFÏTO LOPÊS'}
           </span>
           <span className="text-[7px] sm:text-[9px] tracking-wider text-[#D7AF68]/80 mt-1 font-semibold block transition-colors">
-            Cuidamos tu imagen, tu estilo y tu energía
+            {isValentes ? 'Barbería Tradicional & Ritual de Grooming' : 'Cuidamos tu imagen, tu estilo y tu energía'}
           </span>
         </Link>
 
@@ -98,7 +98,7 @@ export default function HomePage() {
 
           {/* Agendar Button */}
           <button 
-            onClick={() => openBooking()} 
+            onClick={() => openBooking(undefined, isValentes ? 'barberia' : undefined)} 
             className="text-xs tracking-[0.2em] uppercase font-bold bg-[#D7AF68] text-black px-6 py-2.5 rounded-full hover:bg-white hover:text-black transition-all duration-300 shadow-lg shadow-[#D7AF68]/20 hover:scale-[1.03] active:scale-95 cursor-pointer focus:outline-none"
           >
             AGENDAR
@@ -138,7 +138,9 @@ export default function HomePage() {
               <div className="space-y-8">
                 {/* Header inside drawer */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <span className="font-serif text-sm font-bold tracking-[0.2em] text-[#D7AF68]">JEFÏTO LOPÊS</span>
+                  <span className="font-serif text-sm font-bold tracking-[0.2em] text-[#D7AF68]">
+                    {isValentes ? 'VALENTES STUDIO' : 'JEFÏTO LOPÊS'}
+                  </span>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-1.5 rounded-full bg-white/5 border border-white/10 text-white hover:text-[#D7AF68] transition-colors cursor-pointer"
@@ -168,7 +170,7 @@ export default function HomePage() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    openBooking();
+                    openBooking(undefined, isValentes ? 'barberia' : undefined);
                   }}
                   className="w-full text-center py-3 rounded-full bg-[#D7AF68] text-black font-bold uppercase tracking-wider text-xs hover:bg-white hover:text-black transition-colors cursor-pointer shadow-lg shadow-[#D7AF68]/10"
                 >
@@ -190,233 +192,247 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* 2. THREE COLUMNS PANELS SECTION */}
-      <section className="flex-1 grid grid-cols-1 lg:grid-cols-3 w-full relative pt-24 lg:pt-14">
-        {/* PANEL 1: BARBERIA */}
-        <div className="group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 lg:border-r border-white/5 overflow-hidden text-center">
-          {/* Background image / video */}
-          <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
-            {isVideoUrl(barberiaBg) ? (
-              <video
-                src={barberiaBg}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            ) : (
-              <Image
-                src={barberiaBg}
-                alt="Barbería background"
-                fill
-                priority={true}
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
-            <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
-          </div>
-
-          {/* Column Content */}
-          <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
-            {/* Logo */}
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
-              <Image
-                src="/hands-logo-v4.png"
-                alt="Valentes Barber Studio Logo"
-                fill
-                sizes="144px"
-                className="object-contain"
-              />
+      {/* 2. PANELS SECTION */}
+      <section
+        className={`flex-1 grid grid-cols-1 ${
+          isValentes
+            ? 'max-w-xl mx-auto items-center justify-center'
+            : isAll
+            ? 'lg:grid-cols-3 w-full'
+            : 'lg:grid-cols-2 max-w-6xl mx-auto w-full'
+        } relative pt-24 lg:pt-14`}
+      >
+        {/* PANEL 1: BARBERIA (Only when isValentes or isAll) */}
+        {(isValentes || isAll) && (
+          <div className={`group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 ${isAll ? 'lg:border-r' : ''} border-white/5 overflow-hidden text-center`}>
+            {/* Background image / video */}
+            <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
+              {isVideoUrl(barberiaBg) ? (
+                <video
+                  src={barberiaBg}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              ) : (
+                <Image
+                  src={barberiaBg}
+                  alt="Barbería background"
+                  fill
+                  priority={true}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
+              <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
             </div>
 
-            {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
-              BARBEARIA
-            </span>
+            {/* Column Content */}
+            <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
+              {/* Logo */}
+              <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
+                <Image
+                  src="/hands-logo-v4.png"
+                  alt="Valentes Barber Studio Logo"
+                  fill
+                  sizes="144px"
+                  className="object-contain"
+                />
+              </div>
 
-            {/* Title */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
-              VALENTES
-              <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D7AF68]/90 mt-1.5 font-sans font-bold">STUDIO</span>
-            </h2>
+              {/* Subtitle */}
+              <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
+                BARBEARIA
+              </span>
 
-            {/* Divider */}
-            <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
-              <span className="text-[9px] text-[#D7AF68]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+              {/* Title */}
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
+                VALENTES
+                <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D7AF68]/90 mt-1.5 font-sans font-bold">STUDIO</span>
+              </h2>
+
+              {/* Divider */}
+              <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+                <span className="text-[9px] text-[#D7AF68]">❖</span>
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+              </div>
+
+              {/* Description */}
+              <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
+                {barberiaDesc}
+              </p>
+
+              {/* CTA Button */}
+              <Link
+                href="/barberia"
+                className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              >
+                <span>RESERVAR HORA</span>
+                <Calendar size={12} />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* PANEL 2: PELUQUERIA (Only when !isValentes or isAll) */}
+        {(!isValentes || isAll) && (
+          <div className="group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 lg:border-r border-white/5 overflow-hidden text-center">
+            {/* Background image / video */}
+            <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
+              {isVideoUrl(peluqueriaBg) ? (
+                <video
+                  src={peluqueriaBg}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              ) : (
+                <Image
+                  src={peluqueriaBg}
+                  alt="Peluquería background"
+                  fill
+                  priority={true}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
+              <div className="absolute inset-0 bg-bronze/5 group-hover:bg-bronze/10 transition-colors duration-700 mix-blend-color z-1" />
             </div>
 
-            {/* Description */}
-            <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
-              {barberiaDesc}
-            </p>
+            {/* Column Content */}
+            <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
+              {/* Logo */}
+              <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
+                <Image
+                  src="/peluqueria-logo-v4.png"
+                  alt="Alma Bela Studio Logo"
+                  fill
+                  sizes="144px"
+                  className="object-contain"
+                />
+              </div>
 
-            {/* CTA Button */}
-            <a
-              href="https://www.valentes.cl"
-              className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
-            >
-              <span>RESERVAR HORA</span>
-              <Calendar size={12} />
-            </a>
+              {/* Subtitle */}
+              <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
+                PELUQUERÍA
+              </span>
+
+              {/* Title */}
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
+                ALMA BELA
+                <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D7AF68] mt-1.5 font-sans font-bold">STUDIO</span>
+              </h2>
+
+              {/* Divider */}
+              <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+                <span className="text-[9px] text-[#D7AF68]">❖</span>
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+              </div>
+
+              {/* Description */}
+              <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
+                {peluqueriaDesc}
+              </p>
+
+              {/* CTA Button */}
+              <Link
+                href="/peluqueria"
+                className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              >
+                <span>VER SERVICIOS</span>
+                <ChevronRight size={12} className="transform group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* PANEL 2: PELUQUERIA */}
-        <div className="group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 lg:border-r border-white/5 overflow-hidden text-center">
-          {/* Background image / video */}
-          <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
-            {isVideoUrl(peluqueriaBg) ? (
-              <video
-                src={peluqueriaBg}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            ) : (
-              <Image
-                src={peluqueriaBg}
-                alt="Peluquería background"
-                fill
-                priority={true}
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
-            <div className="absolute inset-0 bg-bronze/5 group-hover:bg-bronze/10 transition-colors duration-700 mix-blend-color z-1" />
-          </div>
-
-          {/* Column Content */}
-          <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
-            {/* Logo */}
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
-              <Image
-                src="/peluqueria-logo-v4.png"
-                alt="Alma Bela Studio Logo"
-                fill
-                sizes="144px"
-                className="object-contain"
-              />
+        {/* PANEL 3: JEFITO LOPES (TERAPIAS) (Only when !isValentes or isAll) */}
+        {(!isValentes || isAll) && (
+          <div className="group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 overflow-hidden text-center">
+            {/* Background image / video */}
+            <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
+              {isVideoUrl(terapiasBg) ? (
+                <video
+                  src={terapiasBg}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              ) : (
+                <Image
+                  src={terapiasBg}
+                  alt="Terapias background"
+                  fill
+                  priority={true}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
+              <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
             </div>
 
-            {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
-              PELUQUERÍA
-            </span>
+            {/* Column Content */}
+            <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
+              {/* Logo */}
+              <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-[1.52] transition-transform duration-500 select-none pointer-events-none scale-[1.45]">
+                <Image
+                  src="/terapias-logo-v9.png"
+                  alt="Jefïto Lopês Studio Logo"
+                  fill
+                  sizes="144px"
+                  className="object-contain"
+                />
+              </div>
 
-            {/* Title */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
-              ALMA BELA
-              <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D7AF68] mt-1.5 font-sans font-bold">STUDIO</span>
-            </h2>
+              {/* Subtitle */}
+              <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
+                TERAPIAS HOLÍSTICAS
+              </span>
 
-            {/* Divider */}
-            <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
-              <span className="text-[9px] text-[#D7AF68]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+              {/* Title (Only JEFITO LOPES, no STUDIO) */}
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
+                JEFÏTO LOPÊS
+              </h2>
+
+              {/* Divider */}
+              <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+                <span className="text-[9px] text-[#D7AF68]">❖</span>
+                <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
+              </div>
+
+              {/* Description */}
+              <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
+                {terapiasDesc}
+              </p>
+
+              {/* CTA Button */}
+              <Link
+                href="/terapias"
+                className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
+              >
+                <span>AGENDAR TERAPIA</span>
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 21a9 9 0 0 1-5.5-2c2.5 0 4.5-1 5.5-3 1 2 3 3 5.5 3-1.5 2-3.5 2-5.5 2zm0-18c-1.5 2.5-4 4-6.5 4 2.5 1.5 4 4 4 6.5 0-2.5 1.5-4 4-4s4 1.5 4 4c0-2.5 1.5-4 4-6.5-2.5 0-5-1.5-6.5-4z" />
+                </svg>
+              </Link>
             </div>
-
-            {/* Description */}
-            <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
-              {peluqueriaDesc}
-            </p>
-
-            {/* CTA Button */}
-            <a
-              href="https://www.almabela.cl"
-              className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
-            >
-              <span>VER SERVICIOS</span>
-              <ChevronRight size={12} className="transform group-hover:translate-x-0.5 transition-transform" />
-            </a>
           </div>
-        </div>
-
-        {/* PANEL 3: JEFITO LOPES (TERAPIAS) */}
-        <div className="group relative min-h-[380px] lg:min-h-0 flex flex-col justify-center items-center px-6 md:px-10 py-6 lg:py-3 border-b lg:border-b-0 overflow-hidden text-center">
-          {/* Background image / video */}
-          <div className="absolute inset-0 z-0 select-none pointer-events-none transition-all duration-1000 scale-100 group-hover:scale-105">
-            {isVideoUrl(terapiasBg) ? (
-              <video
-                src={terapiasBg}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="object-cover w-full h-full grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            ) : (
-              <Image
-                src={terapiasBg}
-                alt="Terapias background"
-                fill
-                priority={true}
-                sizes="(max-width: 1024px) 100vw, 33vw"
-                className="object-cover grayscale opacity-30 brightness-[0.3] group-hover:grayscale-0 group-hover:opacity-60 group-hover:brightness-[0.55] transition-all duration-1000"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-1" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-transparent to-transparent z-1" />
-            <div className="absolute inset-0 bg-gold/5 group-hover:bg-gold/10 transition-colors duration-700 mix-blend-color z-1" />
-          </div>
-
-          {/* Column Content */}
-          <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
-            {/* Logo */}
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-[1.52] transition-transform duration-500 select-none pointer-events-none scale-[1.45]">
-              <Image
-                src="/terapias-logo-v9.png"
-                alt="Jefïto Lopês Studio Logo"
-                fill
-                sizes="144px"
-                className="object-contain"
-              />
-            </div>
-
-            {/* Subtitle */}
-            <span className="text-[9px] uppercase tracking-[0.35em] text-[#D7AF68] font-bold block mb-1">
-              TERAPIAS HOLÍSTICAS
-            </span>
-
-            {/* Title (Only JEFITO LOPES, no STUDIO) */}
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
-              JEFÏTO LOPÊS
-            </h2>
-
-            {/* Divider */}
-            <div className="flex items-center justify-center space-x-2 my-3 lg:my-2 w-full">
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
-              <span className="text-[9px] text-[#D7AF68]">❖</span>
-              <div className="w-8 h-[1px] bg-[#D7AF68]/40" />
-            </div>
-
-            {/* Description */}
-            <p className="text-xs text-white/70 leading-relaxed font-light mb-4 lg:mb-3.5 max-w-[250px]">
-              {terapiasDesc}
-            </p>
-
-            {/* CTA Button */}
-            <Link
-              href="/terapias"
-              className="border border-[#D7AF68]/50 text-[#D7AF68] text-[10px] sm:text-xs uppercase tracking-widest font-bold px-6 py-2 rounded-full hover:bg-[#D7AF68] hover:text-black transition-all duration-300 flex items-center space-x-2 shadow-lg shadow-black/40 cursor-pointer"
-            >
-              <span>AGENDAR TERAPIA</span>
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                <path d="M12 21a9 9 0 0 1-5.5-2c2.5 0 4.5-1 5.5-3 1 2 3 3 5.5 3-1.5 2-3.5 2-5.5 2zm0-18c-1.5 2.5-4 4-6.5 4 2.5 1.5 4 4 4 6.5 0-2.5 1.5-4 4-4s4 1.5 4 4c0-2.5 1.5-4 4-6.5-2.5 0-5-1.5-6.5-4z" />
-              </svg>
-            </Link>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* 3. BOTTOM FOOTER VALUES SECTION */}

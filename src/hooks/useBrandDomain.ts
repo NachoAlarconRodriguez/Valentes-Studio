@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export type BrandDomain = 'valentes' | 'almabela' | 'jefferson';
+export type BrandDomain = 'valentes' | 'almabela' | 'jefferson' | 'all';
 
 export function useBrandDomain() {
   const [brand, setBrand] = useState<BrandDomain>('jefferson');
@@ -14,7 +14,9 @@ export function useBrandDomain() {
     const searchParams = new URLSearchParams(window.location.search);
     const paramBrand = searchParams.get('brand') || searchParams.get('domain');
 
-    if (paramBrand === 'valentes' || hostname.includes('valentes')) {
+    if (paramBrand === 'all') {
+      setBrand('all');
+    } else if (paramBrand === 'valentes' || hostname.includes('valentes')) {
       setBrand('valentes');
     } else if (paramBrand === 'almabela' || hostname.includes('almabela')) {
       setBrand('almabela');
@@ -28,8 +30,10 @@ export function useBrandDomain() {
     isValentes: brand === 'valentes',
     isAlmaBela: brand === 'almabela',
     isJefferson: brand === 'jefferson',
-    isMultiBrand: brand === 'jefferson',
+    isAll: brand === 'all',
+    isMultiBrand: brand === 'jefferson' || brand === 'all',
   };
 }
 
 export default useBrandDomain;
+
