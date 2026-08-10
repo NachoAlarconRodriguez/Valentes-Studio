@@ -63,7 +63,7 @@ export function BookingModal() {
       setPhoneError(null);
     }
   };
-  const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('barberia');
+  const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('peluqueria');
   const [serviceId, setServiceId] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -104,7 +104,7 @@ export function BookingModal() {
   const fetchPublicBookings = useBookingStore(state => state.fetchPublicBookings);
   const fetchServicesAndSpecialists = useServicesStore(state => state.fetchServicesAndSpecialists);
 
-  const { isValentes, isAlmaBela } = useBrandDomain();
+  const { isValentes, isAlmaBela, isJefferson } = useBrandDomain();
 
   const isPageBarberia = pathname.startsWith('/barberia');
   const isPagePeluqueria = pathname.startsWith('/peluqueria');
@@ -112,7 +112,7 @@ export function BookingModal() {
 
   const categoryOptions = React.useMemo(() => {
     if (isValentes || isPageBarberia) return [{ id: 'barberia', name: 'Barbería' }];
-    if (isAlmaBela || isPagePeluqueria) {
+    if (isAlmaBela || isJefferson || isPagePeluqueria) {
       return [
         { id: 'peluqueria', name: 'Peluquería' },
         { id: 'terapias', name: 'Terapias' }
@@ -125,11 +125,10 @@ export function BookingModal() {
       ];
     }
     return [
-      { id: 'barberia', name: 'Barbería' },
       { id: 'peluqueria', name: 'Peluquería' },
       { id: 'terapias', name: 'Terapias' }
     ];
-  }, [isValentes, isAlmaBela, isPageBarberia, isPagePeluqueria, isPageTerapias]);
+  }, [isValentes, isAlmaBela, isJefferson, isPageBarberia, isPagePeluqueria, isPageTerapias]);
 
   // Fetch real-time schedule, booking and specialist data from Supabase when the modal is opened
   useEffect(() => {
@@ -162,16 +161,16 @@ export function BookingModal() {
       setServiceId('');
       if (isValentes || isPageBarberia) {
         setCategory('barberia');
-      } else if (isAlmaBela || isPagePeluqueria) {
+      } else if (isAlmaBela || isJefferson || isPagePeluqueria) {
         setCategory('peluqueria');
       } else if (isPageTerapias) {
         setCategory('terapias');
       } else {
-        setCategory('barberia');
+        setCategory('peluqueria');
       }
       setStep(1);
     }
-  }, [isBookingOpen, selectedServiceForBooking, bookingCategory, isValentes, isAlmaBela, isPageBarberia, isPagePeluqueria, isPageTerapias]);
+  }, [isBookingOpen, selectedServiceForBooking, bookingCategory, isValentes, isAlmaBela, isJefferson, isPageBarberia, isPagePeluqueria, isPageTerapias]);
 
   // Helper to format date with offset in YYYY-MM-DD
   const getFormattedDate = (daysOffset = 0) => {
@@ -493,7 +492,7 @@ export function BookingModal() {
     setPhoneError(null);
     setSubmitError(null);
     setEmail('');
-    setCategory('barberia');
+    setCategory(isValentes || isPageBarberia ? 'barberia' : isPageTerapias ? 'terapias' : 'peluqueria');
     setServiceId('');
     setServiceSearch('');
     setStep(1);
