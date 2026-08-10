@@ -8601,10 +8601,11 @@ export default function AdminPage() {
                           <input
                             type="text"
                             required
+                            disabled={!!editingStaff}
                             placeholder="Ej. Roberto Sánchez"
                             value={staffFormName}
                             onChange={(e) => setStaffFormName(e.target.value)}
-                            className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors ${
+                            className={`w-full bg-black/40 border rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:border-white/5 ${
                               staffFormSubmitted && !staffFormName.trim()
                                 ? 'border-red-500/80 focus:border-red-500'
                                 : 'border-white/10 focus:border-gold/30'
