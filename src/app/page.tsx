@@ -61,7 +61,7 @@ export default function HomePage() {
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
           <span className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C69A4A] transition-all duration-300 group-hover:brightness-110">
-            {isValentes ? 'VALENTES STUDIO' : 'JEFÏTO LOPÊS'}
+            {isValentes ? 'VALENTES STUDIO' : 'LÉO'}
           </span>
           <span className="text-[7px] sm:text-[9px] tracking-wider text-[#D7AF68]/80 mt-1 font-semibold block transition-colors">
             {isValentes ? 'Barbería Tradicional & Ritual de Grooming' : 'Cuidamos tu imagen, tu estilo y tu energía'}
@@ -139,7 +139,7 @@ export default function HomePage() {
                 {/* Header inside drawer */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <span className="font-serif text-sm font-bold tracking-[0.2em] text-[#D7AF68]">
-                    {isValentes ? 'VALENTES STUDIO' : 'JEFÏTO LOPÊS'}
+                    {isValentes ? 'VALENTES STUDIO' : 'LÉO'}
                   </span>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
@@ -313,7 +313,7 @@ export default function HomePage() {
               {/* Logo */}
               <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
                 <Image
-                  src="/peluqueria-logo-v4.png"
+                  src="/peluqueria-logo-v6.png"
                   alt="Alma Bela Studio Logo"
                   fill
                   sizes="144px"
@@ -329,7 +329,6 @@ export default function HomePage() {
               {/* Title */}
               <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
                 ALMA BELA
-                <span className="block text-[10px] sm:text-xs tracking-[0.45em] text-[#D7AF68] mt-1.5 font-sans font-bold">STUDIO</span>
               </h2>
 
               {/* Divider */}
@@ -388,9 +387,9 @@ export default function HomePage() {
             {/* Column Content */}
             <div className="relative z-10 flex flex-col items-center max-w-xs mt-2">
               {/* Logo */}
-              <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-[1.52] transition-transform duration-500 select-none pointer-events-none scale-[1.45]">
+              <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-36 lg:h-36 mb-4 drop-shadow-[0_0_20px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
                 <Image
-                  src="/terapias-logo-v9.png"
+                  src="/terapias-logo-v11.png"
                   alt="Jefïto Lopês Studio Logo"
                   fill
                   sizes="144px"
@@ -403,9 +402,9 @@ export default function HomePage() {
                 TERAPIAS HOLÍSTICAS
               </span>
 
-              {/* Title (Only JEFITO LOPES, no STUDIO) */}
+              {/* Title (Only LÉO) */}
               <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
-                JEFÏTO LOPÊS
+                LÉO
               </h2>
 
               {/* Divider */}

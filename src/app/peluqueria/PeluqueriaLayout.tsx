@@ -231,7 +231,7 @@ export default function PeluqueriaLayout() {
     "@context": "https://schema.org",
     "@type": "HairSalon",
     "name": "Alma Bela Studio - Peluquería de Autor",
-    "image": "https://almabela.cl/peluqueria-logo-v4.png",
+    "image": "https://almabela.cl/peluqueria-logo-v6.png",
     "priceRange": "$$$",
     "telephone": "+56953332492",
     "address": {
@@ -277,7 +277,7 @@ export default function PeluqueriaLayout() {
                 {/* Premium Logo */}
                 <div className="relative w-28 h-28 hover:scale-105 transition-transform duration-500 select-none pointer-events-none">
                   <Image
-                    src="/peluqueria-logo-v4.png"
+                    src="/peluqueria-logo-v6.png"
                     alt="Alma Bela Studio Logo"
                     fill
                     sizes="112px"

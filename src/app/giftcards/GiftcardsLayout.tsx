@@ -106,7 +106,7 @@ export default function GiftcardsLayout() {
       cardBg: 'bg-gradient-to-br from-[#24130a] via-[#090503] to-[#361c0f]',
       border: 'border-[#CD7F32]/40',
       glow: 'shadow-[#CD7F32]/10',
-      logo: '/peluqueria-logo-v4.png',
+      logo: '/peluqueria-logo-v6.png',
       textColor: 'text-[#CD7F32]',
       buttonBg: 'bg-[#CD7F32] hover:bg-[#CD7F32]/90 text-black',
       gradientClip: 'text-bronze-gradient',
@@ -116,11 +116,11 @@ export default function GiftcardsLayout() {
       cardBg: 'bg-gradient-to-br from-[#1f1e1c] via-[#0c0c0c] to-[#2e2d2b]',
       border: 'border-[#E2E0D8]/30',
       glow: 'shadow-[#E2E0D8]/5',
-      logo: '/terapias-logo-v9.png',
+      logo: '/terapias-logo-v11.png',
       textColor: 'text-[#E2E0D8]',
       buttonBg: 'bg-[#E2E0D8] hover:bg-[#E2E0D8]/90 text-black',
       gradientClip: 'bg-gradient-to-r from-white via-platinum to-text-secondary bg-clip-text text-transparent',
-      title: 'JEFÏTO LOPÊS'
+      title: 'LÉO'
     }
   };
 

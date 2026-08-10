@@ -138,8 +138,8 @@ export function ServicePageLayout({ category }: ServicePageLayoutProps) {
   const schemaData = category === 'terapias' ? {
     "@context": "https://schema.org",
     "@type": "DaySpa",
-    "name": "Jefïto Lopês - Terapias Holísticas",
-    "image": "https://santuariodebienestar.cl/terapias-logo-v8.png",
+    "name": "Léo - Terapias Holísticas",
+    "image": "https://santuariodebienestar.cl/terapias-logo-v11.png",
     "priceRange": "$$$",
     "telephone": "+56953332492",
     "address": {

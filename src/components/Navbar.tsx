@@ -156,7 +156,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/peluqueria-logo-v4.png"
+                    src="/peluqueria-logo-v6.png"
                     alt="Alma Bela Studio Logo"
                     fill
                     sizes="44px"
@@ -169,7 +169,7 @@ export function Navbar() {
                     ALMA BELA
                   </span>
                   <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
-                    STUDIO
+                    PELUQUERÍA
                   </span>
                 </div>
               </>
@@ -177,7 +177,7 @@ export function Navbar() {
               <>
                 <div className="relative w-11 h-11 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
                   <Image
-                    src="/terapias-logo-v9.png"
+                    src="/terapias-logo-v11.png"
                     alt="Jefïto Lopês Studio Logo"
                     fill
                     sizes="44px"
@@ -187,7 +187,10 @@ export function Navbar() {
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] bg-gradient-to-r from-white via-[#D7AF68] to-text-secondary bg-clip-text text-transparent transition-all duration-300">
-                    JEFÏTO LOPÊS
+                    LÉO
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
+                    TERAPIAS HOLÍSTICAS
                   </span>
                 </div>
               </>

@@ -68,16 +68,16 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     name: 'Alma Bela Studio',
     senderEmail: 'contacto@almabela.cl',
     domain: 'https://www.almabela.cl',
-    logoUrl: 'https://www.almabela.cl/peluqueria-logo-v4.png',
+    logoUrl: 'https://www.almabela.cl/peluqueria-logo-v6.png',
     color: '#C5A059', // Dorado Brillante
     accentColor: '#CD7F32',
     description: 'Peluquería de Autor'
   },
   terapias: {
-    name: 'Jefferson Lopes Studio',
+    name: 'Léo Terapias Holísticas',
     senderEmail: 'contacto@jeffersonlopes.cl',
     domain: 'https://www.jeffersonlopes.cl',
-    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v9.png',
+    logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v11.png',
     color: '#E2E0D8', // Platino/Plata
     accentColor: '#9CA3AF',
     description: 'Terapias Holísticas'

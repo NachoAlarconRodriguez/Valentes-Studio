@@ -662,7 +662,7 @@ export function BookingModal() {
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/peluqueria-logo-v4.png"
+                        src="/peluqueria-logo-v6.png"
                         alt="Alma Bela Studio Logo"
                         fill
                         sizes="64px"
@@ -671,17 +671,17 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Alma Bela Studio
+                        Alma Bela
                       </span>
                       <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">ALMA BELA</h2>
-                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">STUDIO</h2>
+                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">PELUQUERÍA</h2>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col space-y-3">
                     <div className="relative w-16 h-16 transition-transform duration-500 hover:scale-105 hover:rotate-2">
                       <Image
-                        src="/terapias-logo-v9.png"
+                        src="/terapias-logo-v11.png"
                         alt="Jefïto Lopês Studio Logo"
                         fill
                         sizes="64px"
@@ -690,10 +690,10 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Jefïto Lopês
+                        Léo
                       </span>
-                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-platinum animate-text-platinum-flow leading-none">JEFÏTO LOPÊS</h2>
-                      <h2 className="font-serif text-[10px] tracking-wider text-platinum/80 font-bold mt-1">Cuidamos tu imagen, tu estilo y tu energía</h2>
+                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">LÉO</h2>
+                      <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">TERAPIAS HOLÍSTICAS</h2>
                     </div>
                   </div>
                 )}
@@ -746,7 +746,7 @@ export function BookingModal() {
                       ? 'Barbería'
                       : category === 'peluqueria'
                       ? 'Peluquería'
-                      : 'Jefïto Lopês • Terapias Holísticas'
+                      : 'Léo • Terapias Holísticas'
                     }
                   </p>
                 </div>
