@@ -690,9 +690,9 @@ export function BookingModal() {
                     </div>
                     <div>
                       <span className={`text-[9px] uppercase tracking-[0.4em] ${themeText80} font-semibold block mb-1`}>
-                        Léo
+                        Jefferson Leonardo
                       </span>
-                      <h2 className="font-serif text-2xl font-bold tracking-[0.2em] text-gold animate-text-gold-flow leading-none">LÉO</h2>
+                      <h2 className="font-serif text-[15px] sm:text-lg font-bold tracking-[0.1em] text-gold animate-text-gold-flow leading-none">JEFFERSON LEONARDO</h2>
                       <h2 className="font-serif text-[10px] tracking-[0.3em] text-gold/80 uppercase font-bold mt-1">TERAPIAS HOLÍSTICAS</h2>
                     </div>
                   </div>
@@ -746,7 +746,7 @@ export function BookingModal() {
                       ? 'Barbería'
                       : category === 'peluqueria'
                       ? 'Peluquería'
-                      : 'Léo • Terapias Holísticas'
+                      : 'Jefferson Leonardo • Terapias Holísticas'
                     }
                   </p>
                 </div>

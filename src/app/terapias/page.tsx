@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import ServicePageLayout from '@/components/ServicePageLayout';
 
 export const metadata: Metadata = {
-  title: 'Terapias Holísticas Jefïto Lopês',
+  title: 'Terapias Holísticas Jefferson Leonardo',
   description: 'Rituales de piedras calientes, baños de sonido con cuencos tibetanos, reiki y aromaterapia clínica para equilibrar cuerpo, mente y espíritu.',
 };
 

@@ -61,7 +61,7 @@ export default function HomePage() {
         {/* Brand Logo & Subtitle */}
         <Link href="/" className="group flex flex-col text-left">
           <span className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-[0.25em] text-[#C69A4A] transition-all duration-300 group-hover:brightness-110">
-            {isValentes ? 'VALENTES STUDIO' : 'LÉO'}
+            {isValentes ? 'VALENTES STUDIO' : 'JEFFERSON LEONARDO'}
           </span>
           <span className="text-[7px] sm:text-[9px] tracking-wider text-[#D7AF68]/80 mt-1 font-semibold block transition-colors">
             {isValentes ? 'Barbería Tradicional & Ritual de Grooming' : 'Cuidamos tu imagen, tu estilo y tu energía'}
@@ -139,7 +139,7 @@ export default function HomePage() {
                 {/* Header inside drawer */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <span className="font-serif text-sm font-bold tracking-[0.2em] text-[#D7AF68]">
-                    {isValentes ? 'VALENTES STUDIO' : 'LÉO'}
+                    {isValentes ? 'VALENTES STUDIO' : 'JEFFERSON LEONARDO'}
                   </span>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
@@ -402,9 +402,9 @@ export default function HomePage() {
                 TERAPIAS HOLÍSTICAS
               </span>
 
-              {/* Title (Only LÉO) */}
-              <h2 className="font-serif text-3xl sm:text-4xl lg:text-3xl xl:text-4xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
-                LÉO
+              {/* Title (Only JEFFERSON LEONARDO) */}
+              <h2 className="font-serif text-2xl sm:text-3xl lg:text-xl xl:text-2xl text-[#C69A4A] tracking-wider font-normal uppercase leading-none">
+                JEFFERSON LEONARDO
               </h2>
 
               {/* Divider */}

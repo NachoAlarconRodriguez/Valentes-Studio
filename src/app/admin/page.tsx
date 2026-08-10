@@ -3004,7 +3004,7 @@ export default function AdminPage() {
           className="w-full max-w-md bg-[#121212]/75 backdrop-blur-xl border border-gold/15 rounded-[32px] p-8 md:p-10 shadow-2xl relative z-10 text-center space-y-8"
         >
           <div className="space-y-2">
-            <span className="text-[9px] uppercase tracking-[0.4em] text-gold font-semibold block">JEFITO LOPES</span>
+            <span className="text-[9px] uppercase tracking-[0.4em] text-gold font-semibold block">JEFFERSON LEONARDO</span>
             <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-[0.15em] md:tracking-[0.2em] text-white">
               {authView === 'login' && 'ADMINISTRACIÓN'}
               {authView === 'reset_password' && 'RECUPERAR'}
@@ -3354,8 +3354,8 @@ export default function AdminPage() {
         <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-0 space-y-10 scrollbar-none">
           {/* Brand Logo */}
           <Link href="/" className="flex flex-col select-none">
-            <span className="font-serif text-xl font-bold tracking-[0.18em] text-gold text-gold-gradient leading-none">
-              JEFITO LOPES
+            <span className="font-serif text-lg font-bold tracking-[0.15em] text-gold text-gold-gradient leading-none">
+              JEFFERSON LEONARDO
             </span>
             <span className="text-[8px] uppercase tracking-[0.45em] text-text-secondary mt-1">
               CONSOLA DE CONTROL
@@ -3461,8 +3461,8 @@ export default function AdminPage() {
       {/* Mobile Top Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0a0a0a] border-b border-white/5 flex items-center justify-between px-6 z-30 backdrop-blur-md bg-opacity-90">
         <Link href="/" className="flex flex-col select-none text-left">
-          <span className="font-serif text-base font-bold tracking-[0.18em] text-gold text-gold-gradient leading-none">
-            JEFITO LOPES
+          <span className="font-serif text-sm font-bold tracking-[0.15em] text-gold text-gold-gradient leading-none">
+            JEFFERSON LEONARDO
           </span>
           <span className="text-[7px] uppercase tracking-[0.45em] text-text-secondary mt-0.5">
             CONSOLA DE CONTROL
@@ -3506,8 +3506,8 @@ export default function AdminPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <div className="flex flex-col select-none text-left">
-                    <span className="font-serif text-sm font-bold tracking-[0.18em] text-gold">
-                      JEFITO LOPES
+                    <span className="font-serif text-xs font-bold tracking-[0.15em] text-gold">
+                      JEFFERSON LEONARDO
                     </span>
                     <span className="text-[7px] uppercase tracking-[0.45em] text-text-secondary mt-0.5">
                       CONSOLA DE CONTROL

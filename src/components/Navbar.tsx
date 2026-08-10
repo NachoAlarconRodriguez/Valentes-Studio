@@ -186,8 +186,8 @@ export function Navbar() {
                   />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif text-xl sm:text-2xl font-bold tracking-widest text-[#D7AF68] bg-gradient-to-r from-white via-[#D7AF68] to-text-secondary bg-clip-text text-transparent transition-all duration-300">
-                    LÉO
+                  <span className="font-serif text-lg sm:text-xl font-bold tracking-widest text-[#D7AF68] bg-gradient-to-r from-white via-[#D7AF68] to-text-secondary bg-clip-text text-transparent transition-all duration-300">
+                    JEFFERSON LEONARDO
                   </span>
                   <span className="text-[8px] uppercase tracking-[0.35em] text-text-secondary group-hover:text-[#D7AF68] transition-colors duration-300 leading-none mt-0.5">
                     TERAPIAS HOLÍSTICAS

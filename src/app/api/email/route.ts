@@ -74,7 +74,7 @@ const BRAND_CONFIGS: Record<string, BrandConfig> = {
     description: 'Peluquería de Autor'
   },
   terapias: {
-    name: 'Léo Terapias Holísticas',
+    name: 'Jefferson Leonardo Terapias Holísticas',
     senderEmail: 'contacto@jeffersonlopes.cl',
     domain: 'https://www.jeffersonlopes.cl',
     logoUrl: 'https://www.jeffersonlopes.cl/terapias-logo-v11.png',
