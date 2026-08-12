@@ -5222,6 +5222,23 @@ export default function AdminPage() {
                                             <span>Iniciar</span>
                                           </button>
                                         )}
+                                        {(computedStatus === 'reservado' || computedStatus === 'proximo' || computedStatus === 'Espera') && (
+                                          <button
+                                            onClick={() => {
+                                              setConfirmModal({
+                                                isOpen: true,
+                                                title: '¿Cancelar esta reserva?',
+                                                message: `Se liberará el espacio y se enviará un correo electrónico de cancelación a ${booking.clientName}.`,
+                                                confirmText: 'Sí, Cancelar',
+                                                confirmBtnClass: 'bg-red-600 hover:bg-red-700 shadow-red-900/20',
+                                                onConfirm: () => handleCancelBookingAction(booking)
+                                              });
+                                            }}
+                                            className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-bold rounded-lg border border-red-500/20 transition-all cursor-pointer"
+                                          >
+                                            <span>Cancelar</span>
+                                          </button>
+                                        )}
                                         {computedStatus === 'En Proceso' && (
                                           <button
                                             onClick={() => {
