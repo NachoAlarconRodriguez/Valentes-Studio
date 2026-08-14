@@ -108,6 +108,7 @@ interface BookingStore {
 }
 
 const supabase = createClient();
+let publicBookingsRealtimeChannel: any = null;
 
 export const useBookingStore = create<BookingStore>((set, get) => ({
   bookings: [],
@@ -191,10 +192,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   },
   
   fetchPublicBookings: async () => {
-    const hasData = get().bookings.length > 0;
-    if (!hasData) {
-      set({ loading: true });
-    }
+    set({ loading: true });
     try {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
@@ -203,17 +201,21 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       maxDate.setDate(today.getDate() + 30);
       const maxDateStr = maxDate.toISOString().split('T')[0];
 
+      // Consultar directamente la tabla 'bookings' solicitando únicamente campos públicos anónimos
+      // para incluir registros con status = 'bloqueado' sin exponer datos privados de clientes
       const { data: dbBookings, error: bErr } = await supabase
-        .from('public_bookings')
+        .from('bookings')
         .select('id, specialist_name, date, time, service_name, status')
         .gte('date', todayStr)
-        .lte('date', maxDateStr);
+        .lte('date', maxDateStr)
+        .neq('status', 'cancelado')
+        .neq('status', 'no_llego');
 
       if (bErr) throw bErr;
 
       const bookings: Booking[] = (dbBookings || []).map((b: any) => ({
         id: b.id,
-        clientName: 'Reservado',
+        clientName: b.status === 'bloqueado' ? 'Bloqueado' : 'Reservado',
         clientPhone: '',
         clientEmail: '',
         category: 'barberia', // dummy
@@ -227,6 +229,16 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         createdAt: '',
         giftCardUsed: ''
       }));
+
+      // Suscribir a cambios en tiempo real de la tabla bookings
+      if (!publicBookingsRealtimeChannel) {
+        publicBookingsRealtimeChannel = supabase
+          .channel('public:public_bookings_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+            get().fetchPublicBookings();
+          })
+          .subscribe();
+      }
 
       set({ bookings, clients: [], loading: false });
     } catch (error) {
@@ -250,43 +262,73 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       : parseInt(bookingData.price.replace(/[^0-9]/g, ''), 10) || 0;
 
     try {
-      // 0. Verificar traslapes de último segundo (Prevención de Doble Reserva / Race Condition)
+      // 0. Verificar traslapes de último segundo con reservas existentes y bloques de horario administrativos (Prevención de Doble Reserva / Race Condition)
+      const allSpecs = useServicesStore.getState().specialistsList || [];
+      const targetSpec = allSpecs.find(s => s.name.trim().toLowerCase() === bookingData.specialistName.trim().toLowerCase());
+      const targetSpecId = targetSpec ? targetSpec.id : null;
+
+      // 0.1 Verificar traslapes con bloques de horario administrativos (time_blocks)
+      let blocksQuery = supabase
+        .from('time_blocks')
+        .select('id, start_time, end_time, reason, specialist_id')
+        .eq('date', bookingData.date);
+
+      if (targetSpecId) {
+        blocksQuery = blocksQuery.eq('specialist_id', targetSpecId);
+      }
+
+      const { data: conflictingBlocks, error: blocksErr } = await blocksQuery;
+      if (blocksErr) throw blocksErr;
+
+      let allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
+        cat => useServicesStore.getState().servicesData[cat].services
+      );
+
+      if (allServices.length === 0) {
+        const { data: dbServices } = await supabase.from('services').select('*');
+        if (dbServices) {
+          allServices = dbServices.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            price: s.price,
+            duration: s.duration,
+            category: s.category
+          }));
+        }
+      }
+
+      const newService = allServices.find(s => s.name.trim().toLowerCase() === bookingData.serviceName.trim().toLowerCase());
+      const newServiceDuration = newService 
+        ? (typeof newService.duration === 'number' ? newService.duration : parseDurationToMinutes(newService.duration)) 
+        : 60;
+      const slotStart = timeToMinutes(bookingData.time);
+      const slotEnd = slotStart + newServiceDuration;
+
+      if (conflictingBlocks && conflictingBlocks.length > 0) {
+        for (const block of conflictingBlocks) {
+          const blockStartStr = block.start_time.substring(0, 5);
+          const blockEndStr = block.end_time.substring(0, 5);
+          const blockStart = timeToMinutes(blockStartStr);
+          const blockEnd = timeToMinutes(blockEndStr);
+
+          if (slotStart < blockEnd && slotEnd > blockStart) {
+            throw new Error(`El horario de las ${bookingData.time} hrs para ${bookingData.specialistName} se encuentra bloqueado por administración (${block.reason}: ${blockStartStr} - ${blockEndStr}). Por favor, selecciona otro horario.`);
+          }
+        }
+      }
+
+      // 0.2 Verificar traslapes con reservas de clientes existentes (bookings)
       const { data: conflictingBookings, error: checkErr } = await supabase
         .from('bookings')
-        .select('id, time, service_name')
+        .select('id, time, service_name, status')
         .eq('date', bookingData.date)
         .eq('specialist_name', bookingData.specialistName)
-        .neq('status', 'bloqueado')
         .neq('status', 'cancelado')
         .neq('status', 'no_llego');
 
       if (checkErr) throw checkErr;
 
       if (conflictingBookings && conflictingBookings.length > 0) {
-        let allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
-          cat => useServicesStore.getState().servicesData[cat].services
-        );
-
-        if (allServices.length === 0) {
-          const { data: dbServices } = await supabase.from('services').select('*');
-          if (dbServices) {
-            allServices = dbServices.map((s: any) => ({
-              id: s.id,
-              name: s.name,
-              price: s.price,
-              duration: s.duration,
-              category: s.category
-            }));
-          }
-        }
-
-        const newService = allServices.find(s => s.name.trim().toLowerCase() === bookingData.serviceName.trim().toLowerCase());
-        const newServiceDuration = newService 
-          ? (typeof newService.duration === 'number' ? newService.duration : parseDurationToMinutes(newService.duration)) 
-          : 60;
-        const slotStart = timeToMinutes(bookingData.time);
-        const slotEnd = slotStart + newServiceDuration;
-
         for (const existing of conflictingBookings) {
           const existingStart = timeToMinutes(existing.time);
           const existingService = allServices.find(s => s.name.trim().toLowerCase() === existing.service_name.trim().toLowerCase());

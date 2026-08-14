@@ -333,12 +333,24 @@ export function BookingModal() {
     return slots.filter(slot => checkTimeSlotAvailabilityForDate(checkDate, slot).available).length;
   };
 
-  // Clear date and time when service or specialist changes so we recalculate the nearest available slot
+  // Clear date and time when service or specialist changes so we recalculate the nearest available slot, fetching fresh DB data
   useEffect(() => {
+    if (isBookingOpen) {
+      fetchSchedules();
+      fetchPublicBookings();
+    }
     setDate('');
     setTime('');
     setDateType(null);
-  }, [serviceId, specialistId]);
+  }, [serviceId, specialistId, isBookingOpen, fetchSchedules, fetchPublicBookings]);
+
+  // Fetch fresh bookings and schedules whenever stepping into date/time selection or changing date
+  useEffect(() => {
+    if (isBookingOpen && step === 3) {
+      fetchSchedules();
+      fetchPublicBookings();
+    }
+  }, [step, date, isBookingOpen, fetchSchedules, fetchPublicBookings]);
 
   // Find and pre-select the nearest available date and time slot
   useEffect(() => {
@@ -437,8 +449,8 @@ export function BookingModal() {
           availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
           return availableSpecs[0].name;
         }
-        // Último recurso: asignar al primer especialista de la lista (no dejar "Cualquiera")
-        return filteredSpecialistsList[0]?.name || 'Sin Asignar';
+        // Si no hay profesionales disponibles a esa hora, lanzar error para que la clienta escoja otro bloque
+        throw new Error('No hay profesionales disponibles para la fecha y hora seleccionadas. Por favor, selecciona otro horario.');
       })();
       setAssignedSpecialistName(assignedName);
 

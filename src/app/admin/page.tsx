@@ -9393,11 +9393,12 @@ export default function AdminPage() {
                           }
 
                           if (blockFormReason.startsWith('Feriado:')) {
-                            if (specialistsList.length === 0) {
+                            const allGlobalSpecialists = useServicesStore.getState().specialistsList || specialistsList;
+                            if (allGlobalSpecialists.length === 0) {
                               triggerNotification('No hay profesionales registrados para bloquear.');
                               return;
                             }
-                            specialistsList.forEach((spec) => {
+                            allGlobalSpecialists.forEach((spec) => {
                               addTimeBlock({
                                 specialistId: spec.id,
                                 date: blockFormDate,

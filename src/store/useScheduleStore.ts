@@ -79,11 +79,14 @@ interface ScheduleStore {
 }
 
 const supabase = createClient();
+let scheduleRealtimeChannel: any = null;
 
 // Helper to convert "HH:MM" to minutes from midnight
 const timeToMinutes = (timeStr: string): number => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
+  if (!timeStr) return 0;
+  const cleanTime = timeStr.substring(0, 5);
+  const [hours, minutes] = cleanTime.split(':').map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
 };
 
 const generateDefaultShifts = (): DailyShift[] => {
@@ -184,6 +187,16 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         reason: b.reason,
         isRecurring: b.is_recurring
       }));
+
+      // 3. Suscribir a cambios en tiempo real de time_blocks (si no está ya suscrito)
+      if (!scheduleRealtimeChannel) {
+        scheduleRealtimeChannel = supabase
+          .channel('public:schedule_time_blocks_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'time_blocks' }, () => {
+            get().fetchSchedules();
+          })
+          .subscribe();
+      }
 
       set({ workShifts, timeBlocks, loading: false });
     } catch (error) {
@@ -375,7 +388,6 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       
       const specialistBookings = useBookingStore.getState().bookings.filter(
         b => b.date === date && 
-             b.status !== 'bloqueado' && 
              b.status !== 'cancelado' && 
              b.status !== 'no_llego' && 
              b.specialistName.trim().toLowerCase() === specialist.name.trim().toLowerCase()
@@ -395,7 +407,9 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         if (slotStart < bookingEnd && slotEnd > bookingStart) {
           return {
             available: false,
-            reason: `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
+            reason: booking.status === 'bloqueado'
+              ? `Horario bloqueado por administración (${booking.time})`
+              : `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
           };
         }
       }
@@ -403,7 +417,6 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       // Red de seguridad: reservas con "Cualquiera" legacy bloquean disponibilidad de todos los especialistas
       const cualquieraBookings = useBookingStore.getState().bookings.filter(
         b => b.date === date &&
-             b.status !== 'bloqueado' &&
              b.status !== 'cancelado' &&
              b.status !== 'no_llego' &&
              (b.specialistName.trim().toLowerCase() === 'cualquiera' || b.specialistName.trim().toLowerCase() === 'sin asignar')
