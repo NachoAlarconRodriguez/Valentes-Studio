@@ -209,8 +209,8 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           .channel('public:schedule_time_blocks_realtime')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'time_blocks' }, () => {
             get().fetchSchedules();
-          })
-          .subscribe();
+          });
+        scheduleRealtimeChannel.subscribe();
       }
 
       set({ workShifts, timeBlocks, specialistNames, loading: false });

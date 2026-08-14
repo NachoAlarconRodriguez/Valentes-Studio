@@ -227,14 +227,14 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         giftCardUsed: ''
       }));
 
-      // Suscribir a cambios en tiempo real de la tabla bookings
+      // Suscribir a cambios en tiempo real de la tabla bookings (una sola vez)
       if (!publicBookingsRealtimeChannel) {
         publicBookingsRealtimeChannel = supabase
           .channel('public:public_bookings_realtime')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
             get().fetchPublicBookings();
-          })
-          .subscribe();
+          });
+        publicBookingsRealtimeChannel.subscribe();
       }
 
       set({ bookings, clients: [], loading: false });
