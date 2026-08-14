@@ -201,15 +201,12 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       maxDate.setDate(today.getDate() + 30);
       const maxDateStr = maxDate.toISOString().split('T')[0];
 
-      // Consultar directamente la tabla 'bookings' solicitando únicamente campos públicos anónimos
-      // para incluir registros con status = 'bloqueado' sin exponer datos privados de clientes
+      // Consultar la vista 'public_bookings' para obtener reservas y bloqueos anónimos
       const { data: dbBookings, error: bErr } = await supabase
-        .from('bookings')
+        .from('public_bookings')
         .select('id, specialist_name, date, time, service_name, status')
         .gte('date', todayStr)
-        .lte('date', maxDateStr)
-        .neq('status', 'cancelado')
-        .neq('status', 'no_llego');
+        .lte('date', maxDateStr);
 
       if (bErr) throw bErr;
 

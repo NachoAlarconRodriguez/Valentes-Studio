@@ -61,6 +61,8 @@ export interface TimeBlock {
 interface ScheduleStore {
   workShifts: Record<string, DailyShift[]>; // specialistId -> array of DailyShifts
   timeBlocks: TimeBlock[];
+  // Mapa local id->nombre para resolver nombres sin depender de useServicesStore
+  specialistNames: Record<string, string>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
@@ -133,6 +135,7 @@ const generateDefaultShifts = (): DailyShift[] => {
 export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   workShifts: {},
   timeBlocks: [],
+  specialistNames: {},
   loading: false,
   error: null,
   clearError: () => set({ error: null }),
@@ -188,7 +191,19 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         isRecurring: b.is_recurring
       }));
 
-      // 3. Suscribir a cambios en tiempo real de time_blocks (si no está ya suscrito)
+      // 3. Fetch specialists para construir mapa id->nombre de forma independiente
+      // Esto garantiza que isSpecialistAvailable pueda resolver nombres sin depender
+      // del estado de carga de useServicesStore (elimina la race condition)
+      const { data: dbSpecs } = await supabase
+        .from('specialists')
+        .select('id, name');
+
+      const specialistNames: Record<string, string> = {};
+      (dbSpecs || []).forEach((sp: any) => {
+        specialistNames[sp.id] = sp.name;
+      });
+
+      // 4. Suscribir a cambios en tiempo real de time_blocks (si no está ya suscrito)
       if (!scheduleRealtimeChannel) {
         scheduleRealtimeChannel = supabase
           .channel('public:schedule_time_blocks_realtime')
@@ -198,7 +213,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           .subscribe();
       }
 
-      set({ workShifts, timeBlocks, loading: false });
+      set({ workShifts, timeBlocks, specialistNames, loading: false });
     } catch (error) {
       console.error('Error fetching schedules:', error);
       set({ loading: false });
@@ -379,66 +394,83 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     }
 
     // 5. Check active bookings for this specialist and date
-    const allSpecialists = useServicesStore.getState().specialistsList || [];
-    const specialist = allSpecialists.find(s => s.id === specialistId);
-    if (specialist) {
-      const allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
-        cat => useServicesStore.getState().servicesData[cat].services
-      );
-      
-      const specialistBookings = useBookingStore.getState().bookings.filter(
-        b => b.date === date && 
-             b.status !== 'cancelado' && 
-             b.status !== 'no_llego' && 
-             b.specialistName.trim().toLowerCase() === specialist.name.trim().toLowerCase()
-      );
-      
-      for (const booking of specialistBookings) {
-        const bookingStart = timeToMinutes(booking.time);
-        
-        // Find booking service duration
-        const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-        const bookingDuration = bookedService 
-          ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
-          : 60;
-        const bookingEnd = bookingStart + bookingDuration;
-        
-        // Check for overlap
-        if (slotStart < bookingEnd && slotEnd > bookingStart) {
-          return {
-            available: false,
-            reason: booking.status === 'bloqueado'
-              ? `Horario bloqueado por administración (${booking.time})`
-              : `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
-          };
-        }
-      }
+    // Resolver el nombre del especialista desde el mapa local del store (siempre disponible)
+    // para evitar race conditions con useServicesStore que puede estar sin cargar.
+    const localNames = state.specialistNames;
+    let specialistName: string | null = localNames[specialistId] || null;
 
-      // Red de seguridad: reservas con "Cualquiera" legacy bloquean disponibilidad de todos los especialistas
-      const cualquieraBookings = useBookingStore.getState().bookings.filter(
-        b => b.date === date &&
-             b.status !== 'cancelado' &&
-             b.status !== 'no_llego' &&
-             (b.specialistName.trim().toLowerCase() === 'cualquiera' || b.specialistName.trim().toLowerCase() === 'sin asignar')
-      );
+    // Fallback: intentar desde useServicesStore si el mapa local aún no tiene el nombre
+    if (!specialistName) {
+      const allSpecialists = useServicesStore.getState().specialistsList || [];
+      const found = allSpecialists.find(s => s.id === specialistId);
+      specialistName = found?.name || null;
+    }
 
-      for (const booking of cualquieraBookings) {
-        const bookingStart = timeToMinutes(booking.time);
-        const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-        const bookingDuration = bookedService
-          ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
-          : 60;
-        const bookingEnd = bookingStart + bookingDuration;
+    // Si no se pudo resolver el nombre por ninguna fuente, bloquear como medida de seguridad
+    // para no mostrar horarios de especialistas no reconocidos
+    if (!specialistName) {
+      // Caso extremo: no hay datos de especialistas todavía; dejar pasar para no bloquear todo
+      // pero loguear para diagnóstico
+      console.warn('[isSpecialistAvailable] No se pudo resolver nombre para specialistId:', specialistId);
+    }
 
-        if (slotStart < bookingEnd && slotEnd > bookingStart) {
-          return {
-            available: false,
-            reason: `Reserva sin especialista asignado en este horario (${booking.time} - ${booking.serviceName})`
-          };
-        }
+    const allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
+      cat => useServicesStore.getState().servicesData[cat].services
+    );
+
+    const specialistBookings = useBookingStore.getState().bookings.filter(
+      b => b.date === date &&
+           b.status !== 'cancelado' &&
+           b.status !== 'no_llego' &&
+           specialistName !== null &&
+           b.specialistName.trim().toLowerCase() === specialistName.trim().toLowerCase()
+    );
+
+    for (const booking of specialistBookings) {
+      const bookingStart = timeToMinutes(booking.time);
+
+      // Find booking service duration
+      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
+      const bookingDuration = bookedService
+        ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
+        : 60;
+      const bookingEnd = bookingStart + bookingDuration;
+
+      // Check for overlap
+      if (slotStart < bookingEnd && slotEnd > bookingStart) {
+        return {
+          available: false,
+          reason: booking.status === 'bloqueado'
+            ? `Horario bloqueado por administración (${booking.time})`
+            : `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
+        };
       }
     }
-    
+
+    // Red de seguridad: reservas con "Cualquiera" legacy bloquean disponibilidad de todos los especialistas
+    const cualquieraBookings = useBookingStore.getState().bookings.filter(
+      b => b.date === date &&
+           b.status !== 'cancelado' &&
+           b.status !== 'no_llego' &&
+           (b.specialistName.trim().toLowerCase() === 'cualquiera' || b.specialistName.trim().toLowerCase() === 'sin asignar')
+    );
+
+    for (const booking of cualquieraBookings) {
+      const bookingStart = timeToMinutes(booking.time);
+      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
+      const bookingDuration = bookedService
+        ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
+        : 60;
+      const bookingEnd = bookingStart + bookingDuration;
+
+      if (slotStart < bookingEnd && slotEnd > bookingStart) {
+        return {
+          available: false,
+          reason: `Reserva sin especialista asignado en este horario (${booking.time} - ${booking.serviceName})`
+        };
+      }
+    }
+
     return { available: true };
   }
 }));
