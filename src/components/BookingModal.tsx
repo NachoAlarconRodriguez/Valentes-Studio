@@ -65,8 +65,22 @@ export function BookingModal() {
   };
   const [category, setCategory] = useState<'barberia' | 'peluqueria' | 'terapias' | 'santuario'>('peluqueria');
   const [serviceId, setServiceId] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [serviceSearch, setServiceSearch] = useState('');
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  const handleToggleService = (sId: string) => {
+    setSelectedServiceIds(prev => {
+      let next: string[];
+      if (prev.includes(sId)) {
+        next = prev.filter(id => id !== sId);
+      } else {
+        next = [...prev, sId];
+      }
+      setServiceId(next[0] || '');
+      return next;
+    });
+  };
   const [specialistId, setSpecialistId] = useState('');
   const [date, setDate] = useState('');
   const [dateType, setDateType] = useState<'hoy' | 'manana' | 'semana' | 'mes' | null>(null);
@@ -152,13 +166,16 @@ export function BookingModal() {
       
       setCategory(foundCategory);
       setServiceId(selectedServiceForBooking.id);
+      setSelectedServiceIds([selectedServiceForBooking.id]);
       setStep(2);
     } else if (bookingCategory) {
       setCategory(bookingCategory);
       setServiceId('');
+      setSelectedServiceIds([]);
       setStep(1);
     } else {
       setServiceId('');
+      setSelectedServiceIds([]);
       if (isValentes || isPageBarberia) {
         setCategory('barberia');
       } else if (isAlmaBela || isJefferson || isPagePeluqueria) {
@@ -197,6 +214,7 @@ export function BookingModal() {
   const handleCategoryChange = (cat: 'barberia' | 'peluqueria' | 'terapias') => {
     setCategory(cat);
     setServiceId('');
+    setSelectedServiceIds([]);
     setSpecialistId('');
     setDate('');
     setTime('');
@@ -215,12 +233,23 @@ export function BookingModal() {
   const selectedServiceObj = servicesList.find(s => s.id === serviceId);
   const specialistsList = servicesData[category]?.specialists || [];
 
+  const selectedServicesList = React.useMemo(() => {
+    return allServicesList.filter(s => selectedServiceIds.includes(s.id));
+  }, [allServicesList, selectedServiceIds]);
+
   // Check if the current selection matches the preselected service from useUIStore
   const isPreselected = selectedServiceForBooking && selectedServiceForBooking.id === serviceId;
 
   const displayServiceName = isPreselected 
     ? selectedServiceForBooking.name 
     : (selectedServiceObj?.name || '');
+
+  const displayServiceNameCombined = React.useMemo(() => {
+    if (selectedServicesList.length > 0) {
+      return selectedServicesList.map(s => s.name).join(' + ');
+    }
+    return displayServiceName || 'Servicio Personalizado';
+  }, [selectedServicesList, displayServiceName]);
 
   const baseDuration = selectedServiceObj
     ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration))
@@ -233,6 +262,39 @@ export function BookingModal() {
   const displayDurationStr = isPreselected && selectedServiceForBooking.name.toLowerCase().includes('cejas')
     ? `${displayDurationMins} min`
     : (selectedServiceObj?.duration || '');
+
+  const totalDurationMins = React.useMemo(() => {
+    if (selectedServicesList.length > 0) {
+      let total = 0;
+      for (const s of selectedServicesList) {
+        const isCejas = isPreselected && s.name.toLowerCase().includes('cejas');
+        const dur = typeof s.duration === 'number' ? s.duration : parseDurationToMinutes(s.duration);
+        total += isCejas ? dur + 15 : dur;
+      }
+      return total > 0 ? total : 60;
+    }
+    return displayDurationMins;
+  }, [selectedServicesList, displayDurationMins, isPreselected]);
+
+  const originalPriceNumber = isPreselected
+    ? parsePrice(selectedServiceForBooking.price)
+    : (selectedServiceObj 
+        ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
+        : 0);
+
+  const totalOriginalPriceNumber = React.useMemo(() => {
+    if (selectedServicesList.length > 0) {
+      return selectedServicesList.reduce((sum, s) => {
+        const p = typeof s.price === 'number' ? s.price : parsePrice(s.price);
+        return sum + p;
+      }, 0);
+    }
+    return originalPriceNumber;
+  }, [selectedServicesList, originalPriceNumber]);
+
+  const totalOriginalPriceStr = React.useMemo(() => {
+    return `$${totalOriginalPriceNumber.toLocaleString('es-CL')}`;
+  }, [totalOriginalPriceNumber]);
 
   // Filter specialists based on business type and eligible services
   const filteredSpecialistsList = (() => {
@@ -249,8 +311,14 @@ export function BookingModal() {
       return allowed.includes(spec.profileType) && spec.assignedAgendas.includes(category as 'barberia' | 'peluqueria' | 'terapias');
     });
 
-    // 2. Filter by service capability (specialistIds) if a service is selected
-    if (serviceId && selectedServiceObj) {
+    // 2. Filter by service capability (specialistIds) if services are selected
+    if (selectedServicesList.length > 0) {
+      for (const s of selectedServicesList) {
+        if (s.specialistIds && s.specialistIds.length > 0) {
+          list = list.filter(spec => s.specialistIds?.includes(spec.id));
+        }
+      }
+    } else if (serviceId && selectedServiceObj) {
       if (selectedServiceObj.specialistIds && selectedServiceObj.specialistIds.length > 0) {
         list = list.filter(spec => selectedServiceObj.specialistIds?.includes(spec.id));
       }
@@ -268,7 +336,7 @@ export function BookingModal() {
         setSpecialistId('');
       }
     }
-  }, [serviceId, filteredSpecialistsList, specialistId]);
+  }, [serviceId, selectedServiceIds, filteredSpecialistsList, specialistId]);
 
   const isSpecialistAvailable = useScheduleStore(state => state.isSpecialistAvailable);
 
@@ -300,7 +368,7 @@ export function BookingModal() {
       return { available: false, reason: 'El horario ya pasó' };
     }
 
-    const dur = displayDurationMins;
+    const dur = totalDurationMins;
     if (specialistId) {
       return isSpecialistAvailable(specialistId, checkDate, slotTime, dur, category);
     }
@@ -342,7 +410,7 @@ export function BookingModal() {
     setDate('');
     setTime('');
     setDateType(null);
-  }, [serviceId, specialistId, isBookingOpen, fetchSchedules, fetchPublicBookings]);
+  }, [serviceId, selectedServiceIds, specialistId, isBookingOpen, fetchSchedules, fetchPublicBookings]);
 
   // Fetch fresh bookings and schedules whenever stepping into date/time selection or changing date
   useEffect(() => {
@@ -398,7 +466,7 @@ export function BookingModal() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBookingOpen, step, serviceId, specialistId]);
+  }, [isBookingOpen, step, serviceId, selectedServiceIds, specialistId]);
 
   const handleKeyDownStep4 = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -438,7 +506,7 @@ export function BookingModal() {
           // Si hay un especialista seleccionado explícitamente, usarlo siempre
           return selectedSpecialistObj?.name || filteredSpecialistsList.find(s => s.id === specialistId)?.name || filteredSpecialistsList[0]?.name || 'Sin Asignar';
         }
-        const dur = displayDurationMins;
+        const dur = totalDurationMins;
         const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur, category).available);
         if (availableSpecs.length > 0) {
           // Balancear carga: asignar al que tenga menos reservas en el día
@@ -472,7 +540,7 @@ export function BookingModal() {
         clientPhone: fullPhone,
         clientEmail: email,
         category: category as 'barberia' | 'peluqueria' | 'terapias',
-        serviceName: displayServiceName || 'Servicio Personalizado',
+        serviceName: displayServiceNameCombined || 'Servicio Personalizado',
         price: finalPriceStr,
         specialistName: assignedName,
         date: date,
@@ -506,6 +574,7 @@ export function BookingModal() {
     setEmail('');
     setCategory(isValentes || isPageBarberia ? 'barberia' : isPageTerapias ? 'terapias' : 'peluqueria');
     setServiceId('');
+    setSelectedServiceIds([]);
     setServiceSearch('');
     setStep(1);
     setSpecialistId('');
@@ -531,18 +600,12 @@ export function BookingModal() {
 
   const selectedSpecialistObj = specialistsList.find(sp => sp.id === specialistId);
 
-  const originalPriceNumber = isPreselected
-    ? parsePrice(selectedServiceForBooking.price)
-    : (selectedServiceObj 
-        ? (typeof selectedServiceObj.price === 'number' ? selectedServiceObj.price : parsePrice(selectedServiceObj.price)) 
-        : 0);
-  
   // Calculate discount & remaining balance
   const discountAmount = appliedGiftCard 
-    ? Math.min(originalPriceNumber, appliedGiftCard.remainingBalance)
+    ? Math.min(totalOriginalPriceNumber, appliedGiftCard.remainingBalance)
     : 0;
   
-  const finalPriceNumber = originalPriceNumber - discountAmount;
+  const finalPriceNumber = totalOriginalPriceNumber - discountAmount;
   const finalPriceStr = `$${finalPriceNumber.toLocaleString('es-CL')}`;
 
   const handleApplyGiftCard = async () => {
@@ -591,7 +654,7 @@ export function BookingModal() {
   const isFormValid = name.trim() !== '' && 
                       phoneNumOnly.length === 9 && 
                       !phoneError && 
-                      serviceId !== '' && 
+                      (selectedServiceIds.length > 0 || serviceId !== '') && 
                       date !== '' && 
                       time !== '';
 
@@ -713,7 +776,15 @@ export function BookingModal() {
               {/* Detalles del Servicio actual */}
               <div className={`relative z-10 space-y-4 bg-black/60 backdrop-blur-sm border p-5 rounded-2xl ${themeBorder15}`}>
                 <span className={`text-[9px] uppercase tracking-widest font-bold block ${themeText80}`}>Estás Reservando:</span>
-                {selectedServiceObj ? (
+                {selectedServicesList.length > 0 ? (
+                  <div className="space-y-2">
+                    <h4 className="font-serif text-lg text-white font-medium leading-snug">{displayServiceNameCombined}</h4>
+                    <div className="flex justify-between items-baseline pt-2 border-t border-white/5">
+                      <span className={`font-serif text-base font-semibold ${themeText}`}>{totalOriginalPriceStr}</span>
+                      <span className="text-[9px] text-text-secondary uppercase tracking-wider">{totalDurationMins} min</span>
+                    </div>
+                  </div>
+                ) : selectedServiceObj ? (
                   <div className="space-y-2">
                     <h4 className="font-serif text-lg text-white font-medium leading-snug">{displayServiceName}</h4>
                     <div className="flex justify-between items-baseline pt-2 border-t border-white/5">
@@ -722,7 +793,7 @@ export function BookingModal() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-text-secondary italic">Por favor, selecciona un servicio en el formulario.</p>
+                  <p className="text-xs text-text-secondary italic">Por favor, selecciona al menos un servicio en el formulario.</p>
                 )}
               </div>
 
@@ -819,7 +890,7 @@ export function BookingModal() {
 
                           {/* Services Cards list */}
                           <div className="space-y-3">
-                            <label className={labelClass}>Selecciona tu Ritual *</label>
+                            <label className={labelClass}>Selecciona tu Ritual (puedes elegir varios) *</label>
                             
                             {/* Buscador de servicios por palabra clave */}
                             <div className="relative flex items-center">
@@ -842,7 +913,7 @@ export function BookingModal() {
                               )}
                             </div>
 
-                            <div className="space-y-2.5 pr-1 mt-1.5 max-h-[45vh] md:max-h-[340px] overflow-y-auto scrollbar-thin">
+                            <div className="space-y-2.5 pr-1 mt-1.5 max-h-[45vh] md:max-h-[300px] overflow-y-auto scrollbar-thin">
                               {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12 space-y-3">
                                   <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin border-gold`} />
@@ -854,21 +925,21 @@ export function BookingModal() {
                                 </p>
                               ) : (
                                 servicesList.map((service) => {
-                                  const isSelected = serviceId === service.id;
+                                  const isSelected = selectedServiceIds.includes(service.id);
                                   return (
                                     <button
                                       key={service.id}
                                       type="button"
-                                      onClick={() => setServiceId(service.id)}
-                                      className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start justify-between gap-4 ${
+                                      onClick={() => handleToggleService(service.id)}
+                                      className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start justify-between gap-4 cursor-pointer ${
                                         isSelected
                                           ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.15)]'
                                           : 'border-white/5 bg-white/[0.02] text-white/80 hover:border-white/20 hover:bg-white/[0.04]'
                                       }`}
                                     >
                                       <div className="space-y-1 pr-2 flex-grow">
-                                        <div className="font-bold text-sm text-white transition-colors">
-                                          {service.name}
+                                        <div className="font-bold text-sm text-white transition-colors flex items-center space-x-2">
+                                          <span>{service.name}</span>
                                         </div>
                                         {service.description && (
                                           <p className="text-[11px] text-text-secondary leading-relaxed font-light">
@@ -879,19 +950,32 @@ export function BookingModal() {
                                           Duración: {service.duration}
                                         </div>
                                       </div>
-                                      <div className="text-right flex flex-col items-end justify-between min-w-[70px]">
+                                      <div className="text-right flex flex-col items-end justify-between min-w-[70px] self-stretch">
                                         <span className={`font-serif text-sm font-bold ${isSelected ? themeText : 'text-white'}`}>
                                           {service.price}
                                         </span>
-                                        {isSelected && (
-                                          <span className={`w-2 h-2 rounded-full ${themeBg} mt-3`} />
-                                        )}
+                                        <div className={`mt-3 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                                          isSelected ? 'border-gold bg-gold text-black shadow-sm' : 'border-white/20 bg-white/5'
+                                        }`}>
+                                          {isSelected && <Check size={12} className="stroke-[3]" />}
+                                        </div>
                                       </div>
                                     </button>
                                   );
                                 })
                               )}
                             </div>
+
+                            {selectedServicesList.length > 0 && (
+                              <div className="mt-3 p-3 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-between text-xs text-gold animate-fadeIn">
+                                <span className="font-semibold">
+                                  {selectedServicesList.length} {selectedServicesList.length === 1 ? 'ritual seleccionado' : 'rituales seleccionados'} ({totalDurationMins} min)
+                                </span>
+                                <span className="font-serif font-bold text-sm">
+                                  {totalOriginalPriceStr}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1588,7 +1672,7 @@ export function BookingModal() {
                           key="next-btn"
                           type="button"
                           disabled={
-                            (step === 1 && !serviceId) ||
+                            (step === 1 && selectedServiceIds.length === 0) ||
                             (step === 2 && !specialistId) ||
                             (step === 3 && (!date || !time)) ||
                             (step === 4 && (name.trim() === '' || phoneNumOnly.length !== 9 || !!phoneError))
@@ -1650,7 +1734,7 @@ export function BookingModal() {
                         </div>
                         <div className={summaryBorderClass}>
                           <span className={summaryLabelClass}>Ritual</span>
-                          <span className={summaryValClass} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedServiceObj?.name}</span>
+                          <span className={summaryValClass} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayServiceNameCombined}</span>
                         </div>
                         {(selectedSpecialistObj || assignedSpecialistName) && (
                           <div className={summaryBorderClass}>
@@ -1708,7 +1792,7 @@ export function BookingModal() {
                           href={`https://wa.me/56971465202?text=${encodeURIComponent(
                             `Hola, adjunto el comprobante de transferencia de $20.000 para mi reserva.\n\n` +
                             `• Código: ${bookingCode}\n` +
-                            `• Servicio: ${selectedServiceObj?.name || 'Servicio'}\n` +
+                            `• Servicio: ${displayServiceNameCombined}\n` +
                             `• Fecha: ${formatDateToDMY(date)} a las ${time} hrs\n` +
                             `• Cliente: ${name}`
                           )}`}

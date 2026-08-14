@@ -2458,12 +2458,17 @@ export default function AdminPage() {
       console.error(e);
     }
 
-    let minMins = 9 * 60;
-    let maxMins = 20 * 60;
+    let minMins = 7 * 60;
+    let maxMins = 22 * 60;
 
     specialistsForView.forEach(sp => {
-      const shifts = workShifts[sp.id] || [];
-      const dayShift = shifts.find(s => s.dayOfWeek === dayOfWeek);
+      const matchedKey = Object.keys(workShifts).find(k => {
+        if (k === sp.id) return true;
+        const nameFromMap = useScheduleStore.getState().specialistNames[k];
+        return nameFromMap && nameFromMap.trim().toLowerCase() === sp.name.trim().toLowerCase();
+      });
+      const shifts = matchedKey ? workShifts[matchedKey] : [];
+      const dayShift = shifts.find(s => s.dayOfWeek === dayOfWeek && (s.business === activeBusinessTab || s.business === 'todos' || s.business === 'general')) || shifts.find(s => s.dayOfWeek === dayOfWeek);
       if (dayShift && dayShift.isActive) {
         const startMins = localTimeToMinutes(dayShift.startTime);
         const endMins = localTimeToMinutes(dayShift.endTime);
@@ -2481,10 +2486,25 @@ export default function AdminPage() {
           const allServices = Object.keys(servicesData).flatMap(
             cat => servicesData[cat].services || []
           );
-          const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
-          const bookingDuration = bookedService 
-            ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
-            : 60;
+          const calculateDuration = (sName: string): number => {
+            if (!sName) return 60;
+            if (sName.includes(' + ')) {
+              const parts = sName.split(' + ');
+              let total = 0;
+              for (const part of parts) {
+                const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+                if (found) {
+                  total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
+                } else {
+                  total += 60;
+                }
+              }
+              return total > 0 ? total : 60;
+            }
+            const found = allServices.find(s => s.name.trim().toLowerCase() === sName.trim().toLowerCase());
+            return found ? (typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration)) : 60;
+          };
+          const bookingDuration = calculateDuration(b.serviceName);
           if (bookingMins + bookingDuration > maxMins) maxMins = bookingMins + bookingDuration;
         }
       }
@@ -2526,10 +2546,25 @@ export default function AdminPage() {
           const allServices = Object.keys(servicesData).flatMap(
             cat => servicesData[cat].services || []
           );
-          const bookedService = allServices.find(s => s.name.trim().toLowerCase() === b.serviceName.trim().toLowerCase());
-          const bookingDuration = bookedService 
-            ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
-            : 60;
+          const calculateDuration = (sName: string): number => {
+            if (!sName) return 60;
+            if (sName.includes(' + ')) {
+              const parts = sName.split(' + ');
+              let total = 0;
+              for (const part of parts) {
+                const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+                if (found) {
+                  total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
+                } else {
+                  total += 60;
+                }
+              }
+              return total > 0 ? total : 60;
+            }
+            const found = allServices.find(s => s.name.trim().toLowerCase() === sName.trim().toLowerCase());
+            return found ? (typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration)) : 60;
+          };
+          const bookingDuration = calculateDuration(b.serviceName);
           const bookingEnd = bookingMin + bookingDuration;
 
           return currentSlotMin < bookingEnd && nextSlotMin > bookingMin;
@@ -4499,10 +4534,25 @@ export default function AdminPage() {
                                   const allServices = Object.keys(servicesData).flatMap(
                                     cat => servicesData[cat].services || []
                                   );
-                                  const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-                                  const bookingDuration = bookedService 
-                                    ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration)) 
-                                    : 60;
+                                  const calculateDuration = (sName: string): number => {
+                                    if (!sName) return 60;
+                                    if (sName.includes(' + ')) {
+                                      const parts = sName.split(' + ');
+                                      let total = 0;
+                                      for (const part of parts) {
+                                        const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+                                        if (found) {
+                                          total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
+                                        } else {
+                                          total += 60;
+                                        }
+                                      }
+                                      return total > 0 ? total : 60;
+                                    }
+                                    const found = allServices.find(s => s.name.trim().toLowerCase() === sName.trim().toLowerCase());
+                                    return found ? (typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration)) : 60;
+                                  };
+                                  const bookingDuration = calculateDuration(booking.serviceName);
                                   const bookingEnd = localTimeToMinutes(booking.time) + bookingDuration;
                                   const slotMins = localTimeToMinutes(time);
                                   const isEndSlot = slotMins + 30 >= bookingEnd;
@@ -4907,24 +4957,44 @@ export default function AdminPage() {
                                   );
                                 }
 
-                                const specialistShifts = workShifts[specialist.id];
+                                const matchedKey = Object.keys(workShifts).find(k => {
+                                  if (k === specialist.id) return true;
+                                  const nameFromMap = useScheduleStore.getState().specialistNames[k];
+                                  return nameFromMap && nameFromMap.trim().toLowerCase() === specialist.name.trim().toLowerCase();
+                                });
+                                const specialistShifts = matchedKey ? workShifts[matchedKey] : [];
                                 let isShift = true;
                                 let isLunchBreak = false;
                                 
-                                if (specialistShifts) {
-                                  const dayNum = new Date(targetDate + 'T00:00:00').getDay();
-                                  const dayShift = specialistShifts.find((s: any) => s.dayOfWeek === dayNum);
-                                  if (!dayShift || !dayShift.isActive) {
+                                const dayNum = new Date(targetDate + 'T00:00:00').getDay();
+                                let dayShift = specialistShifts.find((s: any) => s.dayOfWeek === dayNum && (s.business === activeBusinessTab || s.business === 'todos' || s.business === 'general'));
+                                if (!dayShift) {
+                                  dayShift = specialistShifts.find((s: any) => s.dayOfWeek === dayNum);
+                                }
+
+                                if (!dayShift && specialistShifts.length > 0) {
+                                  isShift = false;
+                                } else {
+                                  const shiftToUse = dayShift || {
+                                    isActive: dayNum !== 0,
+                                    startTime: '09:00',
+                                    endTime: '18:00',
+                                    hasBreak: true,
+                                    breakStartTime: '13:00',
+                                    breakEndTime: '14:00'
+                                  };
+
+                                  if (!shiftToUse.isActive) {
                                     isShift = false;
                                   } else {
                                     const slotMin = localTimeToMinutes(time);
-                                    const startMin = localTimeToMinutes(dayShift.startTime);
-                                    const endMin = localTimeToMinutes(dayShift.endTime);
+                                    const startMin = localTimeToMinutes(shiftToUse.startTime);
+                                    const endMin = localTimeToMinutes(shiftToUse.endTime);
                                     isShift = slotMin >= startMin && slotMin < endMin;
                                     
-                                    if (isShift && dayShift.hasBreak && dayShift.breakStartTime && dayShift.breakEndTime) {
-                                      const breakStartMin = localTimeToMinutes(dayShift.breakStartTime);
-                                      const breakEndMin = localTimeToMinutes(dayShift.breakEndTime);
+                                    if (isShift && shiftToUse.hasBreak && shiftToUse.breakStartTime && shiftToUse.breakEndTime) {
+                                      const breakStartMin = localTimeToMinutes(shiftToUse.breakStartTime);
+                                      const breakEndMin = localTimeToMinutes(shiftToUse.breakEndTime);
                                       isLunchBreak = slotMin >= breakStartMin && slotMin < breakEndMin;
                                     }
                                   }

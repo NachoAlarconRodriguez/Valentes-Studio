@@ -201,24 +201,46 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       maxDate.setDate(today.getDate() + 30);
       const maxDateStr = maxDate.toISOString().split('T')[0];
 
-      // Consultar la vista 'public_bookings' para obtener reservas y bloqueos anónimos
+      // 1. Consultar la vista 'public_bookings' para obtener reservas públicas
       const { data: dbBookings, error: bErr } = await supabase
         .from('public_bookings')
         .select('id, specialist_name, date, time, service_name, status')
         .gte('date', todayStr)
         .lte('date', maxDateStr);
 
-      if (bErr) throw bErr;
+      if (bErr) console.warn('[fetchPublicBookings] Error al consultar public_bookings:', bErr);
 
-      const bookings: Booking[] = (dbBookings || []).map((b: any) => ({
+      // 2. Consultar directamente bloqueos de la tabla bookings para no depender de filtros de la vista
+      const { data: dbBlocked, error: blErr } = await supabase
+        .from('bookings')
+        .select('id, specialist_name, date, time, service_name, status')
+        .eq('status', 'bloqueado')
+        .gte('date', todayStr)
+        .lte('date', maxDateStr);
+
+      if (blErr) console.warn('[fetchPublicBookings] Error al consultar bloqueos:', blErr);
+
+      const combined = [
+        ...(dbBookings || []),
+        ...(dbBlocked || [])
+      ];
+
+      // Deduplicar por id por si la vista en Supabase llegara a incluir bloqueos en el futuro
+      const uniqueMap = new Map<string, any>();
+      combined.forEach(b => {
+        if (b && b.id) uniqueMap.set(b.id, b);
+      });
+      const uniqueBookings = Array.from(uniqueMap.values());
+
+      const bookings: Booking[] = uniqueBookings.map((b: any) => ({
         id: b.id,
         clientName: b.status === 'bloqueado' ? 'Bloqueado' : 'Reservado',
         clientPhone: '',
         clientEmail: '',
         category: 'barberia', // dummy
-        serviceName: b.service_name,
+        serviceName: b.service_name || 'Bloqueo Administrativo',
         price: '',
-        specialistName: b.specialist_name,
+        specialistName: b.specialist_name || 'Sin Asignar',
         date: b.date,
         time: b.time,
         channel: 'Web',
@@ -238,7 +260,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       }
 
       set({ bookings, clients: [], loading: false });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching public bookings:', error);
       set({ loading: false });
     }
@@ -294,10 +316,28 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         }
       }
 
-      const newService = allServices.find(s => s.name.trim().toLowerCase() === bookingData.serviceName.trim().toLowerCase());
-      const newServiceDuration = newService 
-        ? (typeof newService.duration === 'number' ? newService.duration : parseDurationToMinutes(newService.duration)) 
-        : 60;
+      const calculateServiceDuration = (sName: string): number => {
+        if (!sName) return 60;
+        if (sName.includes(' + ')) {
+          const parts = sName.split(' + ');
+          let total = 0;
+          for (const part of parts) {
+            const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+            if (found) {
+              total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
+            } else {
+              total += 60;
+            }
+          }
+          return total > 0 ? total : 60;
+        }
+        const found = allServices.find(s => s.name.trim().toLowerCase() === sName.trim().toLowerCase());
+        return found 
+          ? (typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration)) 
+          : 60;
+      };
+
+      const newServiceDuration = calculateServiceDuration(bookingData.serviceName);
       const slotStart = timeToMinutes(bookingData.time);
       const slotEnd = slotStart + newServiceDuration;
 
@@ -328,10 +368,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       if (conflictingBookings && conflictingBookings.length > 0) {
         for (const existing of conflictingBookings) {
           const existingStart = timeToMinutes(existing.time);
-          const existingService = allServices.find(s => s.name.trim().toLowerCase() === existing.service_name.trim().toLowerCase());
-          const existingDuration = existingService 
-            ? (typeof existingService.duration === 'number' ? existingService.duration : parseDurationToMinutes(existingService.duration)) 
-            : 60;
+          const existingDuration = calculateServiceDuration(existing.service_name);
           const existingEnd = existingStart + existingDuration;
 
           if (slotStart < existingEnd && slotEnd > existingStart) {

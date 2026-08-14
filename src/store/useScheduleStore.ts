@@ -376,9 +376,9 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       }
     }
     
-    // 4. Check active blocks for this specialist and date
+    // 4. Check active blocks for this specialist and date (including global blocks for 'todos' or empty specialistId)
     const blocksForDate = state.timeBlocks.filter(
-      (b) => b.specialistId === specialistId && b.date === date
+      (b) => (b.specialistId === specialistId || !b.specialistId || b.specialistId === 'todos' || b.specialistId === 'all') && b.date === date
     );
     
     for (const block of blocksForDate) {
@@ -394,80 +394,76 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     }
 
     // 5. Check active bookings for this specialist and date
-    // Resolver el nombre del especialista desde el mapa local del store (siempre disponible)
-    // para evitar race conditions con useServicesStore que puede estar sin cargar.
     const localNames = state.specialistNames;
     let specialistName: string | null = localNames[specialistId] || null;
 
-    // Fallback: intentar desde useServicesStore si el mapa local aún no tiene el nombre
     if (!specialistName) {
       const allSpecialists = useServicesStore.getState().specialistsList || [];
       const found = allSpecialists.find(s => s.id === specialistId);
       specialistName = found?.name || null;
     }
 
-    // Si no se pudo resolver el nombre por ninguna fuente, bloquear como medida de seguridad
-    // para no mostrar horarios de especialistas no reconocidos
-    if (!specialistName) {
-      // Caso extremo: no hay datos de especialistas todavía; dejar pasar para no bloquear todo
-      // pero loguear para diagnóstico
-      console.warn('[isSpecialistAvailable] No se pudo resolver nombre para specialistId:', specialistId);
-    }
-
     const allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
       cat => useServicesStore.getState().servicesData[cat].services
     );
 
-    const specialistBookings = useBookingStore.getState().bookings.filter(
-      b => b.date === date &&
-           b.status !== 'cancelado' &&
-           b.status !== 'no_llego' &&
-           specialistName !== null &&
-           b.specialistName.trim().toLowerCase() === specialistName.trim().toLowerCase()
-    );
-
-    for (const booking of specialistBookings) {
-      const bookingStart = timeToMinutes(booking.time);
-
-      // Find booking service duration
-      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-      const bookingDuration = bookedService
-        ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
-        : 60;
-      const bookingEnd = bookingStart + bookingDuration;
-
-      // Check for overlap
-      if (slotStart < bookingEnd && slotEnd > bookingStart) {
-        return {
-          available: false,
-          reason: booking.status === 'bloqueado'
-            ? `Horario bloqueado por administración (${booking.time})`
-            : `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
-        };
+    const calculateBookingDuration = (serviceName: string, isBlockedStatus?: boolean): number => {
+      if (!serviceName) return isBlockedStatus ? 30 : 60;
+      if (serviceName.includes(' + ')) {
+        const parts = serviceName.split(' + ');
+        let total = 0;
+        for (const part of parts) {
+          const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+          if (found) {
+            total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
+          } else {
+            total += 30;
+          }
+        }
+        return total > 0 ? total : 30;
       }
-    }
+      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === serviceName.trim().toLowerCase());
+      if (bookedService) {
+        return typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration);
+      }
+      return isBlockedStatus ? 30 : 60;
+    };
 
-    // Red de seguridad: reservas con "Cualquiera" legacy bloquean disponibilidad de todos los especialistas
-    const cualquieraBookings = useBookingStore.getState().bookings.filter(
-      b => b.date === date &&
-           b.status !== 'cancelado' &&
-           b.status !== 'no_llego' &&
-           (b.specialistName.trim().toLowerCase() === 'cualquiera' || b.specialistName.trim().toLowerCase() === 'sin asignar')
+    const activeBookings = useBookingStore.getState().bookings.filter(
+      b => b.date === date && b.status !== 'cancelado' && b.status !== 'no_llego'
     );
 
-    for (const booking of cualquieraBookings) {
-      const bookingStart = timeToMinutes(booking.time);
-      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === booking.serviceName.trim().toLowerCase());
-      const bookingDuration = bookedService
-        ? (typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration))
-        : 60;
-      const bookingEnd = bookingStart + bookingDuration;
+    for (const booking of activeBookings) {
+      const bSpec = (booking.specialistName || '').trim().toLowerCase();
+      const targetSpec = (specialistName || '').trim().toLowerCase();
 
-      if (slotStart < bookingEnd && slotEnd > bookingStart) {
-        return {
-          available: false,
-          reason: `Reserva sin especialista asignado en este horario (${booking.time} - ${booking.serviceName})`
-        };
+      const appliesToSpecialist =
+        (targetSpec !== '' && bSpec === targetSpec) ||
+        booking.status === 'bloqueado' ||
+        bSpec === 'cualquiera' ||
+        bSpec === 'sin asignar' ||
+        bSpec === 'todos' ||
+        bSpec === 'all' ||
+        bSpec === 'alma bela' ||
+        bSpec === 'peluquería' ||
+        bSpec === 'terapias' ||
+        bSpec === 'barbería' ||
+        bSpec === '';
+
+      if (appliesToSpecialist) {
+        const bookingStart = timeToMinutes(booking.time);
+        const bookingDuration = calculateBookingDuration(booking.serviceName, booking.status === 'bloqueado');
+        const bookingEnd = bookingStart + bookingDuration;
+
+        // Check for overlap between requested slot [slotStart, slotEnd] and booking [bookingStart, bookingEnd]
+        if (slotStart < bookingEnd && slotEnd > bookingStart) {
+          return {
+            available: false,
+            reason: booking.status === 'bloqueado'
+              ? `Horario bloqueado por administración (${booking.time})`
+              : `Traslape con cita de ${booking.clientName} (${booking.time} - ${booking.serviceName})`
+          };
+        }
       }
     }
 
