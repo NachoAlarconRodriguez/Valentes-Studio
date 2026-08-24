@@ -437,18 +437,16 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       const bSpec = (booking.specialistName || '').trim().toLowerCase();
       const targetSpec = (specialistName || '').trim().toLowerCase();
 
-      const appliesToSpecialist =
-        (targetSpec !== '' && bSpec === targetSpec) ||
-        booking.status === 'bloqueado' ||
-        bSpec === 'cualquiera' ||
-        bSpec === 'sin asignar' ||
+      const isGlobalBooking =
+        !bSpec ||
         bSpec === 'todos' ||
         bSpec === 'all' ||
-        bSpec === 'alma bela' ||
-        bSpec === 'peluquería' ||
-        bSpec === 'terapias' ||
-        bSpec === 'barbería' ||
-        bSpec === '';
+        bSpec === 'sin asignar' ||
+        bSpec === 'cualquiera' ||
+        (category && bSpec === category.toLowerCase());
+
+      const appliesToSpecialist =
+        (targetSpec !== '' && bSpec === targetSpec) || isGlobalBooking;
 
       if (appliesToSpecialist) {
         const bookingStart = timeToMinutes(booking.time);
