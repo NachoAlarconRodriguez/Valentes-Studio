@@ -113,7 +113,17 @@ export function BookingModal() {
   const [isNotifyingDeposit, setIsNotifyingDeposit] = useState(false);
 
   const [copiedTransfer, setCopiedTransfer] = useState(false);
-  const [isInstagramMode, setIsInstagramMode] = useState(false);
+  const [isInstagramMode, setIsInstagramMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source') || params.get('utm_source');
+      const isInstagramUA = navigator.userAgent.includes('Instagram') || 
+                            navigator.userAgent.includes('FBAN/Instagram') ||
+                            navigator.userAgent.includes('FBAV');
+      return source === 'instagram' || source === 'ig' || isInstagramUA;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

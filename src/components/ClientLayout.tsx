@@ -47,7 +47,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     fetchContent
   ]);
 
-  const [isInstagramDirect, setIsInstagramDirect] = useState(false);
+  const [isInstagramDirect, setIsInstagramDirect] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source') || params.get('utm_source');
+      const isInstagramUA = navigator.userAgent.includes('Instagram') || 
+                            navigator.userAgent.includes('FBAN/Instagram') ||
+                            navigator.userAgent.includes('FBAV');
+      return source === 'instagram' || source === 'ig' || isInstagramUA;
+    }
+    return false;
+  });
 
   // Update theme in store when path changes
   useEffect(() => {
@@ -75,7 +85,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                             navigator.userAgent.includes('FBAV');
       const isInstagram = source === 'instagram' || source === 'ig' || isInstagramUA;
 
-      if (isInstagram) {
+      if (isInstagram && !isInstagramDirect) {
         setIsInstagramDirect(true);
       }
 
@@ -91,7 +101,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         openBooking(undefined, category);
       }
     }
-  }, [mounted, pathname, openBooking]);
+  }, [mounted, pathname, openBooking, isInstagramDirect]);
 
   if (!mounted) {
     return (
@@ -111,9 +121,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen text-text-primary flex flex-col font-sans select-none relative bg-black">
-      {/* Global Transition Loader */}
+      {/* Global Transition Loader - Desactivado en tráfico de Instagram */}
       <AnimatePresence>
-        {!hasFetched && !pathname.startsWith('/admin') && (
+        {!hasFetched && !pathname.startsWith('/admin') && !isInstagramDirect && (
           <motion.div
             key="global-loader"
             initial={{ opacity: 1 }}
