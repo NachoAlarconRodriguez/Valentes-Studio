@@ -49,6 +49,7 @@ export interface Booking {
   category: 'barberia' | 'peluqueria' | 'terapias';
   serviceName: string;
   price: string;
+  specialistId?: string;
   specialistName: string;
   date: string;
   time: string;
@@ -100,6 +101,7 @@ interface BookingStore {
     category: 'barberia' | 'peluqueria' | 'terapias';
     serviceName: string;
     price: string;
+    specialistId?: string;
     specialistName: string;
     date: string;
     time: string;
@@ -143,6 +145,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         category: b.category,
         serviceName: b.service_name,
         price: typeof b.price === 'number' ? `$${b.price.toLocaleString('es-CL')}` : b.price,
+        specialistId: b.specialist_id,
         specialistName: b.specialist_name,
         date: b.date,
         time: b.time,
@@ -204,7 +207,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       // 1. Consultar la vista 'public_bookings' para obtener reservas públicas
       const { data: dbBookings, error: bErr } = await supabase
         .from('public_bookings')
-        .select('id, specialist_name, date, time, service_name, status')
+        .select('id, specialist_id, specialist_name, date, time, service_name, status')
         .gte('date', todayStr)
         .lte('date', maxDateStr);
 
@@ -213,7 +216,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       // 2. Consultar directamente bloqueos de la tabla bookings para no depender de filtros de la vista
       const { data: dbBlocked, error: blErr } = await supabase
         .from('bookings')
-        .select('id, specialist_name, date, time, service_name, status')
+        .select('id, specialist_id, specialist_name, date, time, service_name, status')
         .eq('status', 'bloqueado')
         .gte('date', todayStr)
         .lte('date', maxDateStr);
@@ -240,6 +243,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         category: 'barberia', // dummy
         serviceName: b.service_name || 'Bloqueo Administrativo',
         price: '',
+        specialistId: b.specialist_id,
         specialistName: b.specialist_name || 'Sin Asignar',
         date: b.date,
         time: b.time,
@@ -267,229 +271,49 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   },
 
   addBooking: async (bookingData) => {
-    const prefix = 
-      bookingData.category === 'barberia' ? 'BAR' :
-      bookingData.category === 'peluqueria' ? 'PEL' :
-      bookingData.category === 'terapias' ? 'TER' : 'VAL';
-    const randomCode = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-    const channel = bookingData.channel || (Math.random() > 0.4 ? 'Web' : 'WhatsApp');
-    const status = bookingData.status || 'confirmado';
-    const createdAt = new Date().toISOString();
-
-    const bookingPrice = typeof bookingData.price === 'number'
-      ? bookingData.price
-      : parseInt(bookingData.price.replace(/[^0-9]/g, ''), 10) || 0;
-
     try {
-      // 0. Verificar traslapes de último segundo con reservas existentes y bloques de horario administrativos (Prevención de Doble Reserva / Race Condition)
-      const allSpecs = useServicesStore.getState().specialistsList || [];
-      const targetSpec = allSpecs.find(s => s.name.trim().toLowerCase() === bookingData.specialistName.trim().toLowerCase());
-      const targetSpecId = targetSpec ? targetSpec.id : null;
-
-      // 0.1 Verificar traslapes con bloques de horario administrativos (time_blocks)
-      let blocksQuery = supabase
-        .from('time_blocks')
-        .select('id, start_time, end_time, reason, specialist_id')
-        .eq('date', bookingData.date);
-
-      if (targetSpecId) {
-        blocksQuery = blocksQuery.eq('specialist_id', targetSpecId);
-      }
-
-      const { data: conflictingBlocks, error: blocksErr } = await blocksQuery;
-      if (blocksErr) throw blocksErr;
-
-      let allServices = Object.keys(useServicesStore.getState().servicesData).flatMap(
-        cat => useServicesStore.getState().servicesData[cat].services
-      );
-
-      if (allServices.length === 0) {
-        const { data: dbServices } = await supabase.from('services').select('*');
-        if (dbServices) {
-          allServices = dbServices.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            price: s.price,
-            duration: s.duration,
-            category: s.category
-          }));
-        }
-      }
-
-      const calculateServiceDuration = (sName: string): number => {
-        if (!sName) return 60;
-        if (sName.includes(' + ')) {
-          const parts = sName.split(' + ');
-          let total = 0;
-          for (const part of parts) {
-            const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
-            if (found) {
-              total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
-            } else {
-              total += 60;
-            }
-          }
-          return total > 0 ? total : 60;
-        }
-        const found = allServices.find(s => s.name.trim().toLowerCase() === sName.trim().toLowerCase());
-        return found 
-          ? (typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration)) 
-          : 60;
-      };
-
-      const newServiceDuration = calculateServiceDuration(bookingData.serviceName);
-      const slotStart = timeToMinutes(bookingData.time);
-      const slotEnd = slotStart + newServiceDuration;
-
-      if (conflictingBlocks && conflictingBlocks.length > 0) {
-        for (const block of conflictingBlocks) {
-          const blockStartStr = block.start_time.substring(0, 5);
-          const blockEndStr = block.end_time.substring(0, 5);
-          const blockStart = timeToMinutes(blockStartStr);
-          const blockEnd = timeToMinutes(blockEndStr);
-
-          if (slotStart < blockEnd && slotEnd > blockStart) {
-            throw new Error(`El horario de las ${bookingData.time} hrs para ${bookingData.specialistName} se encuentra bloqueado por administración (${block.reason}: ${blockStartStr} - ${blockEndStr}). Por favor, selecciona otro horario.`);
-          }
-        }
-      }
-
-      // 0.2 Verificar traslapes con reservas de clientes existentes (bookings)
-      const { data: conflictingBookings, error: checkErr } = await supabase
-        .from('bookings')
-        .select('id, time, service_name, status')
-        .eq('date', bookingData.date)
-        .eq('specialist_name', bookingData.specialistName)
-        .neq('status', 'cancelado')
-        .neq('status', 'no_llego');
-
-      if (checkErr) throw checkErr;
-
-      if (conflictingBookings && conflictingBookings.length > 0) {
-        for (const existing of conflictingBookings) {
-          const existingStart = timeToMinutes(existing.time);
-          const existingDuration = calculateServiceDuration(existing.service_name);
-          const existingEnd = existingStart + existingDuration;
-
-          if (slotStart < existingEnd && slotEnd > existingStart) {
-            throw new Error(`El horario de las ${bookingData.time} hrs para ${bookingData.specialistName} acaba de ser reservado. Por favor, selecciona otro bloque.`);
-          }
-        }
-      }
-
-      const normalizedPhone = normalizePhone(bookingData.clientPhone) || bookingData.clientPhone;
-
-      // 1. Fetch or update CRM Client details in Supabase (Required first due to foreign key constraint)
-      try {
-        const { data: existingClient, error: cFetchErr } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('phone', normalizedPhone)
-          .maybeSingle();
-
-        if (cFetchErr) throw cFetchErr;
-
-        if (existingClient) {
-          // Merge businesses array
-          const businessesSet = new Set(existingClient.businesses || []);
-          businessesSet.add(bookingData.category);
-          const updatedBusinesses = Array.from(businessesSet);
-
-          const { error: cUpdateErr } = await supabase
-            .from('clients')
-            .update({
-              name: bookingData.clientName,
-              email: bookingData.clientEmail || existingClient.email || '',
-              businesses: updatedBusinesses,
-              total_spent: (existingClient.total_spent || 0) + bookingPrice,
-              last_visit: bookingData.date
-            })
-            .eq('phone', normalizedPhone);
-
-          if (cUpdateErr) throw cUpdateErr;
-        } else {
-          const { error: cInsertErr } = await supabase.from('clients').insert({
-            phone: normalizedPhone,
-            name: bookingData.clientName,
-            email: bookingData.clientEmail || '',
-            businesses: [bookingData.category],
-            total_spent: bookingPrice,
-            last_visit: bookingData.date,
-            notes: '',
-            not_so_good_client: false
-          });
-
-          if (cInsertErr) {
-            // Handle RLS invisible client duplicate key error (code 23505)
-            if (cInsertErr.code === '23505') {
-              console.log('Client already exists in database (hidden by RLS), ignoring insert duplicate error.');
-            } else {
-              throw cInsertErr;
-            }
-          }
-        }
-      } catch (clientErr) {
-        console.error('CRM Client sync error:', clientErr);
-        throw new Error('Error al registrar o actualizar los datos del cliente.');
-      }
-
-      // 2. Insert Booking in Supabase (Omit client_name and client_email as they are dropped from raw table)
-      const { error: bErr } = await supabase.from('bookings').insert({
-        id: randomCode,
-        client_phone: normalizedPhone,
-        category: bookingData.category,
-        service_name: bookingData.serviceName,
-        price: bookingPrice,
-        specialist_name: bookingData.specialistName,
-        date: bookingData.date,
-        time: bookingData.time,
-        channel,
-        status,
-        created_at: createdAt,
-        gift_card_used: bookingData.giftCardUsed || null,
-        abono_transferido: (bookingData as any).abonoTransferido || false,
-        abono_confirmado: (bookingData as any).abonoConfirmado || false
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bookingData)
       });
 
-      if (bErr) throw bErr;
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Error al procesar la reserva en el servidor');
+      }
 
-      // 3. Update local state
-      const newBooking: Booking = {
-        ...bookingData,
-        clientPhone: normalizedPhone,
-        id: randomCode,
-        clientEmail: bookingData.clientEmail || '',
-        channel,
-        status,
-        createdAt,
-        abonoTransferido: (bookingData as any).abonoTransferido || false,
-        abonoConfirmado: (bookingData as any).abonoConfirmado || false
-      };
+      const newBooking: Booking = json.booking;
+      const bookingPrice = typeof newBooking.price === 'number'
+        ? newBooking.price
+        : parseInt(String(newBooking.price).replace(/[^0-9]/g, ''), 10) || 0;
 
       set((state) => {
         const updatedBookings = [newBooking, ...state.bookings];
-        const existingIdx = state.clients.findIndex(c => c.phone === normalizedPhone);
+        const existingIdx = state.clients.findIndex(c => c.phone === newBooking.clientPhone);
         let updatedClients = [...state.clients];
 
         if (existingIdx !== -1) {
           const client = updatedClients[existingIdx];
-          const newBusinesses = Array.from(new Set([...client.businesses, bookingData.category]));
+          const newBusinesses = Array.from(new Set([...client.businesses, newBooking.category]));
           updatedClients[existingIdx] = {
             ...client,
-            name: bookingData.clientName,
-            email: bookingData.clientEmail || client.email,
+            name: newBooking.clientName,
+            email: newBooking.clientEmail || client.email,
             businesses: newBusinesses,
             totalSpent: client.totalSpent + bookingPrice,
-            lastVisit: bookingData.date
+            lastVisit: newBooking.date
           };
         } else {
           updatedClients.push({
-            name: bookingData.clientName,
-            phone: normalizedPhone,
-            email: bookingData.clientEmail || '',
-            businesses: [bookingData.category],
+            name: newBooking.clientName,
+            phone: newBooking.clientPhone,
+            email: newBooking.clientEmail || '',
+            businesses: [newBooking.category],
             totalSpent: bookingPrice,
-            lastVisit: bookingData.date,
+            lastVisit: newBooking.date,
             notes: ''
           });
         }
@@ -503,7 +327,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       // Disparar correo de confirmación de reserva (Cliente + Staff/Admin)
       try {
         const allSpecs = useServicesStore.getState().specialistsList || [];
-        const spec = allSpecs.find(s => s.name.trim().toLowerCase() === bookingData.specialistName.trim().toLowerCase());
+        const spec = allSpecs.find(s => s.name.trim().toLowerCase() === newBooking.specialistName.trim().toLowerCase());
         const specialistEmail = spec ? spec.email : '';
 
         fetch('/api/email', {
@@ -523,12 +347,11 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
         console.error('Error al resolver mail del especialista o disparar email:', emailErr);
       }
 
+      return json.bookingId;
     } catch (err) {
       console.error('Error adding booking:', err);
       throw err;
     }
-
-    return randomCode;
   },
 
   updateBookingStatus: async (id, status, metodoPago?: Booking['metodoPago'], serviceName?: string, price?: string) => {
@@ -838,18 +661,23 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       if (clientErr) throw clientErr;
 
       // 2. Update booking details in 'bookings' table
+      const bookingPayload: any = {
+        client_phone: normNewPhone,
+        category: fields.category,
+        service_name: fields.serviceName,
+        price: numericPrice,
+        specialist_name: fields.specialistName,
+        date: fields.date,
+        time: fields.time,
+        status: fields.status
+      };
+      if (fields.specialistId) {
+        bookingPayload.specialist_id = fields.specialistId;
+      }
+
       const { error: bookingErr } = await supabase
         .from('bookings')
-        .update({
-          client_phone: normNewPhone,
-          category: fields.category,
-          service_name: fields.serviceName,
-          price: numericPrice,
-          specialist_name: fields.specialistName,
-          date: fields.date,
-          time: fields.time,
-          status: fields.status
-        })
+        .update(bookingPayload)
         .eq('id', id);
 
       if (bookingErr) throw bookingErr;
@@ -871,6 +699,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
             category: fields.category,
             serviceName: fields.serviceName,
             price: `$${numericPrice.toLocaleString('es-CL')}`,
+            specialistId: fields.specialistId || b.specialistId,
             specialistName: fields.specialistName,
             date: fields.date,
             time: fields.time,

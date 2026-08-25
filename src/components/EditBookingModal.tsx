@@ -343,6 +343,7 @@ export function EditBookingModal({ isOpen, onClose, booking, onBookingUpdated }:
         category,
         serviceName: concatenatedServiceName,
         price: customPrice,
+        specialistId: selectedSpecialistObj?.id || specialistId || undefined,
         specialistName: selectedSpecialistObj?.name || booking.specialistName,
         date,
         time,

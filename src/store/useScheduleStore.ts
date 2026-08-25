@@ -394,6 +394,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     }
 
     // 5. Check active bookings for this specialist and date
+    const cleanStr = (s: string): string => {
+      if (!s) return '';
+      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    };
+
     const localNames = state.specialistNames;
     let specialistName: string | null = localNames[specialistId] || null;
 
@@ -409,11 +414,12 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
     const calculateBookingDuration = (serviceName: string, isBlockedStatus?: boolean): number => {
       if (!serviceName) return isBlockedStatus ? 30 : 60;
+      const cleanTarget = cleanStr(serviceName);
       if (serviceName.includes(' + ')) {
         const parts = serviceName.split(' + ');
         let total = 0;
         for (const part of parts) {
-          const found = allServices.find(s => s.name.trim().toLowerCase() === part.trim().toLowerCase());
+          const found = allServices.find(s => cleanStr(s.name) === cleanStr(part));
           if (found) {
             total += typeof found.duration === 'number' ? found.duration : parseDurationToMinutes(found.duration);
           } else {
@@ -422,7 +428,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         }
         return total > 0 ? total : 30;
       }
-      const bookedService = allServices.find(s => s.name.trim().toLowerCase() === serviceName.trim().toLowerCase());
+      const bookedService = allServices.find(s => cleanStr(s.name) === cleanTarget);
       if (bookedService) {
         return typeof bookedService.duration === 'number' ? bookedService.duration : parseDurationToMinutes(bookedService.duration);
       }
@@ -434,8 +440,9 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     );
 
     for (const booking of activeBookings) {
-      const bSpec = (booking.specialistName || '').trim().toLowerCase();
-      const targetSpec = (specialistName || '').trim().toLowerCase();
+      const bSpecId = (booking as any).specialistId;
+      const bSpec = cleanStr(booking.specialistName || '');
+      const targetSpec = cleanStr(specialistName || '');
 
       const isGlobalBooking =
         !bSpec ||
@@ -443,10 +450,13 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         bSpec === 'all' ||
         bSpec === 'sin asignar' ||
         bSpec === 'cualquiera' ||
-        (category && bSpec === category.toLowerCase());
+        (category && bSpec === cleanStr(category));
 
-      const appliesToSpecialist =
-        (targetSpec !== '' && bSpec === targetSpec) || isGlobalBooking;
+      const isMatchingSpecialist =
+        (specialistId && bSpecId && specialistId === bSpecId) ||
+        (targetSpec !== '' && bSpec === targetSpec);
+
+      const appliesToSpecialist = isMatchingSpecialist || isGlobalBooking;
 
       if (appliesToSpecialist) {
         const bookingStart = timeToMinutes(booking.time);

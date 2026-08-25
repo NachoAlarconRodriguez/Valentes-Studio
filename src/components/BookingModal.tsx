@@ -113,6 +113,20 @@ export function BookingModal() {
   const [isNotifyingDeposit, setIsNotifyingDeposit] = useState(false);
 
   const [copiedTransfer, setCopiedTransfer] = useState(false);
+  const [isInstagramMode, setIsInstagramMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source') || params.get('utm_source');
+      const isInstagramUA = navigator.userAgent.includes('Instagram') || 
+                            navigator.userAgent.includes('FBAN/Instagram') ||
+                            navigator.userAgent.includes('FBAV');
+      if (source === 'instagram' || source === 'ig' || isInstagramUA) {
+        setIsInstagramMode(true);
+      }
+    }
+  }, []);
 
   const fetchSchedules = useScheduleStore(state => state.fetchSchedules);
   const fetchPublicBookings = useBookingStore(state => state.fetchPublicBookings);
@@ -125,24 +139,20 @@ export function BookingModal() {
   const isPageTerapias = pathname.startsWith('/terapias');
 
   const categoryOptions = React.useMemo(() => {
-    if (isValentes || isPageBarberia) return [{ id: 'barberia', name: 'Barbería' }];
-    if (isAlmaBela || isJefferson || isPagePeluqueria) {
-      return [
-        { id: 'peluqueria', name: 'Peluquería' },
-        { id: 'terapias', name: 'Terapias' }
-      ];
+    if (isValentes || isPageBarberia || bookingCategory === 'barberia') {
+      return [{ id: 'barberia', name: 'Barbería' }];
     }
-    if (isPageTerapias) {
-      return [
-        { id: 'terapias', name: 'Terapias' },
-        { id: 'peluqueria', name: 'Peluquería' }
-      ];
+    if (isPageTerapias || bookingCategory === 'terapias') {
+      return [{ id: 'terapias', name: 'Terapias' }];
+    }
+    if (isPagePeluqueria || bookingCategory === 'peluqueria' || isAlmaBela) {
+      return [{ id: 'peluqueria', name: 'Peluquería' }];
     }
     return [
       { id: 'peluqueria', name: 'Peluquería' },
       { id: 'terapias', name: 'Terapias' }
     ];
-  }, [isValentes, isAlmaBela, isJefferson, isPageBarberia, isPagePeluqueria, isPageTerapias]);
+  }, [isValentes, isAlmaBela, isJefferson, isPageBarberia, isPagePeluqueria, isPageTerapias, bookingCategory]);
 
   // Fetch real-time schedule, booking and specialist data from Supabase when the modal is opened
   useEffect(() => {
@@ -501,10 +511,13 @@ export function BookingModal() {
     try {
       const fullPhone = `${countryCode} ${phoneNumOnly}`;
       
-      const assignedName = (() => {
+      const resolvedSpec = (() => {
         if (specialistId) {
-          // Si hay un especialista seleccionado explícitamente, usarlo siempre
-          return selectedSpecialistObj?.name || filteredSpecialistsList.find(s => s.id === specialistId)?.name || filteredSpecialistsList[0]?.name || 'Sin Asignar';
+          const found = filteredSpecialistsList.find(s => s.id === specialistId) || selectedSpecialistObj;
+          return {
+            id: specialistId,
+            name: found?.name || filteredSpecialistsList[0]?.name || 'Sin Asignar'
+          };
         }
         const dur = totalDurationMins;
         const availableSpecs = filteredSpecialistsList.filter(s => isSpecialistAvailable(s.id, date, time, dur, category).available);
@@ -515,12 +528,16 @@ export function BookingModal() {
             return bookingsOnDate.filter(b => b.specialistName.trim().toLowerCase() === specName.trim().toLowerCase()).length;
           };
           availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
-          return availableSpecs[0].name;
+          return {
+            id: availableSpecs[0].id,
+            name: availableSpecs[0].name
+          };
         }
         // Si no hay profesionales disponibles a esa hora, lanzar error para que la clienta escoja otro bloque
         throw new Error('No hay profesionales disponibles para la fecha y hora seleccionadas. Por favor, selecciona otro horario.');
       })();
-      setAssignedSpecialistName(assignedName);
+
+      setAssignedSpecialistName(resolvedSpec.name);
 
       // Detect booking channel
       let bookingChannel: 'Web' | 'WhatsApp' | 'Presencial' | 'Instagram' = 'Web';
@@ -542,7 +559,8 @@ export function BookingModal() {
         category: category as 'barberia' | 'peluqueria' | 'terapias',
         serviceName: displayServiceNameCombined || 'Servicio Personalizado',
         price: finalPriceStr,
-        specialistName: assignedName,
+        specialistId: resolvedSpec.id,
+        specialistName: resolvedSpec.name,
         date: date,
         time: time,
         channel: bookingChannel,
@@ -646,7 +664,7 @@ export function BookingModal() {
   // Success styles
   const themeSuccessText = 'text-gold';
   
-  const modalContainerClass = `relative w-full max-w-4xl bg-black/95 text-white rounded-none md:rounded-[32px] overflow-hidden z-10 border border-white/5 md:${themeBorder25} shadow-[0_30px_60px_-15px_rgba(0,0,0,0.85)] grid grid-cols-1 md:grid-cols-12 h-[100dvh] md:h-[680px] transition-all duration-500`;
+  const modalContainerClass = `relative w-full ${isInstagramMode ? 'max-w-4xl min-h-[100dvh] md:min-h-0' : 'max-w-4xl'} bg-black text-white rounded-none md:rounded-[32px] overflow-hidden z-10 border border-white/5 md:${themeBorder25} shadow-[0_30px_60px_-15px_rgba(0,0,0,0.85)] grid grid-cols-1 md:grid-cols-12 h-[100dvh] md:h-[680px] transition-all duration-500`;
   
   const labelClass = `block text-[9px] uppercase tracking-[0.2em] ${themeText80} font-semibold mb-1`;
   const inputClass = `w-full bg-transparent border-b border-white/10 text-white py-2.5 px-1 text-sm ${themeBorderFocus} focus:outline-none transition-colors`;
@@ -680,8 +698,8 @@ export function BookingModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            onClick={isInstagramMode ? undefined : handleClose}
+            className={`absolute inset-0 ${isInstagramMode ? 'bg-black' : 'bg-black/80 backdrop-blur-md'}`}
           />
 
           {/* Modal Container */}
@@ -812,13 +830,15 @@ export function BookingModal() {
 
             {/* Panel Derecho: Formulario Paso a Paso */}
             <div className="col-span-1 md:col-span-7 flex flex-col justify-between p-6 md:p-8 bg-[#020202] relative overflow-hidden h-full">
-              {/* Botón de cerrar flotante */}
-              <button
-                onClick={handleClose}
-                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer z-20"
-              >
-                <X size={16} />
-              </button>
+              {/* Botón de cerrar flotante (oculto en modo Instagram) */}
+              {!isInstagramMode && (
+                <button
+                  onClick={handleClose}
+                  className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-colors cursor-pointer z-20"
+                >
+                  <X size={16} />
+                </button>
+              )}
 
               <div className="flex-grow flex flex-col max-w-md w-full mx-auto py-4 md:py-0 overflow-hidden h-full">
                 <div className="mb-6">
@@ -1807,12 +1827,24 @@ export function BookingModal() {
                         </a>
                       )}
 
-                      <button
-                        onClick={handleClose}
-                        className={successCloseClass + " w-full mt-6"}
-                      >
-                        Cerrar
-                      </button>
+                      {isInstagramMode ? (
+                        <button
+                          onClick={() => {
+                            resetForm();
+                            setStep(1);
+                          }}
+                          className={successCloseClass + " w-full mt-6"}
+                        >
+                          Agendar Otro Ritual
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleClose}
+                          className={successCloseClass + " w-full mt-6"}
+                        >
+                          Cerrar
+                        </button>
+                      )}
                     </motion.div>
                   </div>
                 )}

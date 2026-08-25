@@ -594,8 +594,13 @@ export function ManualBookingModal({
 
     try {
       // Auto-asignar especialista real si no fue seleccionado manualmente
-      const resolvedSpecialistName = (() => {
-        if (selectedSpecialistObj?.name) return selectedSpecialistObj.name;
+      const resolvedSpecialist = (() => {
+        if (specialistId && selectedSpecialistObj?.name) {
+          return {
+            id: specialistId,
+            name: selectedSpecialistObj.name
+          };
+        }
         // Buscar especialistas disponibles para este bloque horario
         const duration = selectedServiceObj
           ? (typeof selectedServiceObj.duration === 'number' ? selectedServiceObj.duration : parseDurationToMinutes(selectedServiceObj.duration))
@@ -609,10 +614,16 @@ export function ManualBookingModal({
           const getBookingCount = (specName: string) =>
             bookingsOnDate.filter(b => b.specialistName.trim().toLowerCase() === specName.trim().toLowerCase()).length;
           availableSpecs.sort((a, b) => getBookingCount(a.name) - getBookingCount(b.name));
-          return availableSpecs[0].name;
+          return {
+            id: availableSpecs[0].id,
+            name: availableSpecs[0].name
+          };
         }
         // Último recurso: primer especialista de la lista (no dejar "Cualquiera")
-        return specialistsList[0]?.name || 'Sin Asignar';
+        return {
+          id: specialistsList[0]?.id || undefined,
+          name: specialistsList[0]?.name || 'Sin Asignar'
+        };
       })();
 
       const code = await addBooking({
@@ -622,13 +633,15 @@ export function ManualBookingModal({
         category,
         serviceName: selectedServiceObj?.name || 'Servicio Personalizado',
         price: finalPriceStr,
-        specialistName: resolvedSpecialistName,
+        specialistId: resolvedSpecialist.id,
+        specialistName: resolvedSpecialist.name,
         date,
         time: finalTime,
         channel,
         status,
-        giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined
-      });
+        giftCardUsed: appliedGiftCard ? appliedGiftCard.code : undefined,
+        forceBooking
+      } as any);
 
       // Deduct balance from Gift Card if applied
       if (appliedGiftCard && discountAmount > 0) {

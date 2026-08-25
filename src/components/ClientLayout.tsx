@@ -47,6 +47,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     fetchContent
   ]);
 
+  const [isInstagramDirect, setIsInstagramDirect] = useState(false);
+
   // Update theme in store when path changes
   useEffect(() => {
     let theme: SectionTheme = 'home';
@@ -68,7 +70,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       const params = new URLSearchParams(window.location.search);
       const source = params.get('source') || params.get('utm_source');
       const isReserva = params.get('reserva') === 'true';
-      const isInstagram = source === 'instagram' || source === 'ig';
+      const isInstagramUA = navigator.userAgent.includes('Instagram') || 
+                            navigator.userAgent.includes('FBAN/Instagram') ||
+                            navigator.userAgent.includes('FBAV');
+      const isInstagram = source === 'instagram' || source === 'ig' || isInstagramUA;
+
+      if (isInstagram) {
+        setIsInstagramDirect(true);
+      }
 
       if (isReserva || isInstagram) {
         let category: 'barberia' | 'peluqueria' | 'terapias' | undefined = undefined;
@@ -101,7 +110,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen text-text-primary flex flex-col font-sans select-none relative">
+    <div className="min-h-screen text-text-primary flex flex-col font-sans select-none relative bg-black">
       {/* Global Transition Loader */}
       <AnimatePresence>
         {!hasFetched && !pathname.startsWith('/admin') && (
@@ -141,13 +150,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       {/* Background WebGL canvas */}
-      <WebGLCanvas />
+      {!isInstagramDirect && <WebGLCanvas />}
 
       {/* Global Navigation Header */}
-      {!pathname.startsWith('/admin') && (pathname !== '/' || isValentes || isAlmaBela) && <Navbar />}
+      {!pathname.startsWith('/admin') && !isInstagramDirect && (pathname !== '/' || isValentes || isAlmaBela) && <Navbar />}
 
       {/* Main UI Layer */}
-      <main className={`flex-grow relative z-10 w-full ${pathname === '/' || pathname.startsWith('/barberia') || pathname.startsWith('/terapias') || pathname.startsWith('/admin') ? '' : 'pt-24'}`}>
+      <main className={`flex-grow relative z-10 w-full ${isInstagramDirect ? 'hidden' : ''} ${pathname === '/' || pathname.startsWith('/barberia') || pathname.startsWith('/terapias') || pathname.startsWith('/admin') ? '' : 'pt-24'}`}>
         {children}
       </main>
 
