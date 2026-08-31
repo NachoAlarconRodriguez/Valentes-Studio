@@ -23,9 +23,14 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Jefferson Lopes | Santuario de Bienestar",
+  title: "Jefferson Leonardo | Santuario de Bienestar",
   description: "Un refugio exclusivo de rejuvenecimiento y diseño de imagen. Experimenta rituales tradicionales de barbería, peluquería de autor y terapias holísticas de relajación en una atmósfera inmersiva de calma absoluta.",
   keywords: ["santuario de bienestar", "barberia de lujo", "peluqueria de autor", "masajes relajantes", "terapias holísticas", "reiki", "experiencia zen", "corte de cabello"],
+  openGraph: {
+    title: "Jefferson Leonardo | Santuario de Bienestar",
+    description: "Un refugio exclusivo de rejuvenecimiento y diseño de imagen. Barbería tradicional, peluquería de autor y terapias holísticas de relajación.",
+    type: "website",
+  },
 };
 
 export default async function RootLayout({
@@ -38,7 +43,7 @@ export default async function RootLayout({
 
   let faviconPath = "/favicon-jefferson.svg";
   let canonicalUrl = "https://www.jeffersonlopes.cl";
-  let siteTitle = "Jefferson Lopes | Santuario de Bienestar";
+  let siteTitle = "Jefferson Leonardo | Santuario de Bienestar";
   let siteDescription = "Un refugio exclusivo de rejuvenecimiento y diseño de imagen. Barbería tradicional, peluquería de autor y terapias holísticas de relajación.";
   let googleVerificationToken = process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION_JEFFERSON || "";
 
@@ -64,6 +69,10 @@ export default async function RootLayout({
       <head>
         <title>{siteTitle}</title>
         <meta name="description" content={siteDescription} />
+        <meta property="og:title" content={siteTitle} />
+        <meta property="og:description" content={siteDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="website" />
         <link rel="icon" href={faviconPath} />
         <link rel="canonical" href={canonicalUrl} />
         {googleVerificationToken && (
