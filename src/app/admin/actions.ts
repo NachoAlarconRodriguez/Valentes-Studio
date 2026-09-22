@@ -209,6 +209,32 @@ export async function deleteSpecialistAction(specialistId: string): Promise<void
     auth: { persistSession: false }
   });
 
+  // 1. Obtener los datos del especialista (para saber su email) antes de borrarlo
+  const { data: spec } = await supabase
+    .from('specialists')
+    .select('email')
+    .eq('id', specialistId)
+    .maybeSingle();
+
+  // 2. Si tiene email, buscar y eliminar su cuenta en Supabase Auth
+  if (spec?.email) {
+    try {
+      const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers();
+      if (!listErr && usersData?.users) {
+        const targetUser = usersData.users.find(
+          u => u.email?.toLowerCase() === spec.email.toLowerCase()
+        );
+        if (targetUser) {
+          await supabase.auth.admin.deleteUser(targetUser.id);
+        }
+      }
+    } catch (authErr) {
+      console.error('Error eliminando usuario de Supabase Auth:', authErr);
+      // No frenar la eliminación de la tabla specialists si la cuenta de auth ya no existía
+    }
+  }
+
+  // 3. Eliminar de la tabla specialists
   const { error } = await supabase
     .from('specialists')
     .delete()

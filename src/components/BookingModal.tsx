@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, CheckCircle2, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Copy, Check, Search, AlertTriangle } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
@@ -86,6 +86,7 @@ export function BookingModal() {
   const [dateType, setDateType] = useState<'hoy' | 'manana' | 'semana' | 'mes' | null>(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(() => new Date());
   const [time, setTime] = useState('');
+  const targetTimeSlotRef = useRef<HTMLButtonElement | null>(null);
   
   // Gift Card states
   const [giftCardCode, setGiftCardCode] = useState('');
@@ -487,6 +488,21 @@ export function BookingModal() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBookingOpen, step, serviceId, selectedServiceIds, specialistId]);
+
+  // Auto-scroll al primer horario disponible (o al seleccionado) en el Paso 3 para evitar "falso fondo"
+  useEffect(() => {
+    if (isBookingOpen && step === 3 && date) {
+      const timer = setTimeout(() => {
+        if (targetTimeSlotRef.current) {
+          targetTimeSlotRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isBookingOpen, step, date]);
 
   const handleKeyDownStep4 = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -1323,74 +1339,86 @@ export function BookingModal() {
                               >
                                 <label className={labelClass}>Hora disponible *</label>
                                 <div className="grid grid-cols-4 gap-2 pr-1">
-                                  {(category === 'barberia'
-                                    ? [
-                                        { value: '07:00', label: '07:00 AM' },
-                                        { value: '08:00', label: '08:00 AM' },
-                                        { value: '09:00', label: '09:00 AM' },
-                                        { value: '10:00', label: '10:00 AM' },
-                                        { value: '11:00', label: '11:00 AM' },
-                                        { value: '12:00', label: '12:00 PM' },
-                                        { value: '13:00', label: '01:00 PM' },
-                                        { value: '14:00', label: '02:00 PM' },
-                                        { value: '15:00', label: '03:00 PM' },
-                                        { value: '16:00', label: '04:00 PM' },
-                                        { value: '17:00', label: '05:00 PM' },
-                                        { value: '18:00', label: '06:00 PM' },
-                                        { value: '19:00', label: '07:00 PM' },
-                                        { value: '20:00', label: '08:00 PM' }
-                                      ]
-                                    : [
-                                        { value: '07:00', label: '07:00 AM' },
-                                        { value: '07:30', label: '07:30 AM' },
-                                        { value: '08:00', label: '08:00 AM' },
-                                        { value: '08:30', label: '08:30 AM' },
-                                        { value: '09:00', label: '09:00 AM' },
-                                        { value: '09:30', label: '09:30 AM' },
-                                        { value: '10:00', label: '10:00 AM' },
-                                        { value: '10:30', label: '10:30 AM' },
-                                        { value: '11:00', label: '11:00 AM' },
-                                        { value: '11:30', label: '11:30 AM' },
-                                        { value: '12:00', label: '12:00 PM' },
-                                        { value: '12:30', label: '12:30 PM' },
-                                        { value: '13:00', label: '01:00 PM' },
-                                        { value: '13:30', label: '01:30 PM' },
-                                        { value: '14:00', label: '02:00 PM' },
-                                        { value: '14:30', label: '02:30 PM' },
-                                        { value: '15:00', label: '03:00 PM' },
-                                        { value: '15:30', label: '03:30 PM' },
-                                        { value: '16:00', label: '04:00 PM' },
-                                        { value: '16:30', label: '04:30 PM' },
-                                        { value: '17:00', label: '05:00 PM' },
-                                        { value: '17:30', label: '05:30 PM' },
-                                        { value: '18:00', label: '06:00 PM' },
-                                        { value: '18:30', label: '06:30 PM' },
-                                        { value: '19:00', label: '07:00 PM' },
-                                        { value: '19:30', label: '07:30 PM' },
-                                        { value: '20:00', label: '08:00 PM' }
-                                      ]
-                                  ).map((slot) => {
-                                    const isSelected = time === slot.value;
-                                    const availability = checkTimeSlotAvailability(slot.value);
-                                    return (
-                                      <button
-                                        key={slot.value}
-                                        type="button"
-                                        disabled={!availability.available}
-                                        title={availability.reason}
-                                        onClick={() => setTime(slot.value)}
-                                        className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none cursor-pointer ${
-                                          !availability.available
-                                            ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
-                                            : isSelected
-                                              ? 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
-                                              : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
-                                        }`}
-                                      >
-                                        {slot.label}
-                                      </button>
-                                    );
-                                  })}
+                                  {(() => {
+                                    const slotsList = category === 'barberia'
+                                      ? [
+                                          { value: '07:00', label: '07:00 AM' },
+                                          { value: '08:00', label: '08:00 AM' },
+                                          { value: '09:00', label: '09:00 AM' },
+                                          { value: '10:00', label: '10:00 AM' },
+                                          { value: '11:00', label: '11:00 AM' },
+                                          { value: '12:00', label: '12:00 PM' },
+                                          { value: '13:00', label: '01:00 PM' },
+                                          { value: '14:00', label: '02:00 PM' },
+                                          { value: '15:00', label: '03:00 PM' },
+                                          { value: '16:00', label: '04:00 PM' },
+                                          { value: '17:00', label: '05:00 PM' },
+                                          { value: '18:00', label: '06:00 PM' },
+                                          { value: '19:00', label: '07:00 PM' },
+                                          { value: '20:00', label: '08:00 PM' }
+                                        ]
+                                      : [
+                                          { value: '07:00', label: '07:00 AM' },
+                                          { value: '07:30', label: '07:30 AM' },
+                                          { value: '08:00', label: '08:00 AM' },
+                                          { value: '08:30', label: '08:30 AM' },
+                                          { value: '09:00', label: '09:00 AM' },
+                                          { value: '09:30', label: '09:30 AM' },
+                                          { value: '10:00', label: '10:00 AM' },
+                                          { value: '10:30', label: '10:30 AM' },
+                                          { value: '11:00', label: '11:00 AM' },
+                                          { value: '11:30', label: '11:30 AM' },
+                                          { value: '12:00', label: '12:00 PM' },
+                                          { value: '12:30', label: '12:30 PM' },
+                                          { value: '13:00', label: '01:00 PM' },
+                                          { value: '13:30', label: '01:30 PM' },
+                                          { value: '14:00', label: '02:00 PM' },
+                                          { value: '14:30', label: '02:30 PM' },
+                                          { value: '15:00', label: '03:00 PM' },
+                                          { value: '15:30', label: '03:30 PM' },
+                                          { value: '16:00', label: '04:00 PM' },
+                                          { value: '16:30', label: '04:30 PM' },
+                                          { value: '17:00', label: '05:00 PM' },
+                                          { value: '17:30', label: '05:30 PM' },
+                                          { value: '18:00', label: '06:00 PM' },
+                                          { value: '18:30', label: '06:30 PM' },
+                                          { value: '19:00', label: '07:00 PM' },
+                                          { value: '19:30', label: '07:30 PM' },
+                                          { value: '20:00', label: '08:00 PM' }
+                                        ];
+
+                                    let firstAvailableFound = false;
+
+                                    return slotsList.map((slot) => {
+                                      const isSelected = time === slot.value;
+                                      const availability = checkTimeSlotAvailability(slot.value);
+                                      const isFirstAvailable = !firstAvailableFound && availability.available;
+                                      if (isFirstAvailable) {
+                                        firstAvailableFound = true;
+                                      }
+                                      const isTarget = isSelected || (!time && isFirstAvailable);
+
+                                      return (
+                                        <button
+                                          key={slot.value}
+                                          ref={isTarget ? targetTimeSlotRef : null}
+                                          type="button"
+                                          disabled={!availability.available}
+                                          title={availability.reason}
+                                          onClick={() => setTime(slot.value)}
+                                          className={`py-2.5 px-1 text-center rounded-xl border text-[10px] font-semibold tracking-wider transition-all duration-300 focus:outline-none cursor-pointer ${
+                                            !availability.available
+                                              ? 'border-white/5 bg-black/25 text-white/20 cursor-not-allowed opacity-30'
+                                              : isSelected
+                                                ? 'border-gold bg-gold/10 text-gold shadow-[0_0_10px_rgba(198,155,60,0.2)]'
+                                                : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
+                                          }`}
+                                        >
+                                          {slot.label}
+                                        </button>
+                                      );
+                                    });
+                                  })()}
                                 </div>
                               </motion.div>
                             )}

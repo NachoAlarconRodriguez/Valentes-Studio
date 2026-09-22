@@ -1324,22 +1324,34 @@ export default function AdminPage() {
             setRequirePasswordChange(true);
           }
 
-          // Resolve specialist profile
-          const allSpecialists = Object.keys(servicesData).flatMap(cat => servicesData[cat].specialists);
-          const matchedSp = allSpecialists.find(sp => sp.email.toLowerCase() === email?.toLowerCase());
+          // Consultar directamente la tabla de especialistas en Supabase para tener el estado verificado
+          const { data: dbSpec } = await supabase
+            .from('specialists')
+            .select('*')
+            .ilike('email', email || '')
+            .maybeSingle();
 
-          if (matchedSp) {
+          if (dbSpec && dbSpec.is_active !== false) {
             const userWithPhone = {
-              ...matchedSp,
-              phone: matchedSp.phone || undefined
+              id: dbSpec.id,
+              name: dbSpec.name,
+              role: dbSpec.role,
+              specialty: dbSpec.specialty,
+              bio: dbSpec.bio || '',
+              avatar: dbSpec.avatar || (dbSpec.name ? dbSpec.name.substring(0, 2).toUpperCase() : 'AD'),
+              email: dbSpec.email,
+              profileType: dbSpec.profile_type,
+              assignedAgendas: dbSpec.assigned_agendas || ['barberia', 'peluqueria', 'terapias'],
+              imageUrl: dbSpec.image_url,
+              phone: dbSpec.phone || undefined
             };
             setCurrentUser(userWithPhone);
-            if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
-              setActiveBusinessTab(matchedSp.assignedAgendas[0]);
+            if (userWithPhone.assignedAgendas && userWithPhone.assignedAgendas.length > 0) {
+              setActiveBusinessTab(userWithPhone.assignedAgendas[0]);
             }
             setIsLoggedIn((prevLoggedIn) => {
               if (!prevLoggedIn) {
-                if (matchedSp.profileType !== 'admin') {
+                if (userWithPhone.profileType !== 'admin') {
                   setActiveTab('agenda');
                 } else {
                   setActiveTab('dashboard');
@@ -1347,29 +1359,14 @@ export default function AdminPage() {
               }
               return true;
             });
-            if (matchedSp.profileType === 'admin') {
+            if (userWithPhone.profileType === 'admin') {
               fetchPendingRequests();
             }
           } else {
-            // Fallback to Administrator for custom emails like the user's
-            const isAdminEmail = email?.toLowerCase() === 'ialarconr.684@gmail.com';
-            setCurrentUser({
-              id: isAdminEmail ? 'sp_ignacio' : 'admin',
-              name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
-              email: email || '',
-              phone: isAdminEmail ? '+56953332492' : undefined,
-              profileType: 'admin',
-              assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
-              role: 'Administrador Principal',
-              avatar: isAdminEmail ? 'IA' : 'AD'
-            });
-            setIsLoggedIn((prevLoggedIn) => {
-              if (!prevLoggedIn) {
-                setActiveTab('dashboard');
-              }
-              return true;
-            });
-            fetchPendingRequests();
+            // Usuario no encontrado en la lista de profesionales o inactivo -> Denegar acceso y cerrar sesión
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setIsLoggedIn(false);
           }
         }
       } catch (err) {
@@ -1429,45 +1426,51 @@ export default function AdminPage() {
           setRequirePasswordChange(true);
         }
 
-        // Resolve profile
-        const allSpecialists = Object.keys(servicesData).flatMap(cat => servicesData[cat].specialists);
-        const matchedSp = allSpecialists.find(sp => sp.email.toLowerCase() === email?.toLowerCase());
+        // Consultar directamente la tabla de especialistas en Supabase para tener el estado verificado
+        const { data: dbSpec } = await supabase
+          .from('specialists')
+          .select('*')
+          .ilike('email', email || '')
+          .maybeSingle();
 
-        if (matchedSp) {
+        if (dbSpec && dbSpec.is_active !== false) {
           const userWithPhone = {
-            ...matchedSp,
-            phone: matchedSp.email.toLowerCase() === 'ialarconr.684@gmail.com' ? '+56953332492' : undefined
+            id: dbSpec.id,
+            name: dbSpec.name,
+            role: dbSpec.role,
+            specialty: dbSpec.specialty,
+            bio: dbSpec.bio || '',
+            avatar: dbSpec.avatar || (dbSpec.name ? dbSpec.name.substring(0, 2).toUpperCase() : 'AD'),
+            email: dbSpec.email,
+            profileType: dbSpec.profile_type,
+            assignedAgendas: dbSpec.assigned_agendas || ['barberia', 'peluqueria', 'terapias'],
+            imageUrl: dbSpec.image_url,
+            phone: dbSpec.phone || undefined
           };
           setCurrentUser(userWithPhone);
           setIsLoggedIn(true);
-          if (matchedSp.assignedAgendas && matchedSp.assignedAgendas.length > 0) {
-            setActiveBusinessTab(matchedSp.assignedAgendas[0]);
+          if (userWithPhone.assignedAgendas && userWithPhone.assignedAgendas.length > 0) {
+            setActiveBusinessTab(userWithPhone.assignedAgendas[0]);
           }
-          if (matchedSp.profileType !== 'admin') {
+          if (userWithPhone.profileType !== 'admin') {
             setActiveTab('agenda');
           } else {
             setActiveTab('dashboard');
           }
-          if (matchedSp.profileType === 'admin') {
+          if (userWithPhone.profileType === 'admin') {
             fetchPendingRequests();
           }
-          triggerNotification(`Sesión iniciada como ${matchedSp.name} (${matchedSp.profileType.toUpperCase()}).`);
+          triggerNotification(`Sesión iniciada como ${dbSpec.name} (${dbSpec.profile_type.toUpperCase()}).`);
         } else {
-          const isAdminEmail = username.trim().toLowerCase() === 'ialarconr.684@gmail.com';
-          setCurrentUser({
-            id: isAdminEmail ? 'sp_ignacio' : 'admin',
-            name: isAdminEmail ? 'Ignacio Alarcón' : 'Administrador',
-            email: username.trim(),
-            phone: isAdminEmail ? '+56953332492' : undefined,
-            profileType: 'admin',
-            assignedAgendas: ['barberia', 'peluqueria', 'terapias'],
-            role: 'Administrador Principal',
-            avatar: isAdminEmail ? 'IA' : 'AD'
-          });
-          setIsLoggedIn(true);
-          setActiveTab('dashboard');
-          fetchPendingRequests();
-          triggerNotification('Sesión iniciada como Administrador Principal.');
+          // El usuario existe en Supabase Auth pero NO en profesionales o está inactivo
+          await supabase.auth.signOut();
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+          triggerNotification(
+            dbSpec && dbSpec.is_active === false
+              ? 'Acceso denegado: Esta cuenta de profesional ha sido desactivada.'
+              : 'Acceso denegado: Este usuario no está registrado en el equipo de profesionales.'
+          );
         }
       }
     } catch (err: any) {
