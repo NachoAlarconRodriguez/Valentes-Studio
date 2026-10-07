@@ -92,7 +92,7 @@ export async function addSpecialistAction(category: string, id: string, speciali
   });
 
   // 1. Insert specialist
-  const { error: specError } = await supabase.from('specialists').insert({
+  const insertData: any = {
     id,
     name: specialist.name,
     role: specialist.role,
@@ -104,8 +104,20 @@ export async function addSpecialistAction(category: string, id: string, speciali
     assigned_agendas: specialist.assignedAgendas,
     image_url: specialist.imageUrl || '',
     phone: specialist.phone || '',
-    is_active: specialist.isActive !== false
-  });
+    is_active: specialist.isActive !== false,
+    can_access_admin: specialist.canAccessAdmin !== false,
+    can_block_schedule: specialist.canBlockSchedule !== false
+  };
+
+  let { error: specError } = await supabase.from('specialists').insert(insertData);
+
+  // Fallback si alguna de las nuevas columnas aún no se ha creado en la base de datos
+  if (specError && (specError.message?.includes('can_access_admin') || specError.message?.includes('can_block_schedule') || (specError as any).code === '42703')) {
+    delete insertData.can_access_admin;
+    delete insertData.can_block_schedule;
+    const retry = await supabase.from('specialists').insert(insertData);
+    specError = retry.error;
+  }
 
   if (specError) {
     console.error('Error inserting specialist in Server Action:', specError);
@@ -172,11 +184,25 @@ export async function updateSpecialistAction(specialistId: string, payload: any)
     auth: { persistSession: false }
   });
 
+  let updatePayload = { ...payload };
+
   // Try updating by ID first
-  const { error, count } = await supabase
+  let { error, count } = await supabase
     .from('specialists')
-    .update(payload, { count: 'exact' })
+    .update(updatePayload, { count: 'exact' })
     .eq('id', specialistId);
+
+  // Fallback si alguna de las nuevas columnas aún no se ha creado en la base de datos
+  if (error && (error.message?.includes('can_access_admin') || error.message?.includes('can_block_schedule') || (error as any).code === '42703')) {
+    delete updatePayload.can_access_admin;
+    delete updatePayload.can_block_schedule;
+    const retry = await supabase
+      .from('specialists')
+      .update(updatePayload, { count: 'exact' })
+      .eq('id', specialistId);
+    error = retry.error;
+    count = retry.count;
+  }
 
   if (error) {
     console.error('Error updating specialist by ID in Server Action:', error);
@@ -184,11 +210,11 @@ export async function updateSpecialistAction(specialistId: string, payload: any)
   }
 
   // If 0 rows were updated by ID and we have an email, update by email
-  if (count === 0 && payload.email) {
+  if (count === 0 && updatePayload.email) {
     const { error: emailError } = await supabase
       .from('specialists')
-      .update(payload)
-      .eq('email', payload.email);
+      .update(updatePayload)
+      .eq('email', updatePayload.email);
 
     if (emailError) {
       console.error('Error updating specialist by Email in Server Action:', emailError);

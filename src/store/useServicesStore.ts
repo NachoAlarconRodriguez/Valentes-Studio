@@ -29,6 +29,8 @@ export interface Specialist {
   imageUrl?: string;
   phone?: string;
   isActive?: boolean;
+  canAccessAdmin?: boolean;
+  canBlockSchedule?: boolean;
 }
 
 export interface ServiceSection {
@@ -124,7 +126,9 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
           assignedAgendas: sp.assigned_agendas,
           imageUrl: sp.image_url,
           phone: sp.phone || '',
-          isActive: sp.is_active !== false
+          isActive: sp.is_active !== false,
+          canAccessAdmin: sp.can_access_admin !== false,
+          canBlockSchedule: sp.can_block_schedule !== false
         };
       });
 
@@ -380,6 +384,8 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
       if (updatedFields.imageUrl !== undefined) payload.image_url = updatedFields.imageUrl;
       if (updatedFields.phone !== undefined) payload.phone = updatedFields.phone;
       if (updatedFields.isActive !== undefined) payload.is_active = updatedFields.isActive;
+      if (updatedFields.canAccessAdmin !== undefined) payload.can_access_admin = updatedFields.canAccessAdmin;
+      if (updatedFields.canBlockSchedule !== undefined) payload.can_block_schedule = updatedFields.canBlockSchedule;
 
       // Only update the specialists table if there are fields to update there
       if (Object.keys(payload).length > 0) {

@@ -67,7 +67,7 @@ export function BookingModal() {
   const [serviceId, setServiceId] = useState('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [serviceSearch, setServiceSearch] = useState('');
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
 
   const handleToggleService = (sId: string) => {
     setSelectedServiceIds(prev => {
@@ -679,6 +679,8 @@ export function BookingModal() {
 
   // Dynamic Theme definitions based on category
   const isTerapias = category === 'terapias';
+  const isDepositCategory = category === 'peluqueria' || category === 'terapias';
+  const maxStep = isDepositCategory ? 6 : 5;
   const themeText = 'text-gold';
   const themeText80 = 'text-gold/80';
   const themeBg = 'bg-gold';
@@ -702,7 +704,7 @@ export function BookingModal() {
                       date !== '' && 
                       time !== '';
 
-  const submitButtonClass = `w-full mt-6 py-4 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center space-x-2 cursor-pointer shadow-lg ${themeShadow}`;
+  const submitButtonClass = `flex-1 py-3.5 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center space-x-2 cursor-pointer shadow-lg ${themeShadow}`;
   
   const summaryBoxClass = "w-full bg-white/5 border border-white/5 rounded-2xl p-5 mb-6 text-left space-y-3";
   const summaryBorderClass = "flex justify-between border-b border-white/5 pb-2";
@@ -881,8 +883,8 @@ export function BookingModal() {
 
                 {/* Stepper Progress Bar */}
                 {!isSuccess && (
-                  <div className="flex items-center justify-between mb-8 px-4 max-w-[280px] w-full mx-auto">
-                    {[1, 2, 3, 4, 5].map((s) => (
+                  <div className={`flex items-center justify-between mb-8 px-4 ${isDepositCategory ? 'max-w-[340px]' : 'max-w-[280px]'} w-full mx-auto`}>
+                    {(isDepositCategory ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]).map((s, idx, arr) => (
                       <React.Fragment key={s}>
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${
                           step === s 
@@ -893,8 +895,8 @@ export function BookingModal() {
                         }`}>
                           {step > s ? '✓' : s}
                         </div>
-                        {s < 5 && (
-                          <div className={`flex-1 h-[2px] mx-2 min-w-[8px] transition-all duration-500 ${
+                        {idx < arr.length - 1 && (
+                          <div className={`flex-1 h-[2px] mx-1.5 min-w-[6px] transition-all duration-500 ${
                             step > s ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.1)]' : 'bg-white/10'
                           }`} />
                         )}
@@ -1532,103 +1534,142 @@ export function BookingModal() {
                         </div>
                       )}
 
-                       {step === 5 && (
+                       {/* Step 5 for Peluquería / Terapias: Abono de Reserva ONLY */}
+                       {step === 5 && isDepositCategory && (
                         <div className="space-y-5 animate-fadeIn pr-1 w-full">
                           <div>
                             <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 5</h4>
                             <h3 className="font-serif text-lg text-white font-bold mt-0.5">
-                              {(category === 'peluqueria' || category === 'terapias') ? 'Abono de Reserva' : 'Confirmar Reserva'}
+                              Abono de Reserva
                             </h3>
                             <p className="text-xs text-text-secondary font-light mt-0.5">
-                              {(category === 'peluqueria' || category === 'terapias') 
-                                ? 'Por favor realiza la transferencia para asegurar tu horario y finalizar la reserva.' 
-                                : 'Por favor revisa los detalles de tu ritual antes de finalizar.'}
+                              Por favor realiza la transferencia para asegurar tu horario y continuar con la reserva.
                             </p>
                           </div>
-                                {/* Deposit (Abono) Details Section for Peluquería / Terapias */}
-                          {(category === 'peluqueria' || category === 'terapias') && (
-                            <div className="w-full text-left space-y-4 bg-white/[0.02] border border-white/10 rounded-2xl p-4">
-                              <div className="flex justify-between items-center w-full">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-bold text-gold uppercase tracking-wider">Datos para Abono</span>
-                                  <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={handleCopyTransferDetails}
-                                  className={`flex items-center space-x-1 px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-semibold transition-all cursor-pointer ${copiedTransfer ? 'text-emerald-400 border-emerald-500/25 bg-emerald-500/5' : 'text-text-secondary hover:text-white'}`}
-                                >
-                                  {copiedTransfer ? (
-                                    <>
-                                      <Check size={10} />
-                                      <span>¡Copiado!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy size={10} />
-                                      <span>Copiar Datos</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                              
-                              <p className="text-[11px] text-text-secondary leading-relaxed font-light">
-                                El abono de <strong>$20.000 pesos</strong> se solicita para asegurar tu horario y será descontado del valor final del servicio.
-                              </p>
 
-                              <div className="p-3 bg-black/40 rounded-xl space-y-1.5 border border-white/5 font-mono text-[10px] text-white/90">
-                                <div className="flex justify-between"><span className="text-text-secondary">Banco:</span><strong>Mercado Pago</strong></div>
-                                <div className="flex justify-between"><span className="text-text-secondary">Nombre:</span><strong>Jefferson Lopes Barros</strong></div>
-                                <div className="flex justify-between"><span className="text-text-secondary">RUT:</span><strong>28.434.859-1</strong></div>
-                                <div className="flex justify-between"><span className="text-text-secondary">Cuenta Vista:</span><strong>1029896108</strong></div>
-                                <div className="flex justify-between"><span className="text-text-secondary">Email:</span><strong>jefitolopess@gmail.com</strong></div>
-                                <div className="flex justify-between pt-1.5 mt-1.5 border-t border-white/5 text-[11px]"><span className="text-gold font-bold">Monto Abono:</span><strong className="text-gold">$20.000 CLP</strong></div>
-                              </div>
+                          <div className="w-full text-left space-y-3.5">
+                            {/* Golden Moving Perimeter Beam Card */}
+                            <div className="relative p-[1.5px] rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(200,154,75,0.14)]">
+                              {/* Rotating golden beam */}
+                              <div
+                                className="absolute -inset-[150%] animate-border-beam pointer-events-none will-change-transform"
+                                style={{
+                                  background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, rgba(200, 154, 75, 0.25) 300deg, rgba(200, 154, 75, 0.85) 330deg, #FFFFFF 352deg, #C89A4B 360deg)'
+                                }}
+                              />
+                              {/* Rotating ambient glow */}
+                              <div
+                                className="absolute -inset-[150%] animate-border-beam blur-sm opacity-80 pointer-events-none will-change-transform"
+                                style={{
+                                  background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, transparent 270deg, rgba(200, 154, 75, 0.45) 320deg, #C89A4B 360deg)'
+                                }}
+                              />
+                              {/* Base border fallback */}
+                              <div className="absolute inset-0 rounded-2xl border border-gold/25 pointer-events-none" />
 
-                              <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs text-amber-100 text-left space-y-3">
-                                <div className="flex items-center space-x-2 font-bold text-amber-400 text-xs uppercase tracking-wide">
-                                  <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
-                                  <span>Confirmación Obligatoria</span>
+                              {/* Inner Card */}
+                              <div className="relative w-full rounded-[15px] bg-[#0c0c0c] p-4 text-left space-y-4">
+                                <div className="flex justify-between items-center w-full">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs font-bold text-gold uppercase tracking-wider">Datos para Abono</span>
+                                    <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse shadow-[0_0_8px_#C89A4B]" />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleCopyTransferDetails}
+                                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gold/10 border border-gold/30 hover:bg-gold/20 text-[10px] font-bold tracking-wider transition-all cursor-pointer shadow-[0_0_12px_rgba(200,154,75,0.15)] ${copiedTransfer ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' : 'text-gold hover:text-white'}`}
+                                  >
+                                    {copiedTransfer ? (
+                                      <>
+                                        <Check size={11} className="stroke-[3]" />
+                                        <span>¡Copiado!</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy size={11} />
+                                        <span>Copiar Datos</span>
+                                      </>
+                                    )}
+                                  </button>
                                 </div>
-                                <p className="leading-relaxed font-normal text-xs text-amber-100/90">
-                                  Para asegurar tu cupo, realiza la transferencia y <strong>envía el comprobante por WhatsApp</strong> dentro del plazo correspondiente:
+                                
+                                <p className="text-[11px] text-text-secondary leading-relaxed font-light">
+                                  El abono de <strong>$20.000 pesos</strong> se solicita para asegurar tu horario y será descontado del valor final del servicio.
                                 </p>
-                                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                                  <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
-                                    <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas Futuras</div>
-                                    <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 24 hrs</div>
-                                  </div>
-                                  <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
-                                    <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas para Hoy</div>
-                                    <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 1 hr</div>
-                                  </div>
+
+                                <div className="p-3 bg-black/60 rounded-xl space-y-1.5 border border-white/5 font-mono text-[10px] text-white/90">
+                                  <div className="flex justify-between"><span className="text-text-secondary">Banco:</span><strong>Mercado Pago</strong></div>
+                                  <div className="flex justify-between"><span className="text-text-secondary">Nombre:</span><strong>Jefferson Lopes Barros</strong></div>
+                                  <div className="flex justify-between"><span className="text-text-secondary">RUT:</span><strong>28.434.859-1</strong></div>
+                                  <div className="flex justify-between"><span className="text-text-secondary">Cuenta Vista:</span><strong>1029896108</strong></div>
+                                  <div className="flex justify-between"><span className="text-text-secondary">Email:</span><strong>jefitolopess@gmail.com</strong></div>
+                                  <div className="flex justify-between pt-1.5 mt-1.5 border-t border-white/5 text-[11px]"><span className="text-gold font-bold">Monto Abono:</span><strong className="text-gold">$20.000 CLP</strong></div>
                                 </div>
                               </div>
-
-                              <p className="text-[11px] text-white/50 leading-relaxed text-left mt-2">
-                                * <strong>Cancelación o cambio de hora:</strong> Avisar con al menos 24 horas de anticipación.
-                              </p>
                             </div>
-                          )}
 
-                          {/* Final Summary Box */}
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs text-amber-100 text-left space-y-3">
+                              <div className="flex items-center space-x-2 font-bold text-amber-400 text-xs uppercase tracking-wide">
+                                <AlertTriangle size={14} className="text-amber-400 flex-shrink-0" />
+                                <span>Confirmación Obligatoria</span>
+                              </div>
+                              <p className="leading-relaxed font-normal text-xs text-amber-100/90">
+                                Para asegurar tu cupo, realiza la transferencia y <strong>envía el comprobante por WhatsApp</strong> dentro del plazo correspondiente:
+                              </p>
+                              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                                <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
+                                  <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas Futuras</div>
+                                  <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 24 hrs</div>
+                                </div>
+                                <div className="p-2.5 bg-black/35 rounded-xl border border-white/5 text-center">
+                                  <div className="text-[8px] text-text-secondary uppercase font-bold tracking-wider">Reservas para Hoy</div>
+                                  <div className="text-amber-300 font-serif font-bold text-[13px] mt-0.5">Plazo: 1 hr</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="text-[11px] text-white/50 leading-relaxed text-left mt-2">
+                              * <strong>Cancelación o cambio de hora:</strong> Avisar con al menos 24 horas de anticipación.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 5 for Barbería: Confirmar Reserva & Resumen */}
+                      {step === 5 && !isDepositCategory && (
+                        <div className="space-y-5 animate-fadeIn pr-1 w-full">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 5</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">
+                              Confirmar Reserva
+                            </h3>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">
+                              Por favor revisa los detalles de tu experiencia antes de finalizar.
+                            </p>
+                          </div>
+
+                          {/* Summary Box */}
                           {selectedServiceObj && (
                             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2 text-left mt-4 text-xs font-light text-text-secondary">
                               <div className="flex justify-between">
-                                <span>Ritual</span>
-                                <span className="text-white font-medium">{selectedServiceObj.name}</span>
+                                <span>Ritual / Servicio</span>
+                                <span className="text-white font-medium">{displayServiceNameCombined}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span>Especialista</span>
-                                <span className="text-white font-medium">{selectedSpecialistObj?.name || assignedSpecialistName}</span>
+                                <span className="text-white font-medium">{selectedSpecialistObj?.name || assignedSpecialistName || 'Cualquiera disponible'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span>Cita</span>
                                 <span className="text-white font-medium">{formatDateToDMY(date)} a las {time} hrs</span>
                               </div>
                               <div className="flex justify-between">
+                                <span>Cliente</span>
+                                <span className="text-white font-medium">{name} (+56 {phoneNumOnly})</span>
+                              </div>
+                              <div className="flex justify-between">
                                 <span>Valor de Servicio</span>
-                                <span className="text-white font-medium">{selectedServiceObj.price}</span>
+                                <span className="text-white font-medium">{totalOriginalPriceStr}</span>
                               </div>
                               {appliedGiftCard && (
                                 <div className="flex justify-between text-emerald-400">
@@ -1710,6 +1751,134 @@ export function BookingModal() {
                           )}
                         </div>
                       )}
+
+                      {/* Step 6 for Peluquería / Terapias: Resumen & Confirmación Final */}
+                      {step === 6 && isDepositCategory && (
+                        <div className="space-y-5 animate-fadeIn pr-1 w-full">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-widest font-semibold text-text-secondary">Paso 6</h4>
+                            <h3 className="font-serif text-lg text-white font-bold mt-0.5">
+                              Resumen y Confirmación
+                            </h3>
+                            <p className="text-xs text-text-secondary font-light mt-0.5">
+                              Revisa los detalles de tu servicio antes de finalizar la reserva.
+                            </p>
+                          </div>
+
+                          {/* Final Summary Box */}
+                          {selectedServiceObj && (
+                            <>
+                              <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-2.5 text-left mt-2 text-xs font-light text-text-secondary">
+                                <div className="flex justify-between">
+                                  <span>Ritual / Servicio</span>
+                                  <span className="text-white font-medium text-right max-w-[200px] truncate">{displayServiceNameCombined}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Especialista</span>
+                                  <span className="text-white font-medium">{selectedSpecialistObj?.name || assignedSpecialistName || 'Cualquiera disponible'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Cita</span>
+                                  <span className="text-white font-medium">{formatDateToDMY(date)} a las {time} hrs</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Cliente</span>
+                                  <span className="text-white font-medium">{name} (+56 {phoneNumOnly})</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Valor de Servicio</span>
+                                  <span className="text-white font-medium">{totalOriginalPriceStr}</span>
+                                </div>
+                                {appliedGiftCard && (
+                                  <div className="flex justify-between text-emerald-400">
+                                    <span>Descuento Gift Card</span>
+                                    <span className="font-medium">-${discountAmount.toLocaleString('es-CL')} CLP</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between text-gold">
+                                  <span>Abono Declarado*</span>
+                                  <span className="font-medium">-$20.000 CLP</span>
+                                </div>
+                                <div className="flex justify-between items-baseline pt-2.5 border-t border-white/10 text-sm font-semibold">
+                                  <span className="text-white font-bold">Saldo en Salón*</span>
+                                  <span className={`${themeText} font-serif text-base font-bold`}>
+                                    ${Math.max(0, finalPriceNumber - 20000).toLocaleString('es-CL')} CLP
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-text-secondary/70 italic text-left leading-relaxed mt-1 px-1">
+                                * Sujeto a verificación de la transferencia en nuestra cuenta al recibir tu comprobante.
+                              </p>
+                            </>
+                          )}
+
+                          {/* Gift Card Selector */}
+                          {selectedServiceObj && (
+                            <div className={`p-4 rounded-2xl bg-white/[0.02] border ${themeBorder15} space-y-3 mt-4`}>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-semibold text-white">¿Tienes una Gift Card?</span>
+                                {appliedGiftCard && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAppliedGiftCard(null);
+                                      setGiftCardCode('');
+                                      setGiftCardSuccess('');
+                                    }}
+                                    className={`text-[10px] ${themeText} hover:underline`}
+                                  >
+                                    Quitar
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {!appliedGiftCard ? (
+                                <div className="flex space-x-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Ej: SAN-GIFT-30K"
+                                    value={giftCardCode}
+                                    onChange={(e) => {
+                                      setGiftCardCode(e.target.value);
+                                      setGiftCardError('');
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleApplyGiftCard();
+                                      }
+                                    }}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 uppercase font-mono"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleApplyGiftCard}
+                                    className={`px-4 py-2 rounded-xl ${themeBg} text-black text-xs font-semibold hover:opacity-90 transition-all cursor-pointer`}
+                                  >
+                                    Aplicar
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-emerald-400">
+                                  <div className="flex flex-col text-left">
+                                    <span className="font-mono font-semibold">{appliedGiftCard.code}</span>
+                                    <span className="text-[10px] opacity-80">Saldo disponible: ${appliedGiftCard.remainingBalance.toLocaleString('es-CL')} CLP</span>
+                                  </div>
+                                  <span className="font-bold">Aplicada</span>
+                                </div>
+                              )}
+                              {giftCardError && <p className="text-[10px] text-rose-500 text-left">{giftCardError}</p>}
+                              {giftCardSuccess && <p className="text-[10px] text-emerald-400 text-left">{giftCardSuccess}</p>}
+                            </div>
+                          )}
+
+                          {submitError && (
+                            <div className="p-3.5 bg-red-950/40 border border-red-500/20 rounded-2xl text-[11px] text-red-300 text-left mt-4 font-light leading-relaxed">
+                              {submitError}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Step Navigation Bar */}
@@ -1717,7 +1886,7 @@ export function BookingModal() {
                       {step > 1 && (
                         <button
                           type="button"
-                          onClick={() => setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4 | 5)}
+                          onClick={() => setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4 | 5 | 6)}
                           className="flex-1 py-3.5 rounded-full border border-white/10 text-white text-xs uppercase tracking-wider font-semibold hover:bg-white/5 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                         >
                           <ChevronLeft size={14} />
@@ -1725,7 +1894,7 @@ export function BookingModal() {
                         </button>
                       )}
                       
-                      {step < 5 ? (
+                      {step < maxStep ? (
                         <button
                           key="next-btn"
                           type="button"
@@ -1735,11 +1904,20 @@ export function BookingModal() {
                             (step === 3 && (!date || !time)) ||
                             (step === 4 && (name.trim() === '' || phoneNumOnly.length !== 9 || !!phoneError))
                           }
-                          onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4 | 5)}
+                          onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4 | 5 | 6)}
                           className={`flex-1 py-3.5 rounded-full ${themeBg} text-black font-semibold uppercase tracking-wider text-xs hover:opacity-90 transition-all flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed`}
                         >
-                          <span>Siguiente</span>
-                          <ChevronRight size={14} />
+                          {step === 5 && isDepositCategory ? (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span>Realicé Abono</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Siguiente</span>
+                              <ChevronRight size={14} />
+                            </>
+                          )}
                         </button>
                       ) : (
                         <button
@@ -1752,10 +1930,10 @@ export function BookingModal() {
                           {isSubmitting ? (
                             <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            (category === 'peluqueria' || category === 'terapias') ? (
+                            isDepositCategory ? (
                               <>
-                                <CheckCircle2 size={14} />
-                                <span>Realice Abono</span>
+                                <Sparkles size={14} />
+                                <span>Confirmar Reserva</span>
                               </>
                             ) : (
                               <>

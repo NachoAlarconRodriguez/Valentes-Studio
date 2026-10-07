@@ -310,6 +310,19 @@ canvas {
   animation: circulate 5s linear infinite;
 }
 
+@keyframes borderBeamRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@utility animate-border-beam {
+  animation: borderBeamRotate 4s linear infinite;
+}
+
 p {
   font-family: var(--font-cormorant), serif;
 }

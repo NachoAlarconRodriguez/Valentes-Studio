@@ -551,6 +551,8 @@ export default function AdminPage() {
   const [isStaffCountryDropdownOpen, setIsStaffCountryDropdownOpen] = useState(false);
   const [staffPhoneError, setStaffPhoneError] = useState('');
   const [staffFormIsActive, setStaffFormIsActive] = useState(true);
+  const [staffFormCanAccessAdmin, setStaffFormCanAccessAdmin] = useState(true);
+  const [staffFormCanBlockSchedule, setStaffFormCanBlockSchedule] = useState(true);
   const [staffFormSubmitted, setStaffFormSubmitted] = useState(false);
   const [serviceFormSubmitted, setServiceFormSubmitted] = useState(false);
   const [profileFormSubmitted, setProfileFormSubmitted] = useState(false);
@@ -820,6 +822,8 @@ export default function AdminPage() {
     setIsStaffCountryDropdownOpen(false);
     setStaffPhoneError('');
     setStaffFormIsActive(true);
+    setStaffFormCanAccessAdmin(true);
+    setStaffFormCanBlockSchedule(true);
     setEditingStaff(null);
     setStaffFormSubmitted(false);
   };
@@ -836,6 +840,8 @@ export default function AdminPage() {
     setStaffFormAvatar(staff.avatar || '');
     setStaffFormImageUrl(staff.imageUrl || '');
     setStaffFormIsActive(staff.isActive !== false);
+    setStaffFormCanAccessAdmin(staff.canAccessAdmin !== false);
+    setStaffFormCanBlockSchedule(staff.canBlockSchedule !== false);
 
     // Parse phone number
     let code = '+56';
@@ -919,7 +925,9 @@ export default function AdminPage() {
       avatar: staffFormAvatar.trim() || initials,
       imageUrl: staffFormImageUrl.trim(),
       phone: finalPhone,
-      isActive: staffFormIsActive
+      isActive: staffFormIsActive,
+      canAccessAdmin: staffFormCanAccessAdmin,
+      canBlockSchedule: staffFormCanBlockSchedule
     };
 
     if (editingStaff) {
@@ -1332,6 +1340,14 @@ export default function AdminPage() {
             .maybeSingle();
 
           if (dbSpec && dbSpec.is_active !== false) {
+            // Verificar si el acceso al panel administrativo está bloqueado para este profesional
+            if (dbSpec.can_access_admin === false) {
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              setIsLoggedIn(false);
+              triggerNotification('Acceso denegado: El acceso a la administración ha sido bloqueado para tu cuenta.');
+              return;
+            }
             const userWithPhone = {
               id: dbSpec.id,
               name: dbSpec.name,
@@ -1343,7 +1359,8 @@ export default function AdminPage() {
               profileType: dbSpec.profile_type,
               assignedAgendas: dbSpec.assigned_agendas || ['barberia', 'peluqueria', 'terapias'],
               imageUrl: dbSpec.image_url,
-              phone: dbSpec.phone || undefined
+              phone: dbSpec.phone || undefined,
+              canBlockSchedule: dbSpec.can_block_schedule !== false
             };
             setCurrentUser(userWithPhone);
             if (userWithPhone.assignedAgendas && userWithPhone.assignedAgendas.length > 0) {
@@ -1434,6 +1451,14 @@ export default function AdminPage() {
           .maybeSingle();
 
         if (dbSpec && dbSpec.is_active !== false) {
+          // Verificar si el acceso al panel administrativo está bloqueado para este profesional
+          if (dbSpec.can_access_admin === false) {
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setIsLoggedIn(false);
+            triggerNotification('Acceso denegado: El acceso a la administración ha sido bloqueado para este profesional.');
+            return;
+          }
           const userWithPhone = {
             id: dbSpec.id,
             name: dbSpec.name,
@@ -1445,7 +1470,8 @@ export default function AdminPage() {
             profileType: dbSpec.profile_type,
             assignedAgendas: dbSpec.assigned_agendas || ['barberia', 'peluqueria', 'terapias'],
             imageUrl: dbSpec.image_url,
-            phone: dbSpec.phone || undefined
+            phone: dbSpec.phone || undefined,
+            canBlockSchedule: dbSpec.can_block_schedule !== false
           };
           setCurrentUser(userWithPhone);
           setIsLoggedIn(true);
@@ -2705,6 +2731,9 @@ export default function AdminPage() {
   const allowedBookings = currentUser && currentUser.profileType !== 'admin'
     ? bookings.filter(b => b.specialistName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
     : bookings;
+
+  // Permiso para bloquear y desbloquear horarios en la agenda (Admin siempre puede, o profesional con permiso activo)
+  const canCurrentUserBlock = currentUser?.profileType === 'admin' || (currentUser as any)?.canBlockSchedule !== false;
 
   // Filter bookings for dashboard metrics and graphs (excluding blocks, cancellations and no-shows)
   const dashboardBookings = allowedBookings.filter(b => {
@@ -4508,20 +4537,22 @@ export default function AdminPage() {
                                           <div className="font-semibold text-red-300 text-[11px]">Horario Bloqueado</div>
                                           <div className="text-[9px] text-red-400/70 italic">Bloqueo Administrativo</div>
                                           <div className="flex justify-end pt-1">
-                                            <button
-                                              disabled={isPast}
-                                              onClick={() => {
-                                                deleteBooking(booking.id);
-                                                triggerNotification(`Horario ${time} desbloqueado.`);
-                                              }}
-                                              className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
-                                                isPast 
-                                                  ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50' 
-                                                  : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer shadow-sm'
-                                              }`}
-                                            >
-                                              Desbloquear
-                                            </button>
+                                            {canCurrentUserBlock && (
+                                              <button
+                                                disabled={isPast}
+                                                onClick={() => {
+                                                  deleteBooking(booking.id);
+                                                  triggerNotification(`Horario ${time} desbloqueado.`);
+                                                }}
+                                                className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                                  isPast 
+                                                    ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50' 
+                                                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer shadow-sm'
+                                                }`}
+                                              >
+                                                Desbloquear
+                                              </button>
+                                            )}
                                           </div>
                                         </div>
                                       </td>
@@ -5073,32 +5104,34 @@ export default function AdminPage() {
                                         >
                                           Agendar
                                         </button>
-                                        <button
-                                          disabled={isPast}
-                                          onClick={() => {
-                                            addBooking({
-                                              clientName: 'Bloqueo Administrativo',
-                                              clientPhone: '-',
-                                              clientEmail: '',
-                                              category: activeBusinessTab,
-                                              serviceName: 'Bloqueo Administrativo',
-                                              price: '-',
-                                              specialistName: specialist.name,
-                                              date: targetDate,
-                                              time: time,
-                                              channel: 'Presencial',
-                                              status: 'bloqueado'
-                                            });
-                                            triggerNotification(`Horario ${time} bloqueado.`);
-                                          }}
-                                          className={`px-2.5 py-1.5 text-[9px] sm:text-[10px] font-bold rounded-lg border transition-all ${
-                                            isPast
-                                              ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
-                                              : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer shadow-sm'
-                                          }`}
-                                        >
-                                          Bloquear
-                                        </button>
+                                        {canCurrentUserBlock && (
+                                          <button
+                                            disabled={isPast}
+                                            onClick={() => {
+                                              addBooking({
+                                                clientName: 'Bloqueo Administrativo',
+                                                clientPhone: '-',
+                                                clientEmail: '',
+                                                category: activeBusinessTab,
+                                                serviceName: 'Bloqueo Administrativo',
+                                                price: '-',
+                                                specialistName: specialist.name,
+                                                date: targetDate,
+                                                time: time,
+                                                channel: 'Presencial',
+                                                status: 'bloqueado'
+                                              });
+                                              triggerNotification(`Horario ${time} bloqueado.`);
+                                            }}
+                                            className={`px-2.5 py-1.5 text-[9px] sm:text-[10px] font-bold rounded-lg border transition-all ${
+                                              isPast
+                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                : 'bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary border-white/10 cursor-pointer shadow-sm'
+                                            }`}
+                                          >
+                                            Bloquear
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   </td>
@@ -5174,15 +5207,19 @@ export default function AdminPage() {
                                   </span>
                                 </td>
                                 <td className="py-4.5 px-6 text-right">
-                                  <button
-                                    onClick={() => {
-                                      deleteBooking(booking.id);
-                                      triggerNotification(`Horario del ${formatDateToDMY(booking.date)} ${booking.time} desbloqueado.`);
-                                    }}
-                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary text-[10px] font-semibold rounded-lg border border-white/10 transition-all cursor-pointer inline-flex items-center space-x-1"
-                                  >
-                                    <span>Desbloquear</span>
-                                  </button>
+                                  {canCurrentUserBlock ? (
+                                    <button
+                                      onClick={() => {
+                                        deleteBooking(booking.id);
+                                        triggerNotification(`Horario del ${formatDateToDMY(booking.date)} ${booking.time} desbloqueado.`);
+                                      }}
+                                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 hover:text-white text-text-secondary text-[10px] font-semibold rounded-lg border border-white/10 transition-all cursor-pointer inline-flex items-center space-x-1"
+                                    >
+                                      <span>Desbloquear</span>
+                                    </button>
+                                  ) : (
+                                    <span className="text-[9px] text-text-secondary/40 italic">Solo admin</span>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -8422,22 +8459,36 @@ export default function AdminPage() {
                           className={`bg-[#0c0c0c] rounded-3xl overflow-hidden group shadow-xl transition-colors duration-300 cursor-pointer border ${staff.isActive !== false ? 'border-white/5 hover:border-gold/30' : 'border-white/[0.03] opacity-70'}`}
                         >
                           {/* Active / Inactive status indicator - top left corner */}
-                          <div className="absolute top-3 left-3 z-30 flex items-center space-x-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/10">
-                            {staff.isActive !== false ? (
-                              <>
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                                </span>
-                                <span className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">Activo</span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="relative flex h-2 w-2">
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white/30" />
-                                </span>
-                                <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider">Inactivo</span>
-                              </>
+                          <div className="absolute top-3 left-3 z-30 flex items-center space-x-1.5">
+                            <div className="flex items-center space-x-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/10">
+                              {staff.isActive !== false ? (
+                                <>
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                                  </span>
+                                  <span className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">Activo</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white/30" />
+                                  </span>
+                                  <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider">Inactivo</span>
+                                </>
+                              )}
+                            </div>
+                            {staff.canAccessAdmin === false && (
+                              <div className="flex items-center space-x-1 bg-red-950/80 backdrop-blur-sm rounded-full px-2 py-1 border border-red-500/40 text-red-400 shadow-sm" title="Acceso al panel bloqueado">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                <span className="text-[8px] font-bold uppercase tracking-wider">Panel Bloqueado</span>
+                              </div>
+                            )}
+                            {staff.canBlockSchedule === false && (
+                              <div className="flex items-center space-x-1 bg-amber-950/80 backdrop-blur-sm rounded-full px-2 py-1 border border-amber-500/40 text-amber-400 shadow-sm" title="Permiso de bloqueo de agenda desactivado">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span className="text-[8px] font-bold uppercase tracking-wider">Sin Bloqueo</span>
+                              </div>
                             )}
                           </div>
 
@@ -8892,11 +8943,13 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        {/* Estado Activo / Inactivo */}
+                        {/* Estado Activo / Inactivo y Acceso a Administración */}
                         <div className="space-y-2.5">
                           <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold font-sans">
                             Estado de la Cuenta
                           </label>
+
+                          {/* Switch 1: Habilitado para trabajar */}
                           <label className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer hover:bg-white/[0.01] ${
                             staffFormIsActive ? 'bg-gold/5 border-gold/30' : 'border-white/5 bg-black/20'
                           }`}>
@@ -8904,8 +8957,8 @@ export default function AdminPage() {
                               <span className="text-xs text-white font-medium">Habilitado para trabajar</span>
                               <span className="text-[9px] text-text-secondary mt-0.5">
                                 {staffFormIsActive 
-                                  ? 'Disponible para citas y con acceso a la administración' 
-                                  : 'Oculto en reservas y sin acceso a la administración'}
+                                  ? 'Disponible para citas y reservas en la web' 
+                                  : 'Oculto en el flujo de reservas para clientes'}
                               </span>
                             </div>
                             <input
@@ -8919,6 +8972,66 @@ export default function AdminPage() {
                             }`}>
                               <div className={`w-5 h-5 rounded-full bg-black shadow-md transform transition-transform duration-300 ${
                                 staffFormIsActive ? 'translate-x-4' : 'translate-x-0'
+                              }`} />
+                            </div>
+                          </label>
+
+                          {/* Switch 2: Acceso a la Administración */}
+                          <label className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer hover:bg-white/[0.01] ${
+                            staffFormCanAccessAdmin ? 'bg-gold/5 border-gold/30' : 'border-red-500/20 bg-red-500/5'
+                          }`}>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-white font-medium">Acceso a la Administración</span>
+                              <span className="text-[9px] text-text-secondary mt-0.5">
+                                {staffFormCanAccessAdmin 
+                                  ? 'Permite iniciar sesión y gestionar en el panel' 
+                                  : 'Bloqueado: no puede ingresar al panel de administración'}
+                              </span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={staffFormCanAccessAdmin}
+                              onChange={(e) => {
+                                if (currentUser && editingStaff && (currentUser.id === editingStaff.id || currentUser.email === editingStaff.email) && !e.target.checked) {
+                                  triggerNotification('No puedes bloquear tu propio acceso al panel de administración.');
+                                  return;
+                                }
+                                setStaffFormCanAccessAdmin(e.target.checked);
+                              }}
+                              className="sr-only"
+                            />
+                            <div className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${
+                              staffFormCanAccessAdmin ? 'bg-gold' : 'bg-white/10'
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full bg-black shadow-md transform transition-transform duration-300 ${
+                                staffFormCanAccessAdmin ? 'translate-x-4' : 'translate-x-0'
+                              }`} />
+                            </div>
+                          </label>
+
+                          {/* Switch 3: Bloqueo de Horarios en Agenda */}
+                          <label className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer hover:bg-white/[0.01] ${
+                            staffFormCanBlockSchedule ? 'bg-gold/5 border-gold/30' : 'border-amber-500/20 bg-amber-500/5'
+                          }`}>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-white font-medium">Permitir Bloqueo de Agenda</span>
+                              <span className="text-[9px] text-text-secondary mt-0.5">
+                                {staffFormCanBlockSchedule 
+                                  ? 'Habilitado para bloquear y desbloquear horas en su agenda' 
+                                  : 'Bloqueado: no puede bloquear ni cerrar horas en su agenda'}
+                              </span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={staffFormCanBlockSchedule}
+                              onChange={(e) => setStaffFormCanBlockSchedule(e.target.checked)}
+                              className="sr-only"
+                            />
+                            <div className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${
+                              staffFormCanBlockSchedule ? 'bg-gold' : 'bg-white/10'
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full bg-black shadow-md transform transition-transform duration-300 ${
+                                staffFormCanBlockSchedule ? 'translate-x-4' : 'translate-x-0'
                               }`} />
                             </div>
                           </label>
