@@ -20,6 +20,13 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
+      allowedOrigins: [
+        'jeffersonlopes.cl',
+        'www.jeffersonlopes.cl',
+        'valentes-studio.vercel.app',
+        'localhost:3000',
+        'localhost:3001'
+      ],
     },
   },
 };

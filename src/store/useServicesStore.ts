@@ -389,7 +389,27 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
 
       // Only update the specialists table if there are fields to update there
       if (Object.keys(payload).length > 0) {
-        await updateSpecialistAction(specialistId, payload);
+        let apiSuccess = false;
+        try {
+          const res = await fetch('/api/update-specialist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              specialistId,
+              email: updatedFields.email,
+              payload
+            })
+          });
+          if (res.ok) {
+            apiSuccess = true;
+          }
+        } catch (apiErr) {
+          console.warn('[updateSpecialist] API route failed, falling back to Server Action:', apiErr);
+        }
+
+        if (!apiSuccess) {
+          await updateSpecialistAction(specialistId, payload);
+        }
       }
 
       // Always update local state to reflect the save
