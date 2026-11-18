@@ -5,6 +5,7 @@ import {
   updateSpecialistAction, 
   deleteSpecialistAction 
 } from '@/app/admin/actions';
+import { useScheduleStore } from './useScheduleStore';
 
 export interface ServiceItem {
   id: string;
@@ -56,7 +57,15 @@ interface ServicesStore {
   toggleServiceActive: (category: string, serviceId: string) => Promise<void>;
   
   // Specialists Actions
-  addSpecialist: (category: string, specialist: Omit<Specialist, 'id'>) => Promise<void>;
+  addSpecialist: (
+    category: string,
+    specialist: Omit<Specialist, 'id'>,
+    options?: {
+      serviceIdsToAssign?: string[];
+      createAuthUser?: boolean;
+      accessRequestId?: number | string;
+    }
+  ) => Promise<{ id: string; tempPassword: string | null; updatedServiceIds: string[] }>;
   updateSpecialist: (category: string, specialistId: string, updatedFields: Partial<Specialist>) => Promise<void>;
   deleteSpecialist: (category: string, specialistId: string) => Promise<void>;
 }
@@ -337,24 +346,89 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
     }
   },
 
-  addSpecialist: async (category, specialist) => {
+  addSpecialist: async (category, specialist, options) => {
     const prefix = category.substring(0, 2);
     const id = `${prefix}_sp_${Date.now()}`;
-    const newSpecialist: Specialist = {
-      ...specialist,
-      id
-    };
 
     try {
-      await addSpecialistAction(category, id, specialist);
+      let finalId = id;
+      let tempPassword: string | null = null;
+      let updatedServiceIds: string[] = [];
+      let apiSuccess = false;
+
+      try {
+        const res = await fetch('/api/create-specialist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category,
+            id,
+            specialist,
+            serviceIdsToAssign: options?.serviceIdsToAssign,
+            createAuthUser: options?.createAuthUser,
+            accessRequestId: options?.accessRequestId
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+          finalId = data.id || id;
+          tempPassword = data.tempPassword || null;
+          updatedServiceIds = Array.isArray(data.updatedServiceIds) ? data.updatedServiceIds : [];
+          apiSuccess = true;
+        } else if (res.status >= 400 && res.status < 500) {
+          // Error de validación (ej. 409 correo o nombre duplicado), no reintentar con Server Action
+          throw new Error(data.error || 'No se pudo crear el profesional.');
+        } else if (data.error) {
+          throw new Error(data.error);
+        }
+      } catch (apiErr: any) {
+        // Si es un error de negocio explícito lanzado arriba, propagarlo directamente
+        if (
+          apiErr?.message &&
+          (apiErr.message.includes('Ya existe') ||
+            apiErr.message.includes('obligatorios') ||
+            apiErr.message.includes('Error al'))
+        ) {
+          throw apiErr;
+        }
+        console.warn('[addSpecialist] API route failed, falling back to Server Action:', apiErr);
+      }
+
+      if (!apiSuccess) {
+        const actionResult = await addSpecialistAction(category, id, specialist, options);
+        finalId = actionResult.id || id;
+        tempPassword = actionResult.tempPassword || null;
+        updatedServiceIds = actionResult.updatedServiceIds || [];
+      }
+
+      const newSpecialist: Specialist = {
+        ...specialist,
+        id: finalId
+      };
 
       set((state) => {
-        const updatedSpecialists = [...state.specialistsList, newSpecialist];
+        const exists = state.specialistsList.some((sp) => sp.id === finalId);
+        const updatedSpecialists = exists
+          ? state.specialistsList.map((sp) => (sp.id === finalId ? newSpecialist : sp))
+          : [...state.specialistsList, newSpecialist];
+
         const newServicesData: any = {};
         Object.keys(state.servicesData).forEach((cat) => {
           const sec = state.servicesData[cat];
           newServicesData[cat] = {
             ...sec,
+            services: sec.services.map((srv) => {
+              if (updatedServiceIds.includes(srv.id)) {
+                const currentIds = Array.isArray(srv.specialistIds) ? srv.specialistIds : [];
+                return {
+                  ...srv,
+                  specialistIds: Array.from(new Set([...currentIds, finalId]))
+                };
+              }
+              return srv;
+            }),
             specialists: updatedSpecialists.filter((sp) => sp.assignedAgendas.includes(cat as any))
           };
         });
@@ -364,6 +438,15 @@ export const useServicesStore = create<ServicesStore>((set, get) => ({
           servicesData: newServicesData
         };
       });
+
+      // Sincronizar inmediatamente workShifts y specialistNames en useScheduleStore
+      try {
+        await useScheduleStore.getState().fetchSchedules();
+      } catch (schedErr) {
+        console.warn('[addSpecialist] No se pudo refrescar horarios automáticamente:', schedErr);
+      }
+
+      return { id: finalId, tempPassword, updatedServiceIds };
     } catch (err: any) {
       console.error('Error adding specialist:', err);
       throw err;

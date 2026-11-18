@@ -532,6 +532,7 @@ export default function AdminPage() {
   const [activeStaffCategoryFilter, setActiveStaffCategoryFilter] = useState<'todos' | 'barberia' | 'peluqueria' | 'terapias'>('todos');
   const [isStaffDrawerOpen, setIsStaffDrawerOpen] = useState(false);
   const [isUploadingStaffImage, setIsUploadingStaffImage] = useState(false);
+  const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [previewFailed, setPreviewFailed] = useState(false);
@@ -544,6 +545,7 @@ export default function AdminPage() {
   const [staffFormBio, setStaffFormBio] = useState('');
   const [staffFormProfileType, setStaffFormProfileType] = useState<'barber' | 'estilista' | 'terapeuta' | 'mixto' | 'admin'>('barber');
   const [staffFormAgendas, setStaffFormAgendas] = useState<('barberia' | 'peluqueria' | 'terapias')[]>(['barberia']);
+  const [staffFormServices, setStaffFormServices] = useState<string[]>([]);
   const [staffFormAvatar, setStaffFormAvatar] = useState('');
   const [staffFormImageUrl, setStaffFormImageUrl] = useState('');
   const [staffFormPhone, setStaffFormPhone] = useState('');
@@ -631,84 +633,67 @@ export default function AdminPage() {
     try {
       setApprovalLoading(true);
       
-      const { id, first_name, last_name, email } = requestToApprove;
-      const tempPassword = `TempValentes_${Math.floor(100000 + Math.random() * 900000)}`;
+      const { id, first_name, last_name, email, phone } = requestToApprove;
 
-      // 1. Create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: tempPassword,
-        options: {
-          data: {
-            require_password_change: true,
-            firstName: first_name,
-            lastName: last_name
-          }
-        }
-      });
-
-      if (authError) {
-        triggerNotification(`Error al crear usuario de acceso: ${authError.message}`);
-        setApprovalLoading(false);
-        return;
-      }
-
-      // 2. Add the specialist profile using the store action
+      // Determinar categoría principal y rol según el perfil seleccionado
       const primaryCategory = approveAgendas[0] || 'barberia';
       
-      let inferredRole = 'Colaborador';
-      let inferredSpecialty = 'Especialista';
+      let inferredRole = approveRole.trim() || 'Colaborador';
+      let inferredSpecialty = approveSpecialty.trim() || 'Especialista';
 
       if (approveProfileType === 'barber') {
-        inferredRole = 'Barbero';
-        inferredSpecialty = 'Barbería';
+        if (!approveRole.trim()) inferredRole = 'Barbero';
+        if (!approveSpecialty.trim()) inferredSpecialty = 'Barbería';
       } else if (approveProfileType === 'estilista') {
-        inferredRole = 'Estilista';
-        inferredSpecialty = 'Estilismo';
+        if (!approveRole.trim()) inferredRole = 'Estilista';
+        if (!approveSpecialty.trim()) inferredSpecialty = 'Estilismo';
       } else if (approveProfileType === 'terapeuta') {
-        inferredRole = 'Terapeuta';
-        inferredSpecialty = 'Terapias Holísticas';
+        if (!approveRole.trim()) inferredRole = 'Terapeuta';
+        if (!approveSpecialty.trim()) inferredSpecialty = 'Terapias Holísticas';
       } else if (approveProfileType === 'mixto') {
-        inferredRole = 'Especialista';
-        inferredSpecialty = 'Multidisciplinario';
+        if (!approveRole.trim()) inferredRole = 'Especialista';
+        if (!approveSpecialty.trim()) inferredSpecialty = 'Multidisciplinario';
       } else if (approveProfileType === 'admin') {
-        inferredRole = 'Administrador';
-        inferredSpecialty = 'Gestión';
+        if (!approveRole.trim()) inferredRole = 'Administrador';
+        if (!approveSpecialty.trim()) inferredSpecialty = 'Gestión';
       }
 
       const specialistData = {
-        name: `${first_name} ${last_name}`,
+        name: `${first_name} ${last_name}`.trim(),
         role: inferredRole,
         specialty: inferredSpecialty,
         bio: '',
-        avatar: `${first_name[0]}${last_name[0]}`.toUpperCase(),
+        avatar: `${first_name?.[0] || ''}${last_name?.[0] || ''}`.toUpperCase(),
         email: email.trim(),
         profileType: approveProfileType,
         assignedAgendas: approveAgendas,
-        imageUrl: ''
+        imageUrl: '',
+        phone: phone || '',
+        isActive: true,
+        canAccessAdmin: true,
+        canBlockSchedule: true
       };
 
-      await addSpecialist(primaryCategory, specialistData);
-
-      // 3. Update the request status to 'approved'
-      const { error: updateError } = await supabase
-        .from('access_requests')
-        .update({ status: 'approved' })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
+      // Crea usuario en Supabase Auth en el servidor (sin cerrar la sesión del Admin),
+      // inserta el especialista, sus turnos, lo vincula a los servicios y aprueba la solicitud
+      const result = await addSpecialist(primaryCategory, specialistData, {
+        createAuthUser: true,
+        accessRequestId: id
+      });
 
       setRequestToApprove(null);
-      setApprovedCredentials({
-        email: email,
-        tempPass: tempPassword
-      });
+      if (result?.tempPassword) {
+        setApprovedCredentials({
+          email: email.trim(),
+          tempPass: result.tempPassword
+        });
+      }
 
       fetchPendingRequests();
       triggerNotification(`Solicitud de ${first_name} aprobada con éxito.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error in approving access request:', err);
-      triggerNotification('Ocurrió un error al procesar la aprobación.');
+      triggerNotification(err?.message || 'Ocurrió un error al procesar la aprobación.');
     } finally {
       setApprovalLoading(false);
     }
@@ -807,6 +792,19 @@ export default function AdminPage() {
     resetServiceForm();
   };
 
+  const getDefaultServicesForAgendas = (agendas: ('barberia' | 'peluqueria' | 'terapias')[]) => {
+    const ids: string[] = [];
+    agendas.forEach((cat) => {
+      const catServices = servicesData[cat]?.services || [];
+      catServices.forEach((srv) => {
+        if (srv.isActive !== false && !ids.includes(srv.id)) {
+          ids.push(srv.id);
+        }
+      });
+    });
+    return ids;
+  };
+
   const resetStaffForm = () => {
     setStaffFormName('');
     setStaffFormEmail('');
@@ -815,6 +813,7 @@ export default function AdminPage() {
     setStaffFormBio('');
     setStaffFormProfileType('barber');
     setStaffFormAgendas(['barberia']);
+    setStaffFormServices(getDefaultServicesForAgendas(['barberia']));
     setStaffFormAvatar('');
     setStaffFormImageUrl('');
     setStaffFormPhone('');
@@ -851,12 +850,12 @@ export default function AdminPage() {
       const match = ['+56', '+54', '+51', '+57', '+34', '+52', '+598'].find(c => phoneVal.startsWith(c));
       if (match) {
         code = match;
-        rawNum = phoneVal.substring(match.length);
+        rawNum = phoneVal.substring(match.length).replace(/\D/g, '').slice(0, 9);
       } else {
-        rawNum = phoneVal;
+        rawNum = phoneVal.replace(/\D/g, '').slice(0, 9);
       }
     } else {
-      rawNum = phoneVal;
+      rawNum = phoneVal.replace(/\D/g, '').slice(0, 9);
     }
     setStaffFormCountryCode(code);
     setStaffFormPhone(rawNum);
@@ -868,8 +867,10 @@ export default function AdminPage() {
 
   const handleStaffFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingStaff || isUploadingStaffImage) return;
+
     setStaffFormSubmitted(true);
-    if (!staffFormName || !staffFormEmail || !staffFormProfileType || !staffFormPhone) {
+    if (!staffFormName.trim() || !staffFormEmail.trim() || !staffFormProfileType || !staffFormPhone.trim()) {
       triggerNotification('Por favor, completa los campos obligatorios.');
       return;
     }
@@ -889,30 +890,25 @@ export default function AdminPage() {
     else if (staffFormProfileType === 'mixto' && staffFormAgendas.length > 0) primaryCategory = staffFormAgendas[0];
     else if (staffFormProfileType === 'admin') primaryCategory = 'peluqueria'; // default
 
-    const initials = staffFormName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const initials = staffFormName.trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
-    let inferredRole = staffFormRole.trim() || 'Colaborador';
-    let inferredSpecialty = staffFormSpecialty.trim() || 'Especialista';
+    const defaultRoleByType: Record<string, string> = {
+      barber: 'Barbero',
+      estilista: 'Estilista',
+      terapeuta: 'Terapeuta',
+      mixto: 'Especialista',
+      admin: 'Administrador'
+    };
+    const defaultSpecialtyByType: Record<string, string> = {
+      barber: 'Barbería',
+      estilista: 'Estilismo',
+      terapeuta: 'Terapias Holísticas',
+      mixto: 'Multidisciplinario',
+      admin: 'Gestión'
+    };
 
-    // If creating a new staff, or if editing and the profile type changed, infer it
-    if (!editingStaff || (editingStaff && editingStaff.profileType !== staffFormProfileType)) {
-      if (staffFormProfileType === 'barber') {
-        inferredRole = 'Barbero';
-        inferredSpecialty = 'Barbería';
-      } else if (staffFormProfileType === 'estilista') {
-        inferredRole = 'Estilista';
-        inferredSpecialty = 'Estilismo';
-      } else if (staffFormProfileType === 'terapeuta') {
-        inferredRole = 'Terapeuta';
-        inferredSpecialty = 'Terapias Holísticas';
-      } else if (staffFormProfileType === 'mixto') {
-        inferredRole = 'Especialista';
-        inferredSpecialty = 'Multidisciplinario';
-      } else if (staffFormProfileType === 'admin') {
-        inferredRole = 'Administrador';
-        inferredSpecialty = 'Gestión';
-      }
-    }
+    const inferredRole = staffFormRole.trim() || defaultRoleByType[staffFormProfileType] || 'Colaborador';
+    const inferredSpecialty = staffFormSpecialty.trim() || defaultSpecialtyByType[staffFormProfileType] || 'Especialista';
 
     const staffPayload = {
       name: staffFormName.trim(),
@@ -930,57 +926,71 @@ export default function AdminPage() {
       canBlockSchedule: staffFormCanBlockSchedule
     };
 
-    if (editingStaff) {
-      try {
-        const targetCat = (editingStaff as any).primaryCategory || 'barberia';
-        await updateSpecialist(targetCat, editingStaff.id, staffPayload as any);
+    setIsSavingStaff(true);
+    try {
+      if (editingStaff) {
+        try {
+          const targetCat = (editingStaff as any).primaryCategory || 'barberia';
+          await updateSpecialist(targetCat, editingStaff.id, staffPayload as any);
 
-        // Extra guarantee: persist imageUrl directly via API route (bypasses Server Action limitations)
-        if (staffFormImageUrl.trim()) {
-          try {
-            const res = await fetch('/api/update-specialist', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                specialistId: editingStaff.id,
-                email: staffFormEmail.trim(),
-                imageUrl: staffFormImageUrl.trim()
-              })
-            });
-            const result = await res.json();
-            if (result.warning) {
-              console.warn('[update-specialist API]', result.warning);
+          // Extra guarantee: persist imageUrl directly via API route (bypasses Server Action limitations)
+          if (staffFormImageUrl.trim()) {
+            try {
+              const res = await fetch('/api/update-specialist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  specialistId: editingStaff.id,
+                  email: staffFormEmail.trim(),
+                  imageUrl: staffFormImageUrl.trim()
+                })
+              });
+              const result = await res.json();
+              if (result.warning) {
+                console.warn('[update-specialist API]', result.warning);
+              }
+            } catch (apiErr) {
+              console.error('[update-specialist API] Error:', apiErr);
             }
-          } catch (apiErr) {
-            console.error('[update-specialist API] Error:', apiErr);
           }
+
+          setFailedImages(prev => {
+            const next = { ...prev };
+            delete next[editingStaff.id];
+            if (editingStaff.email) delete next[editingStaff.email];
+            return next;
+          });
+          triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
+        } catch (err: any) {
+          console.error('Error updating specialist:', err);
+          triggerNotification(err?.message || 'Error al guardar los cambios en la base de datos.');
+          return; // Stop here, do not close the drawer
         }
+      } else {
+        try {
+          const result = await addSpecialist(primaryCategory, staffPayload as any, {
+            serviceIdsToAssign: staffFormServices,
+            createAuthUser: staffFormCanAccessAdmin
+          });
+          if (result?.tempPassword) {
+            setApprovedCredentials({
+              email: staffFormEmail.trim().toLowerCase(),
+              tempPass: result.tempPassword
+            });
+          }
+          triggerNotification(`Profesional "${staffFormName}" creado con éxito.`);
+        } catch (err: any) {
+          console.error('Error adding specialist:', err);
+          triggerNotification(err?.message || 'Error al guardar el nuevo profesional en la base de datos.');
+          return; // Stop here, do not close the drawer
+        }
+      }
 
-        setFailedImages(prev => {
-          const next = { ...prev };
-          delete next[editingStaff.id];
-          if (editingStaff.email) delete next[editingStaff.email];
-          return next;
-        });
-        triggerNotification(`Profesional "${staffFormName}" actualizado con éxito.`);
-      } catch (err: any) {
-        console.error('Error updating specialist:', err);
-        triggerNotification(err?.message || 'Error al guardar los cambios en la base de datos.');
-        return; // Stop here, do not close the drawer
-      }
-    } else {
-      try {
-        await addSpecialist(primaryCategory, staffPayload as any);
-        triggerNotification(`Profesional "${staffFormName}" creado con éxito.`);
-      } catch (err: any) {
-        console.error('Error adding specialist:', err);
-        triggerNotification(err?.message || 'Error al guardar el nuevo profesional en la base de datos.');
-        return; // Stop here, do not close the drawer
-      }
+      setIsStaffDrawerOpen(false);
+      resetStaffForm();
+    } finally {
+      setIsSavingStaff(false);
     }
-
-    setIsStaffDrawerOpen(false);
-    resetStaffForm();
   };
 
   // Login State
@@ -8874,10 +8884,15 @@ export default function AdminPage() {
                               const type = val as any;
                               setStaffFormProfileType(type);
                               // Auto-configure agenda assignments based on role
-                              if (type === 'barber') setStaffFormAgendas(['barberia']);
-                              else if (type === 'estilista') setStaffFormAgendas(['peluqueria']);
-                              else if (type === 'terapeuta') setStaffFormAgendas(['terapias']);
-                              else if (type === 'admin') setStaffFormAgendas(['barberia', 'peluqueria', 'terapias']);
+                              let nextAgendas: ('barberia' | 'peluqueria' | 'terapias')[] = staffFormAgendas;
+                              if (type === 'barber') nextAgendas = ['barberia'];
+                              else if (type === 'estilista') nextAgendas = ['peluqueria'];
+                              else if (type === 'terapeuta') nextAgendas = ['terapias'];
+                              else if (type === 'admin') nextAgendas = ['barberia', 'peluqueria', 'terapias'];
+                              setStaffFormAgendas(nextAgendas);
+                              if (!editingStaff) {
+                                setStaffFormServices(getDefaultServicesForAgendas(nextAgendas));
+                              }
                             }}
                             options={[
                               { value: 'barber', label: 'Barber (Solo Barbería)' },
@@ -8891,6 +8906,62 @@ export default function AdminPage() {
                                 ? 'border-red-500/80 focus:border-red-500'
                                 : 'border-white/10 focus:border-gold/30'
                             }`}
+                          />
+                        </div>
+
+                        {/* Cargo / Rol & Especialidad */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                              Cargo / Rol
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={
+                                staffFormProfileType === 'barber'
+                                  ? 'Ej. Barbero'
+                                  : staffFormProfileType === 'estilista'
+                                  ? 'Ej. Estilista'
+                                  : staffFormProfileType === 'terapeuta'
+                                  ? 'Ej. Terapeuta'
+                                  : 'Ej. Especialista'
+                              }
+                              value={staffFormRole}
+                              onChange={(e) => setStaffFormRole(e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 focus:border-gold/30 rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                              Especialidad
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={
+                                staffFormProfileType === 'barber'
+                                  ? 'Ej. Barbería & Navaja'
+                                  : staffFormProfileType === 'estilista'
+                                  ? 'Ej. Coloración & Corte'
+                                  : 'Ej. Terapias Holísticas'
+                              }
+                              value={staffFormSpecialty}
+                              onChange={(e) => setStaffFormSpecialty(e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 focus:border-gold/30 rounded-xl py-3 px-4 text-xs text-white focus:outline-none transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Biografía */}
+                        <div className="space-y-1">
+                          <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                            Biografía / Reseña
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Breve descripción de la trayectoria y especialidad del profesional..."
+                            value={staffFormBio}
+                            onChange={(e) => setStaffFormBio(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 focus:border-gold/30 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none transition-colors resize-none"
                           />
                         </div>
 
@@ -8922,10 +8993,12 @@ export default function AdminPage() {
                                     checked={isChecked}
                                     onChange={() => {
                                       if (isDisabled) return;
-                                      if (isChecked) {
-                                        setStaffFormAgendas(prev => prev.filter(id => id !== ag.id));
-                                      } else {
-                                        setStaffFormAgendas(prev => [...prev, ag.id as any]);
+                                      const nextAgendas = isChecked
+                                        ? staffFormAgendas.filter(id => id !== ag.id)
+                                        : [...staffFormAgendas, ag.id as any];
+                                      setStaffFormAgendas(nextAgendas);
+                                      if (!editingStaff) {
+                                        setStaffFormServices(getDefaultServicesForAgendas(nextAgendas));
                                       }
                                     }}
                                     className="sr-only"
@@ -8942,6 +9015,94 @@ export default function AdminPage() {
                             })}
                           </div>
                         </div>
+
+                        {/* Servicios Habilitados para el Nuevo Profesional */}
+                        {!editingStaff && (
+                          <div className="space-y-2.5">
+                            {(() => {
+                              const availableServices = staffFormAgendas.flatMap((cat) =>
+                                (servicesData[cat]?.services || [])
+                                  .filter((s) => s.isActive !== false)
+                                  .map((s) => ({ ...s, category: cat }))
+                              );
+                              const allSelected =
+                                availableServices.length > 0 &&
+                                availableServices.every((s) => staffFormServices.includes(s.id));
+
+                              return (
+                                <>
+                                  <div className="flex items-center justify-between">
+                                    <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
+                                      Servicios Habilitados ({staffFormServices.length}/{availableServices.length})
+                                    </label>
+                                    {availableServices.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (allSelected) {
+                                            setStaffFormServices([]);
+                                          } else {
+                                            setStaffFormServices(availableServices.map((s) => s.id));
+                                          }
+                                        }}
+                                        className="text-[9px] uppercase tracking-wider font-bold text-gold hover:underline cursor-pointer"
+                                      >
+                                        {allSelected ? 'Desmarcar todos' : 'Seleccionar todos'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {availableServices.length === 0 ? (
+                                    <p className="text-[10px] text-text-secondary italic py-1">
+                                      No hay servicios activos en las agendas seleccionadas.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                      {availableServices.map((srv) => {
+                                        const isSrvChecked = staffFormServices.includes(srv.id);
+                                        return (
+                                          <label
+                                            key={srv.id}
+                                            className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                              isSrvChecked
+                                                ? 'bg-gold/5 border-gold/30'
+                                                : 'border-white/5 hover:bg-white/[0.01]'
+                                            }`}
+                                          >
+                                            <span className={`text-xs truncate pr-2 ${isSrvChecked ? 'text-white' : 'text-white/60'}`}>
+                                              {srv.name}
+                                            </span>
+                                            <input
+                                              type="checkbox"
+                                              checked={isSrvChecked}
+                                              onChange={() => {
+                                                setStaffFormServices((prev) =>
+                                                  isSrvChecked
+                                                    ? prev.filter((id) => id !== srv.id)
+                                                    : [...prev, srv.id]
+                                                );
+                                              }}
+                                              className="sr-only"
+                                            />
+                                            <div
+                                              className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all flex-shrink-0 ${
+                                                isSrvChecked
+                                                  ? 'bg-gold border-gold text-black'
+                                                  : 'border-white/20 bg-black/40'
+                                              }`}
+                                            >
+                                              {isSrvChecked && <Check size={10} className="stroke-[3]" />}
+                                            </div>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
 
                         {/* Estado Activo / Inactivo y Acceso a Administración */}
                         <div className="space-y-2.5">
@@ -9109,15 +9270,21 @@ export default function AdminPage() {
                         Cancelar
                       </button>
                       <button
-                        disabled={isUploadingStaffImage}
+                        disabled={isUploadingStaffImage || isSavingStaff}
                         onClick={handleStaffFormSubmit}
                         className={`flex-1 py-3.5 rounded-full font-bold uppercase tracking-widest text-[9px] transition-colors cursor-pointer ${
-                          isUploadingStaffImage 
+                          isUploadingStaffImage || isSavingStaff
                             ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed opacity-50' 
                             : 'bg-gold hover:bg-gold/90 text-black'
                         }`}
                       >
-                        {isUploadingStaffImage ? 'Subiendo...' : (editingStaff ? 'Guardar Cambios' : 'Añadir Profesional')}
+                        {isUploadingStaffImage
+                          ? 'Subiendo...'
+                          : isSavingStaff
+                          ? 'Guardando...'
+                          : editingStaff
+                          ? 'Guardar Cambios'
+                          : 'Añadir Profesional'}
                       </button>
                     </div>
                   </motion.div>
@@ -9291,20 +9458,30 @@ export default function AdminPage() {
                       const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                       const dayLabel = dayNames[dayNum];
                       
-                      // Fetch shift from store
+                      // Fetch shift from store (con fallback al turno general 'todos' si aún no tiene turnos personalizados por categoría)
                       const specialistShifts = workShifts[selectedScheduleStaffId] || [];
-                      const shift = specialistShifts.find(
-                        (s) => s.dayOfWeek === dayNum && s.business === activeScheduleBusinessFilter
-                      ) || {
-                        dayOfWeek: dayNum,
-                        isActive: activeScheduleBusinessFilter === 'todos' ? dayNum !== 0 : false,
-                        startTime: '09:00',
-                        endTime: '18:00',
-                        hasBreak: activeScheduleBusinessFilter === 'todos' ? dayNum !== 0 && dayNum !== 6 : false,
-                        breakStartTime: '13:00',
-                        breakEndTime: '14:00',
-                        business: activeScheduleBusinessFilter
-                      };
+                      const hasCategoryShifts =
+                        activeScheduleBusinessFilter !== 'todos'
+                          ? specialistShifts.some((s) => s.business === activeScheduleBusinessFilter)
+                          : false;
+                      const shift =
+                        specialistShifts.find(
+                          (s) => s.dayOfWeek === dayNum && s.business === activeScheduleBusinessFilter
+                        ) ||
+                        (!hasCategoryShifts
+                          ? specialistShifts.find(
+                              (s) => s.dayOfWeek === dayNum && (s.business === 'todos' || s.business === 'general')
+                            )
+                          : undefined) || {
+                          dayOfWeek: dayNum,
+                          isActive: dayNum !== 0,
+                          startTime: '09:00',
+                          endTime: dayNum === 6 ? '13:00' : '18:00',
+                          hasBreak: dayNum !== 0 && dayNum !== 6,
+                          breakStartTime: '13:00',
+                          breakEndTime: '14:00',
+                          business: activeScheduleBusinessFilter
+                        };
 
                       const handleToggleActive = (checked: boolean) => {
                         updateWorkShift(selectedScheduleStaffId, dayNum, { isActive: checked }, activeScheduleBusinessFilter);

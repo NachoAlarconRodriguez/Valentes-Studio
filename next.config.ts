@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
       allowedOrigins: [
+        'valentes.cl',
+        'www.valentes.cl',
+        'almabela.cl',
+        'www.almabela.cl',
         'jeffersonlopes.cl',
         'www.jeffersonlopes.cl',
         'valentes-studio.vercel.app',

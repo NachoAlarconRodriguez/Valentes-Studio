@@ -52,11 +52,29 @@ export async function POST(request: Request) {
 
     // Try update by ID first
     if (specialistId) {
-      const { data: dataById, error: errById } = await supabase
+      let { data: dataById, error: errById } = await supabase
         .from('specialists')
         .update(updatePayload)
         .eq('id', specialistId)
         .select('id');
+
+      if (
+        errById &&
+        (errById.message?.includes('can_access_admin') ||
+          errById.message?.includes('can_block_schedule') ||
+          (errById as any).code === '42703' ||
+          (errById as any).code === 'PGRST204')
+      ) {
+        delete updatePayload.can_access_admin;
+        delete updatePayload.can_block_schedule;
+        const retry = await supabase
+          .from('specialists')
+          .update(updatePayload)
+          .eq('id', specialistId)
+          .select('id');
+        dataById = retry.data;
+        errById = retry.error;
+      }
 
       if (errById) {
         console.error('[update-specialist] Error updating by ID:', errById);
@@ -69,11 +87,29 @@ export async function POST(request: Request) {
     // Fallback: try update by email
     const targetEmail = email || updatePayload.email;
     if (!updated && targetEmail) {
-      const { data: dataByEmail, error: errByEmail } = await supabase
+      let { data: dataByEmail, error: errByEmail } = await supabase
         .from('specialists')
         .update(updatePayload)
         .eq('email', targetEmail)
         .select('id');
+
+      if (
+        errByEmail &&
+        (errByEmail.message?.includes('can_access_admin') ||
+          errByEmail.message?.includes('can_block_schedule') ||
+          (errByEmail as any).code === '42703' ||
+          (errByEmail as any).code === 'PGRST204')
+      ) {
+        delete updatePayload.can_access_admin;
+        delete updatePayload.can_block_schedule;
+        const retry = await supabase
+          .from('specialists')
+          .update(updatePayload)
+          .eq('email', targetEmail)
+          .select('id');
+        dataByEmail = retry.data;
+        errByEmail = retry.error;
+      }
 
       if (errByEmail) {
         console.error('[update-specialist] Error updating by email:', errByEmail);

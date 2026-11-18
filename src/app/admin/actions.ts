@@ -79,7 +79,16 @@ export async function uploadImageAction(formData: FormData): Promise<string> {
   return publicUrlData.publicUrl;
 }
 
-export async function addSpecialistAction(category: string, id: string, specialist: any): Promise<void> {
+export async function addSpecialistAction(
+  category: string,
+  id: string,
+  specialist: any,
+  options?: {
+    serviceIdsToAssign?: string[];
+    createAuthUser?: boolean;
+    accessRequestId?: number | string;
+  }
+): Promise<{ id: string; tempPassword: string | null; updatedServiceIds: string[] }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -88,20 +97,77 @@ export async function addSpecialistAction(category: string, id: string, speciali
   }
 
   const supabase = createClient(url, serviceRoleKey, {
-    auth: { persistSession: false }
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   });
 
-  // 1. Insert specialist
+  const cleanName = String(specialist.name || '').trim();
+  const cleanEmail = String(specialist.email || '').trim().toLowerCase();
+  const assignedAgendas: string[] =
+    Array.isArray(specialist.assignedAgendas) && specialist.assignedAgendas.length > 0
+      ? specialist.assignedAgendas
+      : [category || 'barberia'];
+
+  // 1. Create or update Auth user without affecting Admin session
+  let tempPassword: string | null = null;
+  let newlyCreatedAuthUserId: string | null = null;
+  const shouldCreateAuth = options?.createAuthUser !== false && specialist.canAccessAdmin !== false && Boolean(cleanEmail);
+
+  if (shouldCreateAuth) {
+    tempPassword = `TempValentes_${Math.floor(100000 + Math.random() * 900000)}`;
+    const nameParts = cleanName.split(/\s+/);
+    const firstName = nameParts[0] || cleanName;
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const { data: createdAuth, error: createAuthErr } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: {
+        require_password_change: true,
+        firstName,
+        lastName
+      }
+    });
+
+    if (createAuthErr) {
+      const errMsgLower = (createAuthErr.message || '').toLowerCase();
+      if (errMsgLower.includes('already') || errMsgLower.includes('registered') || errMsgLower.includes('exists') || (createAuthErr as any).status === 422) {
+        const { data: usersList } = await supabase.auth.admin.listUsers();
+        const existingAuthUser = usersList?.users?.find((u) => u.email?.toLowerCase() === cleanEmail);
+        if (existingAuthUser) {
+          await supabase.auth.admin.updateUserById(existingAuthUser.id, {
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: {
+              ...(existingAuthUser.user_metadata || {}),
+              require_password_change: true,
+              firstName,
+              lastName
+            }
+          });
+        }
+      } else {
+        throw new Error(`Error al crear usuario de acceso: ${createAuthErr.message}`);
+      }
+    } else if (createdAuth?.user?.id) {
+      newlyCreatedAuthUserId = createdAuth.user.id;
+    }
+  }
+
+  // 2. Insert specialist
   const insertData: any = {
     id,
-    name: specialist.name,
+    name: cleanName,
     role: specialist.role,
     specialty: specialist.specialty,
     bio: specialist.bio,
     avatar: specialist.avatar,
-    email: specialist.email,
+    email: cleanEmail,
     profile_type: specialist.profileType,
-    assigned_agendas: specialist.assignedAgendas,
+    assigned_agendas: assignedAgendas,
     image_url: specialist.imageUrl || '',
     phone: specialist.phone || '',
     is_active: specialist.isActive !== false,
@@ -112,7 +178,13 @@ export async function addSpecialistAction(category: string, id: string, speciali
   let { error: specError } = await supabase.from('specialists').insert(insertData);
 
   // Fallback si alguna de las nuevas columnas aún no se ha creado en la base de datos
-  if (specError && (specError.message?.includes('can_access_admin') || specError.message?.includes('can_block_schedule') || (specError as any).code === '42703')) {
+  if (
+    specError &&
+    (specError.message?.includes('can_access_admin') ||
+      specError.message?.includes('can_block_schedule') ||
+      (specError as any).code === '42703' ||
+      (specError as any).code === 'PGRST204')
+  ) {
     delete insertData.can_access_admin;
     delete insertData.can_block_schedule;
     const retry = await supabase.from('specialists').insert(insertData);
@@ -121,10 +193,13 @@ export async function addSpecialistAction(category: string, id: string, speciali
 
   if (specError) {
     console.error('Error inserting specialist in Server Action:', specError);
+    if (newlyCreatedAuthUserId) {
+      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => {});
+    }
     throw new Error(specError.message);
   }
 
-  // 2. Create default work shifts for the new specialist
+  // 3. Create default work shifts for the new specialist
   const shiftsToInsert = [];
   // Mon-Fri active
   for (let i = 1; i <= 5; i++) {
@@ -168,8 +243,60 @@ export async function addSpecialistAction(category: string, id: string, speciali
   const { error: shiftsError } = await supabase.from('work_shifts').insert(shiftsToInsert);
   if (shiftsError) {
     console.error('Error inserting default shifts in Server Action:', shiftsError);
+    await supabase.from('specialists').delete().eq('id', id);
+    if (newlyCreatedAuthUserId) {
+      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => {});
+    }
     throw new Error(shiftsError.message);
   }
+
+  // 4. Additive assignment to services.specialist_ids
+  const updatedServiceIds: string[] = [];
+  try {
+    let targetServices: any[] = [];
+    if (Array.isArray(options?.serviceIdsToAssign)) {
+      if (options!.serviceIdsToAssign.length > 0) {
+        const { data: srvData } = await supabase
+          .from('services')
+          .select('id, specialist_ids')
+          .in('id', options!.serviceIdsToAssign);
+        targetServices = srvData || [];
+      }
+    } else {
+      const { data: srvData } = await supabase
+        .from('services')
+        .select('id, specialist_ids, is_active')
+        .in('category', assignedAgendas);
+      targetServices = (srvData || []).filter((s: any) => s.is_active !== false);
+    }
+
+    for (const srv of targetServices) {
+      const currentIds: string[] = Array.isArray(srv.specialist_ids) ? srv.specialist_ids : [];
+      if (!currentIds.includes(id)) {
+        const nextIds = Array.from(new Set([...currentIds, id]));
+        const { error: srvUpdateErr } = await supabase
+          .from('services')
+          .update({ specialist_ids: nextIds })
+          .eq('id', srv.id);
+        if (!srvUpdateErr) {
+          updatedServiceIds.push(srv.id);
+        }
+      } else {
+        updatedServiceIds.push(srv.id);
+      }
+    }
+  } catch (srvErr) {
+    console.warn('Warning assigning services in Server Action:', srvErr);
+  }
+
+  if (options?.accessRequestId !== undefined && options?.accessRequestId !== null) {
+    await supabase
+      .from('access_requests')
+      .update({ status: 'approved' })
+      .eq('id', options.accessRequestId);
+  }
+
+  return { id, tempPassword, updatedServiceIds };
 }
 
 export async function updateSpecialistAction(specialistId: string, payload: any): Promise<void> {
