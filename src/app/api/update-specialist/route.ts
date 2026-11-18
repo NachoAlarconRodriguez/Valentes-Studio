@@ -128,7 +128,55 @@ export async function POST(request: Request) {
       }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, updated: true });
+    // Si se habilita can_access_admin o se solicita asignar/resetear contraseña temporal
+    let assignedTempPassword: string | null = null;
+    if (targetEmail && (updatePayload.can_access_admin === true || body.tempPassword || body.resetTempPassword)) {
+      const cleanEmail = String(targetEmail).trim().toLowerCase();
+      const desiredPass = body.tempPassword ? String(body.tempPassword) : 'Valentes2026!';
+      const forceReset = Boolean(body.tempPassword || body.resetTempPassword);
+
+      const { data: usersList, error: listErr } = await supabase.auth.admin.listUsers();
+      const existingAuthUser = !listErr
+        ? usersList?.users?.find((u) => u.email?.toLowerCase() === cleanEmail)
+        : null;
+
+      if (!existingAuthUser) {
+        const { error: createAuthErr } = await supabase.auth.admin.createUser({
+          email: cleanEmail,
+          password: desiredPass,
+          email_confirm: true,
+          user_metadata: {
+            require_password_change: true,
+            firstName: updatePayload.name || 'Profesional'
+          }
+        });
+        if (!createAuthErr) {
+          assignedTempPassword = desiredPass;
+        } else {
+          console.error('[update-specialist] Error creating Auth user:', createAuthErr);
+        }
+      } else if (forceReset) {
+        const { error: updateAuthErr } = await supabase.auth.admin.updateUserById(existingAuthUser.id, {
+          password: desiredPass,
+          email_confirm: true,
+          user_metadata: {
+            ...(existingAuthUser.user_metadata || {}),
+            require_password_change: true
+          }
+        });
+        if (!updateAuthErr) {
+          assignedTempPassword = desiredPass;
+        } else {
+          console.error('[update-specialist] Error updating Auth user password:', updateAuthErr);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      updated: true,
+      tempPassword: assignedTempPassword
+    });
   } catch (error: any) {
     console.error('[update-specialist] Unexpected error:', error);
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 });

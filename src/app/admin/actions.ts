@@ -1,4 +1,4 @@
-'use server';
+ho'use server';
 
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
@@ -54,7 +54,7 @@ export async function uploadImageAction(formData: FormData): Promise<string> {
         .webp({ quality: 80 })
         .toBuffer();
       finalContentType = 'image/webp';
-      
+
       const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
       finalFilename = `${nameWithoutExt}.webp`;
     } catch (sharpError) {
@@ -116,7 +116,7 @@ export async function addSpecialistAction(
   const shouldCreateAuth = options?.createAuthUser !== false && specialist.canAccessAdmin !== false && Boolean(cleanEmail);
 
   if (shouldCreateAuth) {
-    tempPassword = `TempValentes_${Math.floor(100000 + Math.random() * 900000)}`;
+    tempPassword = 'Valentes2026!';
     const nameParts = cleanName.split(/\s+/);
     const firstName = nameParts[0] || cleanName;
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -194,7 +194,7 @@ export async function addSpecialistAction(
   if (specError) {
     console.error('Error inserting specialist in Server Action:', specError);
     if (newlyCreatedAuthUserId) {
-      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => {});
+      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => { });
     }
     throw new Error(specError.message);
   }
@@ -245,7 +245,7 @@ export async function addSpecialistAction(
     console.error('Error inserting default shifts in Server Action:', shiftsError);
     await supabase.from('specialists').delete().eq('id', id);
     if (newlyCreatedAuthUserId) {
-      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => {});
+      await supabase.auth.admin.deleteUser(newlyCreatedAuthUserId).catch(() => { });
     }
     throw new Error(shiftsError.message);
   }

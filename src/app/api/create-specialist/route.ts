@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     const shouldCreateAuth = createAuthUser !== false && specialist.canAccessAdmin !== false;
 
     if (shouldCreateAuth) {
-      tempPassword = `TempValentes_${Math.floor(100000 + Math.random() * 900000)}`;
+      tempPassword = body.tempPassword ? String(body.tempPassword) : 'Valentes2026!';
       const nameParts = cleanName.split(/\s+/);
       const firstName = nameParts[0] || cleanName;
       const lastName = nameParts.slice(1).join(' ') || '';
