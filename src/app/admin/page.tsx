@@ -1423,6 +1423,9 @@ export default function AdminPage() {
     if (lower.includes('password should be') || lower.includes('password is too short')) {
       return 'La contraseña debe tener al menos 6 caracteres.';
     }
+    if (lower.includes('different from the old password')) {
+      return 'La nueva contraseña debe ser diferente a la contraseña actual.';
+    }
     if (lower.includes('too many requests') || lower.includes('rate limit')) {
       return 'Demasiados intentos. Inténtalo de nuevo más tarde.';
     }
@@ -11735,7 +11738,7 @@ export default function AdminPage() {
 
       {/* CHANGE PASSWORD OVERLAY */}
       {requirePasswordChange && (
-        <div className="fixed inset-0 z-50 bg-[#070707] text-[#F0F0F0] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[999] bg-[#070707] text-[#F0F0F0] flex items-center justify-center p-4">
           {/* Toast Notification */}
           <AnimatePresence>
             {notification && (() => {

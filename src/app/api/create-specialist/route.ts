@@ -19,7 +19,8 @@ export async function POST(request: Request) {
       specialist,
       serviceIdsToAssign,
       createAuthUser = true,
-      accessRequestId
+      accessRequestId,
+      upsert = false
     } = body;
 
     if (!specialist || !specialist.name || !specialist.email) {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
         (!existingByEmail || s.id !== existingByEmail.id)
     );
 
-    if (existingByName) {
+    if (existingByName && !upsert) {
       return NextResponse.json(
         {
           error: `Ya existe un profesional registrado con el nombre "${existingByName.name}". Usa un segundo nombre o apellido para distinguirlos y proteger el historial de la agenda.`
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (existingByEmail && !accessRequestId) {
+    if (existingByEmail && !accessRequestId && !upsert) {
       return NextResponse.json(
         {
           error: `Ya existe un profesional registrado con el correo "${cleanEmail}".`
@@ -107,10 +108,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Si viene desde aprobación de solicitud y el especialista ya existía en la tabla, reutilizamos su ID
-    const reuseExistingSpecialist = Boolean(existingByEmail && accessRequestId);
-    if (reuseExistingSpecialist && existingByEmail) {
-      finalId = existingByEmail.id;
+    // Si viene desde aprobación de solicitud o modo upsert y el especialista ya existía en la tabla, reutilizamos su ID
+    const matchedExisting = existingByEmail || (upsert ? existingByName : null);
+    const reuseExistingSpecialist = Boolean(matchedExisting && (accessRequestId || upsert));
+    if (reuseExistingSpecialist && matchedExisting) {
+      finalId = matchedExisting.id;
     }
 
     // 2. Crear o actualizar cuenta en Supabase Auth (usando Admin API para NO cerrar sesión del Admin)
@@ -145,7 +147,10 @@ export async function POST(request: Request) {
 
         if (isAlreadyRegistered) {
           // Buscar el usuario existente en Auth y actualizar su contraseña temporal
-          const { data: usersList, error: listErr } = await supabase.auth.admin.listUsers();
+          const { data: usersList, error: listErr } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+          });
           const existingAuthUser = !listErr
             ? usersList?.users?.find((u) => u.email?.toLowerCase() === cleanEmail)
             : null;
@@ -237,6 +242,39 @@ export async function POST(request: Request) {
         );
       }
       insertedNewSpecialist = true;
+    } else if (upsert) {
+      const updateData: any = {
+        name: cleanName,
+        email: cleanEmail,
+        role: specialist.role || 'Barbero',
+        specialty: specialist.specialty || 'Barbería',
+        profile_type: specialist.profileType || 'barber',
+        assigned_agendas: assignedAgendas,
+        is_active: specialist.isActive !== false,
+        can_access_admin: specialist.canAccessAdmin !== false,
+        can_block_schedule: specialist.canBlockSchedule !== false
+      };
+      if (specialist.bio !== undefined) updateData.bio = specialist.bio;
+      if (specialist.avatar !== undefined) updateData.avatar = specialist.avatar;
+      if (specialist.imageUrl !== undefined) updateData.image_url = specialist.imageUrl;
+      if (specialist.phone !== undefined) updateData.phone = specialist.phone;
+
+      let { error: updErr } = await supabase
+        .from('specialists')
+        .update(updateData)
+        .eq('id', finalId);
+
+      if (
+        updErr &&
+        (updErr.message?.includes('can_access_admin') ||
+          updErr.message?.includes('can_block_schedule') ||
+          (updErr as any).code === '42703' ||
+          (updErr as any).code === 'PGRST204')
+      ) {
+        delete updateData.can_access_admin;
+        delete updateData.can_block_schedule;
+        await supabase.from('specialists').update(updateData).eq('id', finalId);
+      }
     }
 
     // 4. Crear los 7 turnos por defecto en work_shifts (si no tiene turnos aún)
