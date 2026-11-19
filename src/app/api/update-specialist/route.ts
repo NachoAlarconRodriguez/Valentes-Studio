@@ -6,8 +6,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { specialistId, email, imageUrl, payload: passedPayload } = body;
 
-    if (!specialistId && !email) {
-      return NextResponse.json({ error: 'Se requiere specialistId o email' }, { status: 400 });
+    if (!specialistId && !email && !body.searchName) {
+      return NextResponse.json({ error: 'Se requiere specialistId, email o searchName' }, { status: 400 });
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -74,6 +74,7 @@ export async function POST(request: Request) {
     }
 
     let updated = false;
+    let updatedRecord: any = null;
 
     // Try update by ID first
     if (specialistId) {
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
         .from('specialists')
         .update(updatePayload)
         .eq('id', specialistId)
-        .select('id');
+        .select('id, name, email, image_url');
 
       if (
         errById &&
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
           .from('specialists')
           .update(updatePayload)
           .eq('id', specialistId)
-          .select('id');
+          .select('id, name, email, image_url');
         dataById = retry.data;
         errById = retry.error;
       }
@@ -106,17 +107,18 @@ export async function POST(request: Request) {
       } else if (dataById && dataById.length > 0) {
         console.log(`[update-specialist] Update by ID "${specialistId}": rows=${dataById.length}`);
         updated = true;
+        updatedRecord = dataById[0];
       }
     }
 
-    // Fallback: try update by email
+    // Fallback: try update by email (case-insensitive)
     const targetEmail = email || updatePayload.email;
     if (!updated && targetEmail) {
       let { data: dataByEmail, error: errByEmail } = await supabase
         .from('specialists')
         .update(updatePayload)
-        .eq('email', targetEmail)
-        .select('id');
+        .ilike('email', String(targetEmail).trim())
+        .select('id, name, email, image_url');
 
       if (
         errByEmail &&
@@ -130,8 +132,8 @@ export async function POST(request: Request) {
         const retry = await supabase
           .from('specialists')
           .update(updatePayload)
-          .eq('email', targetEmail)
-          .select('id');
+          .ilike('email', String(targetEmail).trim())
+          .select('id, name, email, image_url');
         dataByEmail = retry.data;
         errByEmail = retry.error;
       }
@@ -141,15 +143,33 @@ export async function POST(request: Request) {
       } else if (dataByEmail && dataByEmail.length > 0) {
         console.log(`[update-specialist] Update by email "${targetEmail}": rows=${dataByEmail.length}`);
         updated = true;
+        updatedRecord = dataByEmail[0];
+      }
+    }
+
+    // Fallback: try update by searchName (case-insensitive substring)
+    if (!updated && body.searchName) {
+      let { data: dataByName, error: errByName } = await supabase
+        .from('specialists')
+        .update(updatePayload)
+        .ilike('name', `%${String(body.searchName).trim()}%`)
+        .select('id, name, email, image_url');
+
+      if (!errByName && dataByName && dataByName.length > 0) {
+        updated = true;
+        updatedRecord = dataByName[0];
       }
     }
 
     if (!updated) {
+      const { data: allSpecs } = await supabase.from('specialists').select('id, name, email');
       console.warn(`[update-specialist] No rows updated for id="${specialistId}" email="${targetEmail}"`);
       return NextResponse.json({ 
         warning: 'No se encontró ningún especialista con ese ID o email',
         specialistId,
-        email: targetEmail
+        email: targetEmail,
+        imageUrl: uploadedPublicUrl,
+        availableSpecialists: allSpecs || []
       }, { status: 200 });
     }
 
@@ -200,6 +220,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       updated: true,
+      specialist: updatedRecord,
       imageUrl: uploadedPublicUrl || updatePayload.image_url || null,
       tempPassword: assignedTempPassword
     });
