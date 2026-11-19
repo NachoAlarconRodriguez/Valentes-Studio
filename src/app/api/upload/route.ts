@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
+import convert from 'heic-convert';
 
 export async function POST(request: Request) {
   try {
@@ -72,7 +74,6 @@ export async function POST(request: Request) {
 
       if (isHeic) {
         try {
-          const { default: convert } = await import('heic-convert');
           const output = await convert({
             buffer,
             format: 'JPEG',
@@ -85,21 +86,33 @@ export async function POST(request: Request) {
         }
       }
 
-      if (extLower !== 'webp' && contentType !== 'image/webp') {
+      try {
+        finalBuffer = await sharp(imageBufferToProcess)
+          .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+        finalContentType = 'image/webp';
+        
+        const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+        finalFilename = `${nameWithoutExt}.webp`;
+      } catch (sharpError) {
+        console.error('Error compressing image with sharp, trying HEIC fallback:', sharpError);
         try {
-          const { default: sharp } = await import('sharp');
-          finalBuffer = await sharp(imageBufferToProcess)
+          const output = await convert({
+            buffer,
+            format: 'JPEG',
+            quality: 0.85
+          });
+          const convertedJpeg = Buffer.from(output);
+          finalBuffer = await sharp(convertedJpeg)
             .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 80 })
             .toBuffer();
           finalContentType = 'image/webp';
-          
           const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
           finalFilename = `${nameWithoutExt}.webp`;
-        } catch (sharpError) {
-          console.error('Error compressing image with sharp, uploading processed buffer:', sharpError);
-          finalBuffer = imageBufferToProcess;
-          finalContentType = contentType;
+        } catch (fallbackErr) {
+          console.error('Fallback HEIC conversion failed, uploading original:', fallbackErr);
         }
       }
     }
