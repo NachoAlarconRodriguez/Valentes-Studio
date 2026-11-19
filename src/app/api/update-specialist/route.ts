@@ -23,7 +23,32 @@ export async function POST(request: Request) {
     });
 
     const updatePayload: any = { ...(passedPayload || {}) };
-    if (imageUrl) {
+    let uploadedPublicUrl: string | null = null;
+
+    if (body.imageBase64) {
+      const cleanBase64 = String(body.imageBase64).replace(/^data:[^;]+;base64,/, '');
+      const imgBuffer = Buffer.from(cleanBase64, 'base64');
+      const imgContentType = body.imageContentType || 'image/webp';
+      const imgExt = imgContentType.includes('png') ? 'png' : imgContentType.includes('jpeg') || imgContentType.includes('jpg') ? 'jpg' : 'webp';
+      const storageFilename = `specialist_${specialistId || Date.now()}_${Date.now()}.${imgExt}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('cms-images')
+        .upload(storageFilename, imgBuffer, {
+          contentType: imgContentType,
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadErr) {
+        console.error('[update-specialist] Error uploading imageBase64 to Storage:', uploadErr);
+        return NextResponse.json({ error: `Error subiendo imagen a Storage: ${uploadErr.message}` }, { status: 500 });
+      }
+
+      const { data: pubData } = supabase.storage.from('cms-images').getPublicUrl(storageFilename);
+      uploadedPublicUrl = pubData.publicUrl;
+      updatePayload.image_url = uploadedPublicUrl;
+    } else if (imageUrl) {
       updatePayload.image_url = imageUrl;
     }
     // Also support direct top-level fields
@@ -175,6 +200,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       updated: true,
+      imageUrl: uploadedPublicUrl || updatePayload.image_url || null,
       tempPassword: assignedTempPassword
     });
   } catch (error: any) {
