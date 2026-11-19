@@ -283,27 +283,66 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   },
 
   addTimeBlock: async (block) => {
+    const isFullDayReason =
+      block.reason?.trim().toLowerCase() === 'vacaciones' ||
+      block.reason?.trim().toLowerCase().startsWith('feriado');
+    const normalizedBlock: Omit<TimeBlock, 'id'> = {
+      ...block,
+      startTime: isFullDayReason ? '00:00' : block.startTime,
+      endTime: isFullDayReason ? '23:59' : block.endTime
+    };
+
+    const isFullDayNew = normalizedBlock.startTime === '00:00' && normalizedBlock.endTime === '23:59';
+    const existingForDate = get().timeBlocks.filter(
+      (tb) => tb.specialistId === normalizedBlock.specialistId && tb.date === normalizedBlock.date
+    );
+
+    const exactDuplicate = existingForDate.find(
+      (tb) =>
+        tb.startTime === normalizedBlock.startTime &&
+        tb.endTime === normalizedBlock.endTime &&
+        tb.reason === normalizedBlock.reason
+    );
+    if (exactDuplicate) {
+      return;
+    }
+
+    const redundantIds = existingForDate
+      .filter(
+        (tb) =>
+          isFullDayNew ||
+          (tb.startTime === normalizedBlock.startTime && tb.endTime === normalizedBlock.endTime)
+      )
+      .map((tb) => tb.id);
+
     const id = `tb_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newBlock: TimeBlock = {
-      ...block,
+      ...normalizedBlock,
       id
     };
 
     try {
+      if (redundantIds.length > 0) {
+        await supabase.from('time_blocks').delete().in('id', redundantIds);
+      }
+
       const { error } = await supabase.from('time_blocks').insert({
         id,
-        specialist_id: block.specialistId,
-        date: block.date,
-        start_time: block.startTime,
-        end_time: block.endTime,
-        reason: block.reason,
-        is_recurring: block.isRecurring || false
+        specialist_id: normalizedBlock.specialistId,
+        date: normalizedBlock.date,
+        start_time: normalizedBlock.startTime,
+        end_time: normalizedBlock.endTime,
+        reason: normalizedBlock.reason,
+        is_recurring: normalizedBlock.isRecurring || false
       });
 
       if (error) throw error;
 
       set((state) => ({
-        timeBlocks: [...state.timeBlocks, newBlock]
+        timeBlocks: [
+          ...state.timeBlocks.filter((tb) => !redundantIds.includes(tb.id)),
+          newBlock
+        ]
       }));
     } catch (err) {
       console.error('Error adding time block:', err);
@@ -382,13 +421,18 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     );
     
     for (const block of blocksForDate) {
-      const blockStart = timeToMinutes(block.startTime);
-      const blockEnd = timeToMinutes(block.endTime);
+      const isFullDayReason =
+        block.reason?.trim().toLowerCase() === 'vacaciones' ||
+        block.reason?.trim().toLowerCase().startsWith('feriado');
+      const blockStart = isFullDayReason ? 0 : timeToMinutes(block.startTime);
+      const blockEnd = isFullDayReason ? 24 * 60 : timeToMinutes(block.endTime);
       
       if (slotStart < blockEnd && slotEnd > blockStart) {
         return { 
           available: false, 
-          reason: `Horario bloqueado: ${block.reason} (${block.startTime} - ${block.endTime})` 
+          reason: isFullDayReason
+            ? `Día bloqueado: ${block.reason}`
+            : `Horario bloqueado: ${block.reason} (${block.startTime} - ${block.endTime})` 
         };
       }
     }

@@ -1076,6 +1076,8 @@ export default function AdminPage() {
   }, [specialistsList, selectedScheduleStaffId, activeScheduleBusinessFilter]);
 
   const [blockFormDate, setBlockFormDate] = useState(() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; });
+  const [blockFormEndDate, setBlockFormEndDate] = useState('');
+  const [blockFormFullDay, setBlockFormFullDay] = useState(false);
   const [blockFormStart, setBlockFormStart] = useState('10:00');
   const [blockFormEnd, setBlockFormEnd] = useState('11:00');
   const [blockFormReason, setBlockFormReason] = useState<string>('Asunto Personal');
@@ -5045,6 +5047,80 @@ export default function AdminPage() {
                                       isLunchBreak = slotMin >= breakStartMin && slotMin < breakEndMin;
                                     }
                                   }
+                                }
+
+                                const slotMinVal = localTimeToMinutes(time);
+                                const stepMinsVal = activeBusinessTab === 'barberia' ? 60 : 30;
+                                const slotEndMinVal = slotMinVal + stepMinsVal;
+                                const activeTimeBlock = timeBlocks.find((tb) => {
+                                  const isSpecMatch =
+                                    tb.specialistId === specialist.id ||
+                                    !tb.specialistId ||
+                                    tb.specialistId === 'todos' ||
+                                    tb.specialistId === 'all';
+                                  if (!isSpecMatch || tb.date !== targetDate) return false;
+                                  const isFullDayReason =
+                                    tb.reason?.trim().toLowerCase() === 'vacaciones' ||
+                                    tb.reason?.trim().toLowerCase().startsWith('feriado');
+                                  const tbStart = isFullDayReason ? 0 : localTimeToMinutes(tb.startTime);
+                                  const tbEnd = isFullDayReason ? 24 * 60 : localTimeToMinutes(tb.endTime);
+                                  return slotMinVal < tbEnd && slotEndMinVal > tbStart;
+                                });
+
+                                if (activeTimeBlock) {
+                                  const [by, bm, bd] = activeTimeBlock.date.split('-');
+                                  const formattedTbDate = `${bd}/${bm}/${by}`;
+                                  return (
+                                    <td key={`${specialist.id}-${time}`} className={`py-4 px-3 md:px-4 ${specialistsForView.length === 1 ? 'w-auto' : 'w-[250px]'} align-top`}>
+                                      <div className="bg-emerald-950/15 border border-emerald-500/20 border-dashed rounded-2xl p-3 flex flex-col justify-between min-h-[85px] group hover:border-emerald-500/35 transition-all">
+                                        <div className="flex flex-col">
+                                          <span className="text-[8px] font-mono text-emerald-400/80 uppercase tracking-wider font-bold">
+                                            BLOQUEADO • {activeTimeBlock.reason}
+                                          </span>
+                                          <span className="text-[10px] text-white/45 font-medium mt-1">
+                                            {activeTimeBlock.reason?.trim().toLowerCase() === 'vacaciones' ||
+                                            (activeTimeBlock.startTime === '00:00' && activeTimeBlock.endTime === '23:59')
+                                              ? 'Día Completo'
+                                              : `${activeTimeBlock.startTime} - ${activeTimeBlock.endTime}`}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-end gap-1.5 pt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            disabled={isPast}
+                                            onClick={() => {
+                                              setPrefillSpecialistId(specialist.id);
+                                              setPrefillDate(targetDate);
+                                              setPrefillTime(time);
+                                              setIsManualBookingOpen(true);
+                                            }}
+                                            className={`px-2 py-1 text-[8px] sm:text-[9px] font-bold rounded-lg border transition-all ${
+                                              isPast
+                                                ? 'bg-white/5 border-white/5 text-text-secondary/40 cursor-not-allowed opacity-50'
+                                                : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20 cursor-pointer'
+                                            }`}
+                                          >
+                                            Sobrecupo
+                                          </button>
+                                          {canCurrentUserBlock && (
+                                            <button
+                                              onClick={() => {
+                                                setBlockToDelete({
+                                                  id: activeTimeBlock.id,
+                                                  date: formattedTbDate,
+                                                  reason: activeTimeBlock.reason,
+                                                  startTime: activeTimeBlock.startTime,
+                                                  endTime: activeTimeBlock.endTime
+                                                });
+                                              }}
+                                              className="px-2 py-1 text-[8px] sm:text-[9px] font-bold rounded-lg border bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 cursor-pointer transition-all"
+                                            >
+                                              Desbloquear
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  );
                                 }
 
                                 if (isLunchBreak) {
@@ -9038,9 +9114,6 @@ export default function AdminPage() {
                                     <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
                                       Servicios Habilitados ({staffFormServices.length}/{availableServices.length})
                                     </label>
-                                    {availableServices.length > 0 && (
-                                      <button
-                                        type="button"
                                         onClick={() => {
                                           if (allSelected) {
                                             setStaffFormServices([]);
@@ -9663,7 +9736,9 @@ export default function AdminPage() {
                                 type="button"
                                 onClick={() => {
                                   setBlockFormDate(h.date);
+                                  setBlockFormEndDate('');
                                   setBlockFormReason(`Feriado: ${h.name}`);
+                                  setBlockFormFullDay(true);
                                   setBlockFormStart('00:00');
                                   setBlockFormEnd('23:59');
                                   triggerNotification(`Feriado "${h.name}" seleccionado.`);
@@ -9694,50 +9769,106 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Date picker */}
-                      <div className="space-y-1">
-                        <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Fecha *</label>
-                        <input
-                          type="date"
-                          value={blockFormDate}
-                          onChange={(e) => setBlockFormDate(e.target.value)}
-                          className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer font-mono"
-                        />
+                      {/* Date pickers (Start & optional End Date for Vacation Ranges) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Fecha Inicio *</label>
+                          <input
+                            type="date"
+                            value={blockFormDate}
+                            onChange={(e) => {
+                              setBlockFormDate(e.target.value);
+                              if (blockFormEndDate && blockFormEndDate < e.target.value) {
+                                setBlockFormEndDate(e.target.value);
+                              }
+                            }}
+                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Fecha Fin (Opcional)</label>
+                          <input
+                            type="date"
+                            min={blockFormDate}
+                            value={blockFormEndDate}
+                            onChange={(e) => setBlockFormEndDate(e.target.value)}
+                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-gold/30 cursor-pointer font-mono"
+                          />
+                        </div>
                       </div>
 
-                      {/* Start & End Times */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Inicio *</label>
-                          <input
-                            type="time"
-                            value={blockFormStart}
-                            onChange={(e) => setBlockFormStart(e.target.value)}
-                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
-                          />
+                      {/* Full Day Toggle */}
+                      <div className="flex items-center justify-between bg-[#050505] border border-white/10 rounded-xl px-4 py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-white">Bloquear día completo</span>
+                          <span className="text-[9px] text-text-secondary font-light">Cubre toda la jornada (00:00 a 23:59 hrs) sin dejar horas libres</span>
                         </div>
-                        <div className="space-y-1">
-                          <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Fin *</label>
+                        <label className="relative inline-flex items-center cursor-pointer">
                           <input
-                            type="time"
-                            value={blockFormEnd}
-                            onChange={(e) => setBlockFormEnd(e.target.value)}
-                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
+                            type="checkbox"
+                            checked={blockFormFullDay || blockFormReason === 'Vacaciones' || blockFormReason.startsWith('Feriado:')}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setBlockFormFullDay(checked);
+                              if (checked) {
+                                setBlockFormStart('00:00');
+                                setBlockFormEnd('23:59');
+                              } else {
+                                if (blockFormReason === 'Vacaciones') {
+                                  setBlockFormReason('Asunto Personal');
+                                }
+                                setBlockFormStart('10:00');
+                                setBlockFormEnd('11:00');
+                              }
+                            }}
+                            className="sr-only peer"
                           />
-                        </div>
+                          <div className="w-9 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#080808] after:border-white/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gold"></div>
+                        </label>
                       </div>
+
+                      {/* Start & End Times (visible only when not blocking full day) */}
+                      {!(blockFormFullDay || blockFormReason === 'Vacaciones' || blockFormReason.startsWith('Feriado:')) && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Inicio *</label>
+                            <input
+                              type="time"
+                              value={blockFormStart}
+                              onChange={(e) => setBlockFormStart(e.target.value)}
+                              className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Hora Fin *</label>
+                            <input
+                              type="time"
+                              value={blockFormEnd}
+                              onChange={(e) => setBlockFormEnd(e.target.value)}
+                              className="w-full bg-[#050505] border border-white/10 rounded-xl py-2.5 px-4 text-xs text-white focus:outline-none focus:border-gold/30 font-mono cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Reason drop down selector */}
                       <div className="space-y-1">
                         <label className="block text-[8px] uppercase tracking-widest text-text-secondary font-bold">Motivo del Bloqueo *</label>
                         <CustomSelect
                           value={blockFormReason}
-                          onChange={(val) => setBlockFormReason(val)}
+                          onChange={(val) => {
+                            setBlockFormReason(val);
+                            if (val === 'Vacaciones' || val.startsWith('Feriado:')) {
+                              setBlockFormFullDay(true);
+                              setBlockFormStart('00:00');
+                              setBlockFormEnd('23:59');
+                            }
+                          }}
                           options={[
                             { value: 'Almuerzo', label: 'Almuerzo' },
                             { value: 'Permiso Médico', label: 'Permiso Médico' },
                             { value: 'Capacitación', label: 'Capacitación' },
-                            { value: 'Vacaciones', label: 'Vacaciones' },
+                            { value: 'Vacaciones', label: 'Vacaciones (Día Completo)' },
                             { value: 'Asunto Personal', label: 'Asunto Personal' },
                             ...(!['Almuerzo', 'Permiso Médico', 'Capacitación', 'Vacaciones', 'Asunto Personal'].includes(blockFormReason) && blockFormReason
                               ? [{ value: blockFormReason, label: blockFormReason }]
@@ -9748,14 +9879,40 @@ export default function AdminPage() {
                       </div>
 
                       <button
-                        onClick={() => {
-                          if (!blockFormDate || !blockFormStart || !blockFormEnd) {
+                        onClick={async () => {
+                          const isFullDay = blockFormFullDay || blockFormReason === 'Vacaciones' || blockFormReason.startsWith('Feriado:');
+                          const effectiveStart = isFullDay ? '00:00' : blockFormStart;
+                          const effectiveEnd = isFullDay ? '23:59' : blockFormEnd;
+
+                          if (!blockFormDate || !effectiveStart || !effectiveEnd) {
                             triggerNotification('Por favor completa todos los campos.');
                             return;
                           }
-                          if (blockFormStart >= blockFormEnd) {
+                          if (effectiveStart >= effectiveEnd) {
                             triggerNotification('La hora de inicio debe ser anterior a la hora de fin.');
                             return;
+                          }
+
+                          const datesToBlock: string[] = [];
+                          if (blockFormEndDate && blockFormEndDate >= blockFormDate) {
+                            const [sy, sm, sd] = blockFormDate.split('-').map(Number);
+                            const [ey, em, ed] = blockFormEndDate.split('-').map(Number);
+                            const cur = new Date(sy, sm - 1, sd);
+                            const endD = new Date(ey, em - 1, ed);
+                            const diffDays = Math.round((endD.getTime() - cur.getTime()) / (1000 * 60 * 60 * 24));
+                            if (diffDays > 60) {
+                              triggerNotification('El rango máximo permitido por operación es de 60 días.');
+                              return;
+                            }
+                            while (cur <= endD) {
+                              const yyyy = cur.getFullYear();
+                              const mm = String(cur.getMonth() + 1).padStart(2, '0');
+                              const dd = String(cur.getDate()).padStart(2, '0');
+                              datesToBlock.push(`${yyyy}-${mm}-${dd}`);
+                              cur.setDate(cur.getDate() + 1);
+                            }
+                          } else {
+                            datesToBlock.push(blockFormDate);
                           }
 
                           if (blockFormReason.startsWith('Feriado:')) {
@@ -9764,29 +9921,39 @@ export default function AdminPage() {
                               triggerNotification('No hay profesionales registrados para bloquear.');
                               return;
                             }
-                            allGlobalSpecialists.forEach((spec) => {
-                              addTimeBlock({
-                                specialistId: spec.id,
-                                date: blockFormDate,
-                                startTime: blockFormStart,
-                                endTime: blockFormEnd,
-                                reason: blockFormReason as any
-                              });
-                            });
+                            for (const targetD of datesToBlock) {
+                              for (const spec of allGlobalSpecialists) {
+                                await addTimeBlock({
+                                  specialistId: spec.id,
+                                  date: targetD,
+                                  startTime: effectiveStart,
+                                  endTime: effectiveEnd,
+                                  reason: blockFormReason as any
+                                });
+                              }
+                            }
                             triggerNotification('Feriado bloqueado para todos los profesionales.');
                           } else {
                             if (!selectedScheduleStaffId) {
                               triggerNotification('Por favor selecciona un profesional.');
                               return;
                             }
-                            addTimeBlock({
-                              specialistId: selectedScheduleStaffId,
-                              date: blockFormDate,
-                              startTime: blockFormStart,
-                              endTime: blockFormEnd,
-                              reason: blockFormReason as any
-                            });
-                            triggerNotification('Franja horaria bloqueada correctamente.');
+                            for (const targetD of datesToBlock) {
+                              await addTimeBlock({
+                                specialistId: selectedScheduleStaffId,
+                                date: targetD,
+                                startTime: effectiveStart,
+                                endTime: effectiveEnd,
+                                reason: blockFormReason as any
+                              });
+                            }
+                            triggerNotification(
+                              datesToBlock.length > 1
+                                ? `${datesToBlock.length} días bloqueados correctamente.`
+                                : isFullDay
+                                ? 'Día completo bloqueado correctamente.'
+                                : 'Franja horaria bloqueada correctamente.'
+                            );
                           }
                         }}
                         className="w-full py-3 bg-gold hover:bg-gold/90 text-black text-[10px] uppercase font-bold tracking-widest rounded-full transition-colors cursor-pointer"
@@ -9838,7 +10005,12 @@ export default function AdminPage() {
                                 return (
                                   <tr key={block.id} className="hover:bg-white/[0.01]">
                                     <td className="py-3.5 font-mono text-[11px] font-semibold">{formattedDate}</td>
-                                    <td className="py-3.5 font-mono text-[11px] text-text-secondary">{block.startTime} - {block.endTime}</td>
+                                    <td className="py-3.5 font-mono text-[11px] text-text-secondary">
+                                      {block.reason?.trim().toLowerCase() === 'vacaciones' ||
+                                      (block.startTime === '00:00' && block.endTime === '23:59')
+                                        ? 'Día Completo (00:00 - 23:59)'
+                                        : `${block.startTime} - ${block.endTime}`}
+                                    </td>
                                     <td className="py-3.5">
                                       <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-semibold border ${badgeColor}`}>
                                         {block.reason}

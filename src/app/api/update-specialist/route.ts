@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { specialistId, email, imageUrl, payload: passedPayload } = body;
 
-    if (!specialistId && !email && !body.searchName) {
+    if (!specialistId && !email && !body.searchName && !body.normalizeVacationBlocks) {
       return NextResponse.json({ error: 'Se requiere specialistId, email o searchName' }, { status: 400 });
     }
 
@@ -21,6 +21,60 @@ export async function POST(request: Request) {
     const supabase = createClient(url, serviceRoleKey, {
       auth: { persistSession: false }
     });
+
+    if (body.normalizeVacationBlocks) {
+      const { data: allBlocks, error: tbFetchErr } = await supabase
+        .from('time_blocks')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (tbFetchErr) {
+        return NextResponse.json({ error: tbFetchErr.message }, { status: 500 });
+      }
+
+      const seenFullDayKeys = new Map<string, any>();
+      const idsToDelete: string[] = [];
+      const idsToUpdateFullDay: string[] = [];
+
+      for (const tb of allBlocks || []) {
+        const reasonClean = String(tb.reason || '').trim().toLowerCase();
+        const isFullDayReason = reasonClean === 'vacaciones' || reasonClean.startsWith('feriado');
+        if (isFullDayReason) {
+          const key = `${tb.specialist_id}__${tb.date}__${reasonClean}`;
+          if (seenFullDayKeys.has(key)) {
+            idsToDelete.push(tb.id);
+          } else {
+            seenFullDayKeys.set(key, tb);
+            if (tb.start_time !== '00:00' || tb.end_time !== '23:59') {
+              idsToUpdateFullDay.push(tb.id);
+            }
+          }
+        }
+      }
+
+      if (idsToDelete.length > 0) {
+        await supabase.from('time_blocks').delete().in('id', idsToDelete);
+      }
+
+      if (idsToUpdateFullDay.length > 0) {
+        await supabase
+          .from('time_blocks')
+          .update({ start_time: '00:00', end_time: '23:59' })
+          .in('id', idsToUpdateFullDay);
+      }
+
+      const { data: remainingBlocks } = await supabase
+        .from('time_blocks')
+        .select('*')
+        .order('date', { ascending: true });
+
+      return NextResponse.json({
+        success: true,
+        updatedFullDayCount: idsToUpdateFullDay.length,
+        deletedDuplicatesCount: idsToDelete.length,
+        remainingBlocks: remainingBlocks || []
+      });
+    }
 
     const updatePayload: any = { ...(passedPayload || {}) };
     let uploadedPublicUrl: string | null = null;

@@ -222,6 +222,7 @@ export function BookingModal() {
 
   const handleDateTypeSelect = (type: 'hoy' | 'manana' | 'semana' | 'mes') => {
     setDateType(type);
+    setTime('');
     if (type === 'hoy') {
       setDate(getFormattedDate(0));
     } else if (type === 'manana') {
@@ -360,6 +361,9 @@ export function BookingModal() {
   }, [serviceId, selectedServiceIds, filteredSpecialistsList, specialistId]);
 
   const isSpecialistAvailable = useScheduleStore(state => state.isSpecialistAvailable);
+  const timeBlocks = useScheduleStore(state => state.timeBlocks);
+  const workShifts = useScheduleStore(state => state.workShifts);
+  const publicBookings = useBookingStore(state => state.bookings);
 
   const checkTimeSlotAvailabilityForDate = (checkDate: string, slotTime: string): { available: boolean; reason?: string } => {
     if (!checkDate) return { available: true };
@@ -441,62 +445,82 @@ export function BookingModal() {
     }
   }, [step, date, isBookingOpen, fetchSchedules, fetchPublicBookings]);
 
-  // Find and pre-select the nearest available date and time slot
+  // Find and pre-select the nearest available date and time slot (and re-validate when schedules/timeBlocks arrive)
   useEffect(() => {
-    if (isBookingOpen && step === 3 && (!date || !time)) {
-      // If the user has explicitly selected 'semana' or 'mes' and cleared the date to pick a new one,
-      // do not auto-override it!
+    if (!isBookingOpen || step !== 3) return;
+
+    const timeSlots = category === 'barberia'
+      ? [
+          '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+          '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+          '19:00', '20:00'
+        ]
+      : [
+          '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+          '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+          '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+          '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+          '19:00', '19:30', '20:00'
+        ];
+
+    const currentSlotIsValid = Boolean(
+      date && time && checkTimeSlotAvailabilityForDate(date, time).available
+    );
+
+    if (currentSlotIsValid) return;
+
+    // If user already chose a specific date in 'semana', 'mes', 'hoy' or 'manana', try finding a valid slot on that date first
+    if (date) {
+      const slotOnCurrentDate = timeSlots.find(
+        (slot) => checkTimeSlotAvailabilityForDate(date, slot).available
+      );
+      if (slotOnCurrentDate) {
+        setTime(slotOnCurrentDate);
+        return;
+      }
+      // Current date has 0 available slots
+      if (time) {
+        setTime('');
+      }
       if (dateType === 'semana' || dateType === 'mes') {
         return;
       }
+    } else if (dateType === 'semana' || dateType === 'mes') {
+      return;
+    }
 
-      const timeSlots = category === 'barberia'
-        ? [
-            '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-            '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-            '19:00', '20:00'
-          ]
-        : [
-            '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
-            '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-            '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-            '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-            '19:00', '19:30', '20:00'
-          ];
-      
-      // Search the next 30 days
-      for (let offset = 0; offset < 30; offset++) {
-        const checkDate = getFormattedDate(offset);
-        const firstAvailableSlot = timeSlots.find(slot => 
-          checkTimeSlotAvailabilityForDate(checkDate, slot).available
-        );
-        
-        if (firstAvailableSlot) {
-          setDate(checkDate);
-          setTime(firstAvailableSlot);
-          
-          if (offset === 0) {
-            setDateType('hoy');
-          } else if (offset === 1) {
-            setDateType('manana');
-          } else {
-            setDateType('semana');
-          }
-          break;
+    // Search the next 30 days for the first available day and slot
+    for (let offset = 0; offset < 30; offset++) {
+      const checkDate = getFormattedDate(offset);
+      const firstAvailableSlot = timeSlots.find((slot) =>
+        checkTimeSlotAvailabilityForDate(checkDate, slot).available
+      );
+
+      if (firstAvailableSlot) {
+        setDate(checkDate);
+        setTime(firstAvailableSlot);
+
+        if (offset === 0) {
+          setDateType('hoy');
+        } else if (offset === 1) {
+          setDateType('manana');
+        } else {
+          setDateType('semana');
         }
+        break;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBookingOpen, step, serviceId, selectedServiceIds, specialistId]);
+  }, [isBookingOpen, step, serviceId, selectedServiceIds, specialistId, timeBlocks, workShifts, publicBookings]);
 
-  // Auto-scroll al primer horario disponible (o al seleccionado) en el Paso 3 para evitar "falso fondo"
+  // Auto-scroll suave sin ocultar el selector de fechas superior
   useEffect(() => {
     if (isBookingOpen && step === 3 && date) {
       const timer = setTimeout(() => {
         if (targetTimeSlotRef.current) {
           targetTimeSlotRef.current.scrollIntoView({
             behavior: 'smooth',
-            block: 'center',
+            block: 'nearest',
           });
         }
       }, 150);
@@ -1113,25 +1137,33 @@ export function BookingModal() {
                               <label className={labelClass}>Selecciona el día</label>
                               <div className="grid grid-cols-4 gap-2 mt-1.5">
                                 {[
-                                  { type: 'hoy' as const, label: 'Hoy' },
-                                  { type: 'manana' as const, label: 'Mañana' },
-                                  { type: 'semana' as const, label: 'Semana' },
-                                  { type: 'mes' as const, label: 'Mes' }
+                                  { type: 'hoy' as const, label: 'Hoy', checkDate: getFormattedDate(0) },
+                                  { type: 'manana' as const, label: 'Mañana', checkDate: getFormattedDate(1) },
+                                  { type: 'semana' as const, label: 'Semana', checkDate: null },
+                                  { type: 'mes' as const, label: 'Mes', checkDate: null }
                                 ].map((item) => {
                                   const isSelected = dateType === item.type;
+                                  const availableForQuickDay = item.checkDate ? countAvailableSlots(item.checkDate) : 1;
+                                  const isQuickDayExhausted = Boolean(item.checkDate && availableForQuickDay === 0);
                                   return (
                                     <button
                                       key={item.type}
                                       type="button"
+                                      disabled={isQuickDayExhausted}
                                       onClick={() => handleDateTypeSelect(item.type)}
-                                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border aspect-square transition-all duration-300 focus:outline-none cursor-pointer ${
-                                        isSelected 
-                                          ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)]' 
-                                          : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20'
+                                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border aspect-square transition-all duration-300 focus:outline-none ${
+                                        isQuickDayExhausted
+                                          ? 'border-white/5 bg-black/20 text-white/20 opacity-35 cursor-not-allowed'
+                                          : isSelected 
+                                            ? 'border-gold bg-gold/10 text-gold shadow-[0_0_12px_rgba(198,155,60,0.25)] cursor-pointer' 
+                                            : 'border-white/10 bg-white/5 text-white/70 hover:text-white hover:border-white/20 cursor-pointer'
                                       }`}
                                     >
-                                      <Calendar size={18} className={isSelected ? themeText : 'text-white/50'} />
+                                      <Calendar size={18} className={isQuickDayExhausted ? 'text-white/20' : isSelected ? themeText : 'text-white/50'} />
                                       <span className="text-[10px] font-semibold tracking-wider uppercase mt-1.5">{item.label}</span>
+                                      {isQuickDayExhausted && (
+                                        <span className="text-[8px] text-red-400/80 font-semibold mt-0.5">Agotado</span>
+                                      )}
                                     </button>
                                   );
                                 })}
@@ -1339,7 +1371,12 @@ export function BookingModal() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="space-y-2"
                               >
-                                <label className={labelClass}>Hora disponible *</label>
+                                <div className="flex items-center justify-between">
+                                  <label className={`${labelClass} mb-0`}>Hora disponible *</label>
+                                  <span className="text-[10px] font-mono font-semibold text-gold/90 bg-gold/10 border border-gold/20 px-2.5 py-0.5 rounded-full">
+                                    Fecha: {formatDateToDMY(date)}
+                                  </span>
+                                </div>
                                 <div className="grid grid-cols-4 gap-2 pr-1">
                                   {(() => {
                                     const slotsList = category === 'barberia'

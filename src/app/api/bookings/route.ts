@@ -208,13 +208,18 @@ export async function POST(req: Request) {
       if (tbErr) throw tbErr;
 
       for (const tb of timeBlocks || []) {
-        const tbStart = timeToMinutes(tb.start_time);
-        const tbEnd = timeToMinutes(tb.end_time);
+        const isFullDayReason =
+          tb.reason?.trim().toLowerCase() === 'vacaciones' ||
+          tb.reason?.trim().toLowerCase().startsWith('feriado');
+        const tbStart = isFullDayReason ? 0 : timeToMinutes(tb.start_time);
+        const tbEnd = isFullDayReason ? 24 * 60 : timeToMinutes(tb.end_time);
 
         if (newSlotStart < tbEnd && newSlotEnd > tbStart) {
           return NextResponse.json(
             {
-              error: `El horario de las ${time} hrs se encuentra bloqueado por administración (${tb.reason || 'Bloqueo'}: ${tb.start_time.substring(0, 5)} - ${tb.end_time.substring(0, 5)} hrs).`
+              error: isFullDayReason
+                ? `El profesional no se encuentra disponible en esta fecha (${tb.reason}).`
+                : `El horario de las ${time} hrs se encuentra bloqueado por administración (${tb.reason || 'Bloqueo'}: ${tb.start_time.substring(0, 5)} - ${tb.end_time.substring(0, 5)} hrs).`
             },
             { status: 409 }
           );
