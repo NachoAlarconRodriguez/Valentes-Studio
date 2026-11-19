@@ -9114,6 +9114,9 @@ export default function AdminPage() {
                                     <label className="block text-[9px] uppercase tracking-wider text-text-secondary font-bold">
                                       Servicios Habilitados ({staffFormServices.length}/{availableServices.length})
                                     </label>
+                                    {availableServices.length > 0 && (
+                                      <button
+                                        type="button"
                                         onClick={() => {
                                           if (allSelected) {
                                             setStaffFormServices([]);
